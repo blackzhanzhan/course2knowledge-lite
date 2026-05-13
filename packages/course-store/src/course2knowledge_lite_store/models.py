@@ -81,6 +81,24 @@ class ImportStatusRecord:
 
 
 @dataclass(frozen=True)
+class TranscriptSegmentRecord:
+    segment_id: str
+    lecture_id: str
+    start_seconds: float
+    end_seconds: float
+    text: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "segment_id": self.segment_id,
+            "lecture_id": self.lecture_id,
+            "start_seconds": self.start_seconds,
+            "end_seconds": self.end_seconds,
+            "text": self.text,
+        }
+
+
+@dataclass(frozen=True)
 class CourseSkeleton:
     course: CourseRecord
     lectures: list[LectureRecord]

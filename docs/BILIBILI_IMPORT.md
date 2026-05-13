@@ -49,3 +49,17 @@ The first local store handoff writes those video references as a course skeleton
 - one import status record
 
 Transcript fetching remains a later stage.
+
+## Transcript Segment Handoff
+
+For a single lecture video URL, the importer can fetch available Bilibili
+subtitles and write timestamped `TRANSCRIPT_SEGMENT` records to the local course
+store.
+
+Some Bilibili subtitle metadata is visible only to an authenticated browser
+session. Public Lite never stores credentials in the repository. If a course
+requires authenticated subtitles, set `BILIBILI_COOKIE` in the local runtime
+environment and rerun the import.
+
+This is still source ingestion only. It does not generate lecture notes,
+knowledge cards, Q&A answers, review items, or learning feedback.

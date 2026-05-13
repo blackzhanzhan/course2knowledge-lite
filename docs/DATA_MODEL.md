@@ -47,6 +47,9 @@ Fields:
 - `end_seconds`
 - `text`
 
+Transcript segments are source evidence for later notes, cards, search, and
+citation Q&A.
+
 ### KNOWLEDGE_CARD
 
 Represents a concept, definition, summary, or cited explanation.

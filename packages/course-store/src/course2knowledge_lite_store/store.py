@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 from typing import Any
 
-from .models import CourseSkeleton
+from .models import CourseSkeleton, TranscriptSegmentRecord
+
+_UNSAFE_FILENAME_CHARS = re.compile(r'[\\/:*?"<>|]+')
 
 
 class JsonCourseStore:
@@ -43,6 +46,24 @@ class JsonCourseStore:
     def read_import_status(self, import_id: str) -> dict[str, Any]:
         return self._read_json(self.root / "imports" / f"{import_id}.json")
 
+    def write_transcript_segments(
+        self,
+        course_id: str,
+        lecture_id: str,
+        segments: list[TranscriptSegmentRecord],
+    ) -> str:
+        course_root = self.root / "courses" / course_id
+        course_root.mkdir(parents=True, exist_ok=True)
+        path = course_root / f"{self._safe_filename(lecture_id)}.segments.json"
+        self._write_json(path, [segment.to_dict() for segment in segments])
+        return str(path)
+
+    def read_transcript_segments(self, course_id: str, lecture_id: str) -> list[dict[str, Any]]:
+        payload = self._read_json(self.root / "courses" / course_id / f"{self._safe_filename(lecture_id)}.segments.json")
+        if not isinstance(payload, list):
+            raise ValueError(f"Transcript segment payload is not a list for lecture {lecture_id}")
+        return [dict(item) for item in payload if isinstance(item, dict)]
+
     @staticmethod
     def _write_json(path: Path, payload: Any) -> None:
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -50,3 +71,8 @@ class JsonCourseStore:
     @staticmethod
     def _read_json(path: Path) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
+
+    @staticmethod
+    def _safe_filename(raw_name: str) -> str:
+        cleaned = _UNSAFE_FILENAME_CHARS.sub("_", str(raw_name or "").strip()).strip(" ._")
+        return cleaned or "untitled"

@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "packages" / "bilibili-import" / "src"))
+sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
+
+from course2knowledge_lite_bilibili import fetch_bilibili_timed_subtitles  # noqa: E402
+from course2knowledge_lite_bilibili import import_lecture_transcript_to_store  # noqa: E402
+from course2knowledge_lite_store import JsonCourseStore  # noqa: E402
+import course2knowledge_lite_bilibili.subtitles as subtitles_module  # noqa: E402
+
+
+def fake_bilibili_fetch_json(api_url: str, params: dict[str, str], referer: str) -> dict[str, object]:
+    del referer
+    if api_url.endswith("/x/web-interface/view"):
+        return {
+            "code": 0,
+            "data": {
+                "aid": 1001,
+                "title": "Lecture 1",
+                "pages": [{"page": 1, "cid": 2001, "part": "Lecture 1"}],
+            },
+        }
+    if api_url.endswith("/x/player/wbi/v2") or api_url.endswith("/x/player/v2"):
+        self_cid = params.get("cid")
+        return {
+            "code": 0,
+            "data": {
+                "subtitle": {
+                    "subtitles": [
+                        {
+                            "lan": "ai-zh",
+                            "subtitle_url": f"https://subtitle.example/{self_cid}.json",
+                        }
+                    ]
+                }
+            },
+        }
+    if api_url.startswith("https://subtitle.example/"):
+        return {
+            "body": [
+                {"from": 0.08, "to": 3.32, "content": "first line"},
+                {"from": 3.32, "to": 4.5, "content": "second line"},
+            ]
+        }
+    raise AssertionError(f"unexpected api_url: {api_url}")
+
+
+class BilibiliTranscriptTests(unittest.TestCase):
+    def test_default_fetcher_uses_runtime_cookie_env_without_storing_it(self) -> None:
+        captured = {}
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self) -> bytes:
+                return b'{"code":0,"data":{}}'
+
+        def fake_urlopen(request, timeout):
+            captured["cookie"] = request.headers.get("Cookie")
+            captured["timeout"] = timeout
+            return FakeResponse()
+
+        with patch.dict("os.environ", {"BILIBILI_COOKIE": "PUBLIC_TEST_COOKIE=fake"}, clear=True), patch.object(
+            subtitles_module,
+            "urlopen",
+            side_effect=fake_urlopen,
+        ):
+            subtitles_module._default_json_fetcher("https://api.example/path", {"q": "1"}, "https://ref.example")
+
+        self.assertEqual(captured["cookie"], "PUBLIC_TEST_COOKIE=fake")
+        self.assertEqual(captured["timeout"], 30)
+
+    def test_fetch_bilibili_timed_subtitles_normalizes_segments(self) -> None:
+        bundle = fetch_bilibili_timed_subtitles(
+            "https://www.bilibili.com/video/BV00000001",
+            fetch_json=fake_bilibili_fetch_json,
+        )
+
+        self.assertEqual(bundle.source_id, "BV00000001")
+        self.assertEqual(bundle.video_title, "Lecture 1")
+        self.assertEqual(len(bundle.timed_lines), 2)
+        self.assertEqual(bundle.timed_lines[0]["start_seconds"], 0.08)
+        self.assertEqual(bundle.timed_lines[0]["text"], "first line")
+
+    def test_import_lecture_transcript_to_store_writes_segments(self) -> None:
+        lecture = {
+            "lecture_id": "course_demo::lecture::001",
+            "source_url": "https://www.bilibili.com/video/BV00000001",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = import_lecture_transcript_to_store(
+                store_root=temp_dir,
+                course_id="course_demo",
+                lecture=lecture,
+                fetch_json=fake_bilibili_fetch_json,
+            )
+            segments = JsonCourseStore(temp_dir).read_transcript_segments("course_demo", lecture["lecture_id"])
+
+        self.assertEqual(result["segment_count"], 2)
+        self.assertTrue(result["path"].endswith(".segments.json"))
+        self.assertEqual(segments[0]["segment_id"], "course_demo::lecture::001::seg::00001")
+        self.assertEqual(segments[1]["text"], "second line")
+
+
+if __name__ == "__main__":
+    unittest.main()
