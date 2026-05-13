@@ -28,9 +28,12 @@ Fields:
 - `course_id`
 - `title`
 - `source_url`
+- `source_id`
 - `sequence`
 - `duration_seconds`
 - `read_status`
+
+`source_id` is the platform-local identifier, such as a Bilibili BV id.
 
 ### TRANSCRIPT_SEGMENT
 
@@ -99,8 +102,28 @@ Allowed statuses:
 - `reading`
 - `read`
 
+### IMPORT_STATUS
+
+Represents the lightweight import status for a local course import.
+
+Fields:
+
+- `import_id`
+- `course_id`
+- `source_url`
+- `source_platform`
+- `status`
+- `stage`
+- `total_lectures`
+- `completed_lectures`
+- `failed_lectures`
+- `created_at`
+- `updated_at`
+
+Initial collection expansion uses `status=accepted` and
+`stage=collection_expanded`.
+
 ## Excluded Entities
 
 The public data model does not include private learning-coach state, assessment
 state, feedback state, or scheduling state.
-

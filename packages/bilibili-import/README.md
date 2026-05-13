@@ -6,5 +6,6 @@ Current slice:
 
 - Expand a Bilibili collection URL into ordered video references.
 - Return `sequence`, `bvid`, `title`, and canonical video URL.
+- Hand the expanded collection to the local course store as a course skeleton.
 - Leave subtitle extraction, multimodal processing, compilation, and store writes
-  to later import stages.
+  beyond the initial skeleton to later import stages.

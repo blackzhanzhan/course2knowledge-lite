@@ -41,3 +41,11 @@ The collection expander is only an entry adapter. It returns:
 - `source_url`
 
 Every returned video then follows the normal single-video import path.
+
+The first local store handoff writes those video references as a course skeleton:
+
+- one course record
+- ordered lecture records
+- one import status record
+
+Transcript fetching remains a later stage.
