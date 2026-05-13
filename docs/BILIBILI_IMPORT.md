@@ -5,6 +5,7 @@ Bilibili import is the retained real platform adapter for Course2Knowledge Lite.
 ## Responsibilities
 
 - Validate Bilibili URLs.
+- Expand Bilibili collection URLs into ordered video references.
 - Read video or collection metadata.
 - Fetch available transcripts or subtitle sources.
 - Normalize transcript segments.
@@ -29,3 +30,14 @@ Bilibili import is the retained real platform adapter for Course2Knowledge Lite.
 
 Generated notes and Q&A must cite transcript segments or generated lecture
 artifacts. If no relevant evidence exists, the assistant should say so.
+
+## Collection Expander Contract
+
+The collection expander is only an entry adapter. It returns:
+
+- `sequence`
+- `bvid`
+- `title`
+- `source_url`
+
+Every returned video then follows the normal single-video import path.
