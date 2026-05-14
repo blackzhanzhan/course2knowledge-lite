@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Course2Knowledge Lite</title>
+    <meta
+      name="description"
+      content="Course2Knowledge Lite turns online course videos into an interactive knowledge base with Web Lite, Feishu/Hermes Lite, Bilibili import, and citation Q&A."
+    />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Course2Knowledge Lite home">Course2Knowledge Lite</a>
+      <nav class="nav" aria-label="Site sections">
+        <a href="#showcase">Showcase</a>
+        <a href="#case">Real case</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#deploy">Deploy</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Public course knowledge workspace</p>
+          <h1>Turn a video course into something you can read, search, and ask.</h1>
+          <p class="lead">
+            Course2Knowledge Lite imports Bilibili course material, keeps transcript
+            evidence, builds local knowledge cards, and exposes the same course store
+            through Web Lite and Feishu/Hermes Lite.
+          </p>
+          <div class="hero-actions" aria-label="Primary links">
+            <a class="button" href="#showcase">View real showcase</a>
+            <a class="button secondary" href="DEPLOYMENT.md">Deploy locally</a>
+          </div>
+        </div>
+        <figure class="hero-shot">
+          <img
+            src="assets/showcase/web-lite-real-course-desktop.png"
+            alt="Web Lite workspace showing a real Bilibili course, transcript coverage, lecture reader, search, Q&A, notes, and bookmarks"
+          />
+          <figcaption>
+            Real local run: 30 lectures expanded from a Bilibili collection, 3 lectures
+            with transcript evidence, 9 citation segments.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="metrics" aria-label="Real case metrics">
+        <article>
+          <strong>30</strong>
+          <span>lectures expanded</span>
+        </article>
+        <article>
+          <strong>9</strong>
+          <span>transcript segments</span>
+        </article>
+        <article>
+          <strong>5</strong>
+          <span>Q&A citations</span>
+        </article>
+        <article>
+          <strong>0</strong>
+          <span>private runtime files needed</span>
+        </article>
+      </section>
+
+      <section id="showcase" class="section">
+        <div class="section-head">
+          <p class="eyebrow">Effect showcase</p>
+          <h2>A course workspace, not another pile of video links.</h2>
+          <p>
+            The showcase below is captured from the public Lite app running locally
+            against the included demo store. It shows the actual reader, search, Q&A,
+            cards, notes, bookmarks, and lightweight progress surfaces.
+          </p>
+        </div>
+        <div class="showcase-grid">
+          <figure class="showcase-card wide">
+            <img
+              src="assets/showcase/web-lite-real-course-desktop.png"
+              alt="Desktop Web Lite workspace with course list, lecture reader, transcript search, Q&A, notes, and bookmarks"
+            />
+            <figcaption>Desktop: full workspace with reader, evidence search, and citation Q&A.</figcaption>
+          </figure>
+          <figure class="showcase-card narrow">
+            <img
+              src="assets/showcase/web-lite-real-course-mobile.png"
+              alt="Mobile Web Lite workspace showing the same real course in a responsive single-column layout"
+            />
+            <figcaption>Mobile: the same real course store in a compact reading flow.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="case" class="section case">
+        <div class="section-head">
+          <p class="eyebrow">Real case</p>
+          <h2>From one Bilibili collection to an inspectable knowledge base.</h2>
+        </div>
+        <div class="timeline">
+          <article>
+            <span>01</span>
+            <h3>Collection import</h3>
+            <p>
+              A public Bilibili season URL is expanded into ordered lectures with BV
+              identifiers, titles, and source links.
+            </p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Evidence layer</h3>
+            <p>
+              Transcript segments become source records. The demo case has 9 segments
+              across 3 transcript-backed lectures.
+            </p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Learning surface</h3>
+            <p>
+              Web Lite projects the same local store into reader, cards, search, Q&A,
+              notes, bookmarks, and read status.
+            </p>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>Chat surface</h3>
+            <p>
+              Feishu/Hermes Lite can use the public profile and plugin to answer from
+              course evidence without importing private learning-coach loops.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="architecture" class="section architecture">
+        <div class="section-head">
+          <p class="eyebrow">Architecture and idea</p>
+          <h2>The timeline is raw material. Evidence is the product spine.</h2>
+          <p>
+            Lite keeps the strong idea: make course material queryable and useful. It
+            removes protected closed-loop coaching behavior so the public release stays
+            focused, inspectable, and easy to run.
+          </p>
+        </div>
+        <div class="architecture-flow" aria-label="Architecture flow">
+          <div>Bilibili URL</div>
+          <div>Import job</div>
+          <div>Transcript segments</div>
+          <div>Knowledge store</div>
+          <div>Web + Feishu Lite</div>
+        </div>
+        <div class="principles">
+          <article>
+            <h3>Evidence first</h3>
+            <p>
+              Search, Q&A, and cards are grounded in transcript segments and keep
+              citations visible.
+            </p>
+          </article>
+          <article>
+            <h3>Two frontdesks, one store</h3>
+            <p>
+              Web Lite and Feishu/Hermes Lite read and write the same local public
+              course store.
+            </p>
+          </article>
+          <article>
+            <h3>Deliberately trimmed</h3>
+            <p>
+              No planning automation, learner scoring, exercise review, production
+              identifiers, private logs, or protected orchestration.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="boundary" class="section boundary">
+        <div class="section-head">
+          <p class="eyebrow">Product boundary</p>
+          <h2>Open enough to be useful. Trimmed enough to stay clean.</h2>
+        </div>
+        <div class="split">
+          <article>
+            <h3>Included</h3>
+            <ul>
+              <li>Bilibili course import boundary</li>
+              <li>Local JSON course knowledge store</li>
+              <li>Lecture reader and transcript search</li>
+              <li>Source-linked knowledge cards</li>
+              <li>Citation-based course Q&A</li>
+              <li>Notes, bookmarks, and reading progress</li>
+              <li>Public Hermes Lite profile skeleton</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Excluded</h3>
+            <ul>
+              <li>Automatic study-plan automation</li>
+              <li>Learner scoring and mastery loops</li>
+              <li>Exercise-review workflow</li>
+              <li>Visual exercise interpretation</li>
+              <li>Spaced-review state mutation</li>
+              <li>Production chat exports or identifiers</li>
+              <li>Private Learning OS runtime files</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="deploy" class="section deploy">
+        <div class="section-head">
+          <p class="eyebrow">Deploy in minutes</p>
+          <h2>A local-first install path with no infrastructure theater.</h2>
+          <p>
+            The recommended deployment is intentionally small: install the Python
+            package, run Web Lite, and sync the public Hermes profile if chat is needed.
+          </p>
+        </div>
+        <div class="commands" aria-label="Deployment commands">
+          <code>pip install -e .</code>
+          <code>course2knowledge-lite web</code>
+          <code>course2knowledge-lite sync-profile --apply --create-profile</code>
+          <code>course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profiles\\course2knowledge-lite</code>
+        </div>
+        <p class="link-row">
+          <a href="DEPLOYMENT.md">Read deployment guide</a>
+          <a href="ARCHITECTURE.md">Read architecture</a>
+          <a href="PRODUCT_BOUNDARY.md">Read product boundary</a>
+        </p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Course2Knowledge Lite</span>
+      <a href="SITE_MAP.md">Site map</a>
+      <a href="DEPLOYMENT.md">Deployment</a>
+      <a href="TESTING.md">Testing</a>
+    </footer>
+  </body>
+</html>

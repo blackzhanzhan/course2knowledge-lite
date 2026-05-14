@@ -11,6 +11,15 @@ progress.
 This repository is intentionally focused. It is a course knowledge product, not
 a full learning coach.
 
+## Showcase Site
+
+The public static site lives in [`docs/index.html`](docs/index.html). It is
+designed for GitHub Pages and includes a real Web Lite showcase captured from a
+local Bilibili collection import.
+
+Use [`docs/SITE_MAP.md`](docs/SITE_MAP.md) for the page structure and content
+contract.
+
 ## Quick Start
 
 ```bash
@@ -76,11 +85,15 @@ data/               Local public runtime data, ignored by default later
 
 ## Current Status
 
-This first commit establishes the public architecture boundary. Implementation
-will arrive in later slices.
+The Lite repo has the public architecture, local Web Lite workspace,
+Bilibili-course store, citation Q&A, public Hermes profile skeleton, deployment
+smoke coverage, and GitHub Pages showcase scaffold. It deliberately excludes
+private planning, scoring, feedback, and exercise-review loops.
 
 ## Start Here
 
+- [Showcase Site](docs/index.html)
+- [Static Site Map](docs/SITE_MAP.md)
 - [Product Boundary](docs/PRODUCT_BOUNDARY.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Web Lite](docs/WEB_LITE.md)

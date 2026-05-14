@@ -42,6 +42,29 @@ course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profi
 - Editable source deployment: useful for development and iteration.
 - Packaged install deployment: the intended public experience once packaging is
   published.
+- GitHub Pages showcase: serve the static public site from `docs/`.
+
+## GitHub Pages Showcase
+
+The static product site requires no build step.
+
+Recommended repository setting:
+
+1. Open GitHub repository settings.
+2. Go to Pages.
+3. Set source to `Deploy from a branch`.
+4. Set branch to `main`.
+5. Set folder to `/docs`.
+
+The entry page is:
+
+```text
+docs/index.html
+```
+
+The showcase screenshots in `docs/assets/showcase/` were captured from a real
+local Web Lite run against the public demo course store. They are static
+documentation assets, not runtime data.
 
 ## What Deployment Does Not Require
 
