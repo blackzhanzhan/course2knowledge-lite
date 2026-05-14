@@ -21,6 +21,15 @@ EXPECTED_TOOLS = [
     "lecture_transcript_import_by_ref",
     "lecture_transcript_source_probe",
     "manual_transcript_import",
+    "note_create",
+    "note_delete",
+    "note_list",
+    "note_update",
+    "bookmark_create",
+    "bookmark_delete",
+    "bookmark_list",
+    "reading_progress_get",
+    "reading_progress_set",
 ]
 
 
@@ -98,6 +107,15 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
             }
         )
         qa_payload = json.loads(qa_raw)
+        common_args = {
+            "store_root": temp_dir,
+            "course_id": skeleton.course.course_id,
+            "lecture_sequence": 1,
+        }
+        note_raw = ctx.tools["note_create"]["handler"]({**common_args, "body": "Remember RAG evidence."})
+        note_payload = json.loads(note_raw)
+        progress_raw = ctx.tools["reading_progress_set"]["handler"]({**common_args, "status": "read"})
+        progress_payload = json.loads(progress_raw)
 
     return {
         "status": "passed",
@@ -109,6 +127,9 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
         "sample_import_stage": (sample_payload.get("import_status") or {}).get("stage"),
         "sample_qa_status": (qa_payload.get("answer") or {}).get("status"),
         "sample_qa_citation_count": (qa_payload.get("answer") or {}).get("citation_count"),
+        "sample_note_status": note_payload.get("status"),
+        "sample_note_body": (note_payload.get("note") or {}).get("body"),
+        "sample_progress_status": (progress_payload.get("progress") or {}).get("status"),
     }
 
 

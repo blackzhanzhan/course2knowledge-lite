@@ -106,6 +106,9 @@ class HermesLiteProfileTests(unittest.TestCase):
         self.assertEqual(
             report["registered_tools"],
             [
+                "bookmark_create",
+                "bookmark_delete",
+                "bookmark_list",
                 "collection_import_start",
                 "course_question_answer",
                 "course_search",
@@ -115,12 +118,20 @@ class HermesLiteProfileTests(unittest.TestCase):
                 "lecture_transcript_import_by_ref",
                 "lecture_transcript_source_probe",
                 "manual_transcript_import",
+                "note_create",
+                "note_delete",
+                "note_list",
+                "note_update",
+                "reading_progress_get",
+                "reading_progress_set",
             ],
         )
         self.assertEqual(report["sample_tool_status"], "completed")
         self.assertEqual(report["sample_import_stage"], "collection_expanded")
         self.assertEqual(report["sample_qa_status"], "answered")
         self.assertEqual(report["sample_qa_citation_count"], 1)
+        self.assertEqual(report["sample_note_status"], "completed")
+        self.assertEqual(report["sample_progress_status"], "read")
 
 
 if __name__ == "__main__":

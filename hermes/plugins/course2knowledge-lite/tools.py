@@ -28,6 +28,15 @@ TOOL_NAMES = [
     "lecture_reader_get",
     "course_search",
     "course_question_answer",
+    "note_create",
+    "note_list",
+    "note_update",
+    "note_delete",
+    "bookmark_create",
+    "bookmark_list",
+    "bookmark_delete",
+    "reading_progress_set",
+    "reading_progress_get",
 ]
 
 
@@ -199,6 +208,132 @@ def _course_question_answer_handler(arguments: dict[str, Any], **_registry_kwarg
         return _tool_error("course_question_answer", exc)
 
 
+def _note_create_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        store = JsonCourseStore(_store_root(arguments))
+        course_id = _required_text(arguments, "course_id")
+        lecture_id = _lecture_id_from_arguments(store, course_id, arguments)
+        note = store.create_note(
+            course_id,
+            lecture_id,
+            str(arguments.get("body", "") or ""),
+        )
+        return _json_response({"status": "completed", "tool": "note_create", "note": note})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("note_create", exc)
+
+
+def _note_list_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        store = JsonCourseStore(_store_root(arguments))
+        course_id = _required_text(arguments, "course_id")
+        lecture_id = str(arguments.get("lecture_id", "") or "").strip()
+        notes = store.list_notes(course_id=course_id, lecture_id=lecture_id)
+        return _json_response({"status": "completed", "tool": "note_list", "notes": notes, "note_count": len(notes)})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("note_list", exc)
+
+
+def _note_update_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        note = JsonCourseStore(_store_root(arguments)).update_note(
+            _required_text(arguments, "course_id"),
+            _required_text(arguments, "note_id"),
+            str(arguments.get("body", "") or ""),
+        )
+        return _json_response({"status": "completed", "tool": "note_update", "note": note})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("note_update", exc)
+
+
+def _note_delete_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        result = JsonCourseStore(_store_root(arguments)).delete_note(
+            _required_text(arguments, "course_id"),
+            _required_text(arguments, "note_id"),
+        )
+        return _json_response({"status": "completed", "tool": "note_delete", **result})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("note_delete", exc)
+
+
+def _bookmark_create_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        bookmark = JsonCourseStore(_store_root(arguments)).create_bookmark(
+            _required_text(arguments, "course_id"),
+            _required_text(arguments, "target_type"),
+            _required_text(arguments, "target_id"),
+        )
+        return _json_response({"status": "completed", "tool": "bookmark_create", "bookmark": bookmark})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("bookmark_create", exc)
+
+
+def _bookmark_list_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        store = JsonCourseStore(_store_root(arguments))
+        course_id = _required_text(arguments, "course_id")
+        target_type = str(arguments.get("target_type", "") or "").strip()
+        bookmarks = store.list_bookmarks(course_id=course_id, target_type=target_type)
+        return _json_response(
+            {
+                "status": "completed",
+                "tool": "bookmark_list",
+                "bookmarks": bookmarks,
+                "bookmark_count": len(bookmarks),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("bookmark_list", exc)
+
+
+def _bookmark_delete_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        result = JsonCourseStore(_store_root(arguments)).delete_bookmark(
+            _required_text(arguments, "course_id"),
+            _required_text(arguments, "bookmark_id"),
+        )
+        return _json_response({"status": "completed", "tool": "bookmark_delete", **result})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("bookmark_delete", exc)
+
+
+def _reading_progress_set_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        store = JsonCourseStore(_store_root(arguments))
+        course_id = _required_text(arguments, "course_id")
+        lecture_id = _lecture_id_from_arguments(store, course_id, arguments)
+        progress = store.set_reading_progress(
+            course_id,
+            lecture_id,
+            _required_text(arguments, "status"),
+        )
+        return _json_response({"status": "completed", "tool": "reading_progress_set", "progress": progress})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("reading_progress_set", exc)
+
+
+def _reading_progress_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        store = JsonCourseStore(_store_root(arguments))
+        course_id = _required_text(arguments, "course_id")
+        lecture_id = str(arguments.get("lecture_id", "") or "").strip()
+        if lecture_id:
+            progress = [store.get_reading_progress(course_id, lecture_id)]
+        else:
+            progress = store.list_reading_progress(course_id=course_id)
+        return _json_response(
+            {
+                "status": "completed",
+                "tool": "reading_progress_get",
+                "progress": progress,
+                "progress_count": len(progress),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("reading_progress_get", exc)
+
+
 def _collection_import_start_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -313,6 +448,152 @@ def _course_question_answer_schema() -> dict[str, Any]:
         "required": ["course_id", "question"],
         "additionalProperties": False,
     }
+
+
+def _note_create_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "lecture_sequence": {
+                "type": ["integer", "string", "null"],
+                "description": "Optional 1-based lecture sequence number.",
+            },
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
+            "body": {"type": "string", "description": "Learner-authored note body."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "body"],
+        "additionalProperties": False,
+    }
+
+
+def _note_list_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id filter."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id"],
+        "additionalProperties": False,
+    }
+
+
+def _note_update_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "note_id": {"type": "string", "description": "Local note id."},
+            "body": {"type": "string", "description": "Replacement note body."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "note_id", "body"],
+        "additionalProperties": False,
+    }
+
+
+def _note_delete_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "note_id": {"type": "string", "description": "Local note id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "note_id"],
+        "additionalProperties": False,
+    }
+
+
+def _bookmark_create_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "target_type": {"type": "string", "enum": ["lecture", "segment", "card"]},
+            "target_id": {"type": "string", "description": "Lecture, segment, or card id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "target_type", "target_id"],
+        "additionalProperties": False,
+    }
+
+
+def _bookmark_list_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "target_type": {"type": ["string", "null"], "description": "Optional bookmark target type filter."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id"],
+        "additionalProperties": False,
+    }
+
+
+def _bookmark_delete_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "bookmark_id": {"type": "string", "description": "Local bookmark id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "bookmark_id"],
+        "additionalProperties": False,
+    }
+
+
+def _reading_progress_set_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "lecture_sequence": {
+                "type": ["integer", "string", "null"],
+                "description": "Optional 1-based lecture sequence number.",
+            },
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
+            "status": {"type": "string", "enum": ["not_started", "reading", "read"]},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "status"],
+        "additionalProperties": False,
+    }
+
+
+def _reading_progress_get_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id"],
+        "additionalProperties": False,
+    }
+
+
+def _required_text(arguments: dict[str, Any], name: str) -> str:
+    value = str(arguments.get(name, "") or "").strip()
+    if not value:
+        raise ValueError(f"{name} is required")
+    return value
+
+
+def _lecture_id_from_arguments(store: JsonCourseStore, course_id: str, arguments: dict[str, Any]) -> str:
+    lecture_id = str(arguments.get("lecture_id", "") or "").strip()
+    if lecture_id:
+        return lecture_id
+    lecture_sequence = arguments.get("lecture_sequence")
+    if lecture_sequence not in (None, ""):
+        return str(store.read_lecture_reader(course_id, lecture_sequence=lecture_sequence)["lecture"]["lecture_id"])
+    raise ValueError("lecture_id or lecture_sequence is required")
 
 
 def _positive_limit(raw_value: Any, *, default: int) -> int:
@@ -431,4 +712,103 @@ def register_course2knowledge_lite_tools(ctx: Any) -> None:
         ),
         handler=_course_question_answer_handler,
         description="Answer public Lite course questions with citations.",
+    )
+    ctx.register_tool(
+        name="note_create",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "note_create",
+            "Create a learner-authored note for one stored lecture.",
+            _note_create_schema(),
+        ),
+        handler=_note_create_handler,
+        description="Create a public Lite lecture note.",
+    )
+    ctx.register_tool(
+        name="note_list",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "note_list",
+            "List learner-authored notes for a local course.",
+            _note_list_schema(),
+        ),
+        handler=_note_list_handler,
+        description="List public Lite notes.",
+    )
+    ctx.register_tool(
+        name="note_update",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "note_update",
+            "Update a learner-authored note.",
+            _note_update_schema(),
+        ),
+        handler=_note_update_handler,
+        description="Update a public Lite note.",
+    )
+    ctx.register_tool(
+        name="note_delete",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "note_delete",
+            "Delete a learner-authored note.",
+            _note_delete_schema(),
+        ),
+        handler=_note_delete_handler,
+        description="Delete a public Lite note.",
+    )
+    ctx.register_tool(
+        name="bookmark_create",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "bookmark_create",
+            "Create a lecture, segment, or card bookmark in the local course store.",
+            _bookmark_create_schema(),
+        ),
+        handler=_bookmark_create_handler,
+        description="Create a public Lite bookmark.",
+    )
+    ctx.register_tool(
+        name="bookmark_list",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "bookmark_list",
+            "List bookmarks for a local course.",
+            _bookmark_list_schema(),
+        ),
+        handler=_bookmark_list_handler,
+        description="List public Lite bookmarks.",
+    )
+    ctx.register_tool(
+        name="bookmark_delete",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "bookmark_delete",
+            "Delete a local bookmark.",
+            _bookmark_delete_schema(),
+        ),
+        handler=_bookmark_delete_handler,
+        description="Delete a public Lite bookmark.",
+    )
+    ctx.register_tool(
+        name="reading_progress_set",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "reading_progress_set",
+            "Set lightweight reading progress for one lecture.",
+            _reading_progress_set_schema(),
+        ),
+        handler=_reading_progress_set_handler,
+        description="Set public Lite lecture reading progress.",
+    )
+    ctx.register_tool(
+        name="reading_progress_get",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "reading_progress_get",
+            "Read lightweight reading progress for a course or lecture.",
+            _reading_progress_get_schema(),
+        ),
+        handler=_reading_progress_get_handler,
+        description="Read public Lite reading progress.",
     )

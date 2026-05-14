@@ -11,3 +11,12 @@ provides_tools:
   - lecture_reader_get
   - course_search
   - course_question_answer
+  - note_create
+  - note_list
+  - note_update
+  - note_delete
+  - bookmark_create
+  - bookmark_list
+  - bookmark_delete
+  - reading_progress_set
+  - reading_progress_get

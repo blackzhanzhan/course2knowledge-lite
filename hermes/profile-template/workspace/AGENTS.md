@@ -15,6 +15,15 @@ The profile may use only the public `course2knowledge-lite` Hermes toolset:
 - `lecture_reader_get`
 - `course_search`
 - `course_question_answer`
+- `note_create`
+- `note_list`
+- `note_update`
+- `note_delete`
+- `bookmark_create`
+- `bookmark_list`
+- `bookmark_delete`
+- `reading_progress_set`
+- `reading_progress_get`
 
 These tools call public package APIs and a local JSON course store. They are not
 agent-managed script shortcuts.
@@ -28,6 +37,8 @@ Allowed:
 - Course and lecture lookup.
 - Course-content answers from available evidence.
 - Missing-evidence clarification.
+- Learner-authored notes.
+- Lecture, segment, or card bookmarks.
 - Lightweight local reading progress acknowledgement.
 
 Not allowed:

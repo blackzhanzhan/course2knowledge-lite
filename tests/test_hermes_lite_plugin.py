@@ -321,6 +321,75 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(qa_payload["answer"]["status"], "answered")
         self.assertEqual(qa_payload["answer"]["citation_count"], 1)
 
+    def test_learning_state_tools_use_local_course_store(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = build_course_skeleton(
+                title="AI interview course",
+                source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BV00000001",
+                        "title": "RAG and Agent",
+                        "source_url": "https://www.bilibili.com/video/BV00000001",
+                    }
+                ],
+                now="2026-05-14T00:00:00Z",
+            )
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            lecture = skeleton.lectures[0]
+            segment_id = f"{lecture.lecture_id}::manual::00001"
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=segment_id,
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves course evidence, while an Agent plans actions and calls tools.",
+                    )
+                ],
+            )
+            common_args = {
+                "store_root": temp_dir,
+                "course_id": skeleton.course.course_id,
+                "lecture_sequence": 1,
+            }
+
+            note_raw = ctx.tools["note_create"]["handler"]({**common_args, "body": "RAG uses evidence."})
+            note_list_raw = ctx.tools["note_list"]["handler"](
+                {"store_root": temp_dir, "course_id": skeleton.course.course_id}
+            )
+            bookmark_raw = ctx.tools["bookmark_create"]["handler"](
+                {
+                    "store_root": temp_dir,
+                    "course_id": skeleton.course.course_id,
+                    "target_type": "segment",
+                    "target_id": segment_id,
+                }
+            )
+            progress_raw = ctx.tools["reading_progress_set"]["handler"]({**common_args, "status": "read"})
+            invalid_progress_raw = ctx.tools["reading_progress_set"]["handler"]({**common_args, "status": "mastered"})
+
+        note_payload = json.loads(note_raw)
+        note_list_payload = json.loads(note_list_raw)
+        bookmark_payload = json.loads(bookmark_raw)
+        progress_payload = json.loads(progress_raw)
+        invalid_progress_payload = json.loads(invalid_progress_raw)
+        self.assertEqual(note_payload["status"], "completed")
+        self.assertEqual(note_list_payload["note_count"], 1)
+        self.assertEqual(bookmark_payload["bookmark"]["target_id"], segment_id)
+        self.assertEqual(progress_payload["progress"]["status"], "read")
+        self.assertEqual(invalid_progress_payload["status"], "failed")
+        self.assertEqual(invalid_progress_payload["tool"], "reading_progress_set")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -54,6 +54,15 @@ Tools:
 - `lecture_reader_get`
 - `course_search`
 - `course_question_answer`
+- `note_create`
+- `note_list`
+- `note_update`
+- `note_delete`
+- `bookmark_create`
+- `bookmark_list`
+- `bookmark_delete`
+- `reading_progress_set`
+- `reading_progress_get`
 
 The tools call public package APIs and write to a local JSON course store. They
 must not shell out to ad hoc scripts, read unrelated private profiles, or
@@ -71,4 +80,6 @@ List lectures in this course.
 What does lecture 3 say about attention?
 Show me the source for that answer.
 Mark lecture 3 as read.
+Add a note to lecture 3.
+Bookmark this transcript segment.
 ```
