@@ -20,6 +20,7 @@ Future implementation slices should add:
 - Course store CRUD tests.
 - Citation retrieval tests.
 - Q&A missing-evidence tests.
+- Hermes Lite tool registration and handler tests.
 - Web build tests.
 - Feishu Lite command tests.
 

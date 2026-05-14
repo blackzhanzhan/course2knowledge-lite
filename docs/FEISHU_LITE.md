@@ -36,6 +36,22 @@ The public Hermes profile should be a small template:
 - import/status/Q&A boundaries
 - no private production credentials
 
+## Native Tool Boundary
+
+The first public Hermes Lite toolset is `course2knowledge-lite`.
+
+Tools:
+
+- `collection_import_start`
+- `import_status_get`
+- `lecture_transcript_import`
+
+The tools call public package APIs and write to a local JSON course store. They
+must not shell out to ad hoc scripts, read private mother-repo profiles, or
+mutate protected learning-state loops.
+
+Live Feishu/Lark gateway validation is a later acceptance contract.
+
 ## Example User Requests
 
 ```text
