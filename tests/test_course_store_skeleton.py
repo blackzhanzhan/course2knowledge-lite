@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 
 from course2knowledge_lite_bilibili import BilibiliCollection, BilibiliVideoRef  # noqa: E402
 from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
-from course2knowledge_lite_store import JsonCourseStore, build_course_skeleton  # noqa: E402
+from course2knowledge_lite_store import JsonCourseStore, TranscriptSegmentRecord, build_course_skeleton  # noqa: E402
 
 
 class CourseStoreSkeletonTests(unittest.TestCase):
@@ -88,6 +88,56 @@ class CourseStoreSkeletonTests(unittest.TestCase):
         self.assertEqual(len(result["lectures"]), 2)
         self.assertEqual(len(lectures), 2)
         self.assertEqual(lectures[1]["source_id"], "BV00000002")
+
+    def test_lecture_reader_and_search_consume_transcript_segments(self) -> None:
+        skeleton = build_course_skeleton(
+            title="AI interview course",
+            source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+            video_refs=[
+                {
+                    "sequence": 1,
+                    "bvid": "BV00000001",
+                    "title": "RAG and Agent",
+                    "source_url": "https://www.bilibili.com/video/BV00000001",
+                },
+                {
+                    "sequence": 2,
+                    "bvid": "BV00000002",
+                    "title": "Tool calling",
+                    "source_url": "https://www.bilibili.com/video/BV00000002",
+                },
+            ],
+            now="2026-05-14T00:00:00Z",
+        )
+        lecture_id = skeleton.lectures[0].lecture_id
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=f"{lecture_id}::manual::00001",
+                        lecture_id=lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="This segment explains the difference between RAG and Agent workflows.",
+                    )
+                ],
+            )
+
+            reader = store.read_lecture_reader(skeleton.course.course_id, lecture_sequence=1)
+            results = store.search_transcripts(skeleton.course.course_id, "RAG Agent")
+
+        self.assertTrue(reader["has_transcript"])
+        self.assertEqual(reader["segment_count"], 1)
+        self.assertEqual(reader["lecture"]["title"], "RAG and Agent")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["citation"]["lecture_sequence"], 1)
+        self.assertEqual(results[0]["citation"]["segment_id"], f"{lecture_id}::manual::00001")
+        self.assertIn("RAG", results[0]["snippet"])
 
 
 if __name__ == "__main__":
