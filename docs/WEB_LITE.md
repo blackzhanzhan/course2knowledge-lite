@@ -34,6 +34,9 @@ It exposes:
 - `/api/reader`
 - `/api/search`
 - `/api/qa`
+- `/api/notes`
+- `/api/bookmarks`
+- `/api/progress`
 
 The page reads the same child local JSON store as Hermes Lite and does not call
 private Learning OS routes.

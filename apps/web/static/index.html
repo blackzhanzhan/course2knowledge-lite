@@ -35,6 +35,14 @@
               Lecture
               <select id="lecture-select"></select>
             </label>
+            <label class="select-label">
+              Status
+              <select id="progress-select">
+                <option value="not_started">Not started</option>
+                <option value="reading">Reading</option>
+                <option value="read">Read</option>
+              </select>
+            </label>
           </div>
           <div id="segments" class="segments"></div>
         </section>
@@ -56,6 +64,22 @@
             </div>
             <textarea id="qa-input" rows="4">RAG 和 Agent 的区别是什么？</textarea>
             <div id="qa-answer" class="answer"></div>
+          </section>
+
+          <section class="tool-panel">
+            <div class="panel-head">
+              <h2>Notes</h2>
+              <button id="note-button" type="button" title="Save note">Save</button>
+            </div>
+            <textarea id="note-input" rows="4" placeholder="Write a note for this lecture"></textarea>
+            <div id="notes-list" class="result-list"></div>
+          </section>
+
+          <section class="tool-panel">
+            <div class="panel-head">
+              <h2>Bookmarks</h2>
+            </div>
+            <div id="bookmarks-list" class="result-list"></div>
           </section>
         </aside>
       </section>

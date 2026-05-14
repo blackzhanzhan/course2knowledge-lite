@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import unittest
+from http.client import HTTPConnection
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +50,111 @@ class WebLiteTests(unittest.TestCase):
         self.assertEqual(answer["status"], "answered")
         self.assertEqual(answer["citation_count"], 1)
 
+    def test_web_learning_state_api_round_trips_local_store(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store, course_id = _store_with_transcript(temp_dir)
+            lecture = store.read_lectures(course_id)[0]
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                note = _request_json(
+                    host,
+                    port,
+                    "POST",
+                    "/api/notes",
+                    {
+                        "course_id": course_id,
+                        "lecture_id": lecture["lecture_id"],
+                        "body": "RAG uses retrieved evidence.",
+                    },
+                    expected_status=201,
+                )
+                bookmark = _request_json(
+                    host,
+                    port,
+                    "POST",
+                    "/api/bookmarks",
+                    {
+                        "course_id": course_id,
+                        "target_type": "segment",
+                        "target_id": f"{lecture['lecture_id']}::manual::00001",
+                    },
+                    expected_status=201,
+                )
+                progress = _request_json(
+                    host,
+                    port,
+                    "POST",
+                    "/api/progress",
+                    {
+                        "course_id": course_id,
+                        "lecture_id": lecture["lecture_id"],
+                        "status": "read",
+                    },
+                    expected_status=201,
+                )
+                notes = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    f"/api/notes?course_id={course_id}&lecture_id={lecture['lecture_id']}",
+                )
+                bookmarks = _request_json(host, port, "GET", f"/api/bookmarks?course_id={course_id}")
+                progress_list = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    f"/api/progress?course_id={course_id}&lecture_id={lecture['lecture_id']}",
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertEqual(note["status"], "completed")
+        self.assertEqual(bookmark["status"], "completed")
+        self.assertEqual(progress["progress"]["status"], "read")
+        self.assertEqual(notes["note_count"], 1)
+        self.assertEqual(bookmarks["bookmark_count"], 1)
+        self.assertEqual(progress_list["progress"][0]["status"], "read")
+
+    def test_web_learning_state_api_rejects_invalid_progress_status(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store, course_id = _store_with_transcript(temp_dir)
+            lecture = store.read_lectures(course_id)[0]
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                payload = _request_json(
+                    host,
+                    port,
+                    "POST",
+                    "/api/progress",
+                    {
+                        "course_id": course_id,
+                        "lecture_id": lecture["lecture_id"],
+                        "status": "mastered",
+                    },
+                    expected_status=400,
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(payload["error_type"], "ValueError")
+
 
 def _store_with_transcript(temp_dir: str) -> tuple[JsonCourseStore, str]:
     skeleton = build_course_skeleton(
@@ -79,6 +187,36 @@ def _store_with_transcript(temp_dir: str) -> tuple[JsonCourseStore, str]:
         ],
     )
     return store, skeleton.course.course_id
+
+
+def _request_json(
+    host: str,
+    port: int,
+    method: str,
+    path: str,
+    payload: dict[str, object] | None = None,
+    *,
+    expected_status: int = 200,
+) -> dict[str, object]:
+    body = json.dumps(payload or {}, ensure_ascii=False).encode("utf-8") if payload is not None else None
+    connection = HTTPConnection(host, port, timeout=10)
+    try:
+        connection.request(
+            method,
+            path,
+            body=body,
+            headers={"Content-Type": "application/json"} if body is not None else {},
+        )
+        response = connection.getresponse()
+        raw_body = response.read().decode("utf-8")
+    finally:
+        connection.close()
+    if response.status != expected_status:
+        raise AssertionError(f"expected HTTP {expected_status}, got {response.status}: {raw_body}")
+    result = json.loads(raw_body)
+    if not isinstance(result, dict):
+        raise AssertionError(f"expected object response, got {type(result).__name__}")
+    return result
 
 
 if __name__ == "__main__":

@@ -67,6 +67,78 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     limit=_limit(params, default=5),
                 )
                 self._send_json(payload)
+            elif parsed.path == "/api/notes":
+                params = parse_qs(parsed.query)
+                course_id = _required_param(params, "course_id")
+                lecture_id = _optional_param(params, "lecture_id")
+                notes = JsonCourseStore(self.store_root).list_notes(course_id=course_id, lecture_id=lecture_id)
+                self._send_json({"course_id": course_id, "notes": notes, "note_count": len(notes)})
+            elif parsed.path == "/api/bookmarks":
+                params = parse_qs(parsed.query)
+                course_id = _required_param(params, "course_id")
+                target_type = _optional_param(params, "target_type")
+                bookmarks = JsonCourseStore(self.store_root).list_bookmarks(course_id=course_id, target_type=target_type)
+                self._send_json(
+                    {"course_id": course_id, "bookmarks": bookmarks, "bookmark_count": len(bookmarks)}
+                )
+            elif parsed.path == "/api/progress":
+                params = parse_qs(parsed.query)
+                course_id = _required_param(params, "course_id")
+                lecture_id = _optional_param(params, "lecture_id")
+                store = JsonCourseStore(self.store_root)
+                progress = [store.get_reading_progress(course_id, lecture_id)] if lecture_id else store.list_reading_progress(course_id=course_id)
+                self._send_json({"course_id": course_id, "progress": progress, "progress_count": len(progress)})
+            else:
+                self.send_error(404, "Not found")
+        except Exception as exc:  # noqa: BLE001
+            self._send_json({"status": "failed", "error_type": type(exc).__name__, "error": str(exc)}, status=400)
+
+    def do_POST(self) -> None:
+        parsed = urlparse(self.path)
+        try:
+            payload = self._read_json_body()
+            store = JsonCourseStore(self.store_root)
+            if parsed.path == "/api/notes":
+                course_id = _required_body(payload, "course_id")
+                note = store.create_note(
+                    course_id,
+                    _required_body(payload, "lecture_id"),
+                    str(payload.get("body", "") or ""),
+                )
+                self._send_json({"status": "completed", "note": note}, status=201)
+            elif parsed.path == "/api/bookmarks":
+                bookmark = store.create_bookmark(
+                    _required_body(payload, "course_id"),
+                    _required_body(payload, "target_type"),
+                    _required_body(payload, "target_id"),
+                )
+                self._send_json({"status": "completed", "bookmark": bookmark}, status=201)
+            elif parsed.path == "/api/progress":
+                progress = store.set_reading_progress(
+                    _required_body(payload, "course_id"),
+                    _required_body(payload, "lecture_id"),
+                    _required_body(payload, "status"),
+                )
+                self._send_json({"status": "completed", "progress": progress}, status=201)
+            else:
+                self.send_error(404, "Not found")
+        except Exception as exc:  # noqa: BLE001
+            self._send_json({"status": "failed", "error_type": type(exc).__name__, "error": str(exc)}, status=400)
+
+    def do_DELETE(self) -> None:
+        parsed = urlparse(self.path)
+        try:
+            params = parse_qs(parsed.query)
+            store = JsonCourseStore(self.store_root)
+            if parsed.path == "/api/notes":
+                result = store.delete_note(_required_param(params, "course_id"), _required_param(params, "note_id"))
+                self._send_json({"status": "completed", **result})
+            elif parsed.path == "/api/bookmarks":
+                result = store.delete_bookmark(
+                    _required_param(params, "course_id"),
+                    _required_param(params, "bookmark_id"),
+                )
+                self._send_json({"status": "completed", **result})
             else:
                 self.send_error(404, "Not found")
         except Exception as exc:  # noqa: BLE001
@@ -98,6 +170,14 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _read_json_body(self) -> dict[str, Any]:
+        length = int(self.headers.get("Content-Length") or 0)
+        raw_body = self.rfile.read(length).decode("utf-8") if length else "{}"
+        payload = json.loads(raw_body or "{}")
+        if not isinstance(payload, dict):
+            raise ValueError("JSON body must be an object")
+        return payload
+
 
 def _list_courses(store_root: Path) -> list[dict[str, Any]]:
     courses_root = store_root / "courses"
@@ -128,6 +208,13 @@ def _list_courses(store_root: Path) -> list[dict[str, Any]]:
 
 def _required_param(params: dict[str, list[str]], name: str) -> str:
     value = _optional_param(params, name)
+    if not value:
+        raise ValueError(f"{name} is required")
+    return value
+
+
+def _required_body(payload: dict[str, Any], name: str) -> str:
+    value = str(payload.get(name, "") or "").strip()
     if not value:
         raise ValueError(f"{name} is required")
     return value

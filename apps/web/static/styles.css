@@ -111,7 +111,7 @@ textarea {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(260px, 360px);
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(280px, 380px);
   gap: 14px;
   align-items: start;
 }
@@ -140,7 +140,7 @@ textarea {
 }
 
 .select-label {
-  min-width: 160px;
+  min-width: 140px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
@@ -184,6 +184,27 @@ textarea {
   font-size: 14px;
   font-weight: 750;
   line-height: 1.35;
+}
+
+.segment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ghost-button {
+  border-color: var(--line);
+  background: #fff;
+  color: var(--accent);
+  min-height: 28px;
+  padding: 4px 8px;
+}
+
+.ghost-button:hover {
+  border-color: var(--accent);
+  background: var(--soft);
+  color: var(--accent-strong);
 }
 
 .item-meta,

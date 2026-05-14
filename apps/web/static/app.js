@@ -3,6 +3,7 @@ const state = {
   lectures: [],
   courseId: "",
   lectureSequence: 1,
+  lectureId: "",
 };
 
 const els = {
@@ -11,14 +12,19 @@ const els = {
   courseMeta: document.querySelector("#course-meta"),
   lectureTitle: document.querySelector("#lecture-title"),
   lectureSelect: document.querySelector("#lecture-select"),
+  progressSelect: document.querySelector("#progress-select"),
   segments: document.querySelector("#segments"),
   searchInput: document.querySelector("#search-input"),
   searchResults: document.querySelector("#search-results"),
   qaInput: document.querySelector("#qa-input"),
   qaAnswer: document.querySelector("#qa-answer"),
+  noteInput: document.querySelector("#note-input"),
+  notesList: document.querySelector("#notes-list"),
+  bookmarksList: document.querySelector("#bookmarks-list"),
   refreshButton: document.querySelector("#refresh-button"),
   searchButton: document.querySelector("#search-button"),
   qaButton: document.querySelector("#qa-button"),
+  noteButton: document.querySelector("#note-button"),
 };
 
 function escapeHtml(value) {
@@ -46,6 +52,19 @@ async function getJson(url) {
   return payload;
 }
 
+async function sendJson(url, payload, { method = "POST" } = {}) {
+  const response = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || `Request failed: ${response.status}`);
+  }
+  return result;
+}
+
 function setStatus(text) {
   els.status.textContent = text;
 }
@@ -56,7 +75,8 @@ async function loadCourses() {
   state.courses = payload.courses || [];
   renderCourses();
   if (state.courses.length) {
-    await selectCourse(state.courses[0].course_id);
+    const nextCourseId = state.courseId || state.courses[0].course_id;
+    await selectCourse(nextCourseId);
   } else {
     els.segments.innerHTML = '<div class="empty">No local courses found.</div>';
     setStatus("No courses");
@@ -71,7 +91,7 @@ function renderCourses() {
           course.course_id,
         )}">
           <p class="item-title">${escapeHtml(course.title || course.course_id)}</p>
-          <p class="item-meta">${Number(course.lecture_count || 0)} lectures · ${Number(
+          <p class="item-meta">${Number(course.lecture_count || 0)} lectures / ${Number(
             course.lecture_transcript_count || 0,
           )} with transcripts</p>
         </article>
@@ -91,6 +111,7 @@ async function selectCourse(courseId) {
   state.lectureSequence = Number(state.lectures[0]?.sequence || 1);
   renderLectureSelect();
   await loadReader();
+  await loadLearningState();
   await runSearch();
   await runQa();
 }
@@ -99,7 +120,7 @@ function renderLectureSelect() {
   els.lectureSelect.innerHTML = state.lectures
     .map(
       (lecture) =>
-        `<option value="${escapeHtml(lecture.sequence)}">${escapeHtml(lecture.sequence)} · ${escapeHtml(
+        `<option value="${escapeHtml(lecture.sequence)}">${escapeHtml(lecture.sequence)} / ${escapeHtml(
           lecture.title || lecture.lecture_id,
         )}</option>`,
     )
@@ -118,25 +139,132 @@ async function loadReader() {
     )}`,
   );
   const lecture = payload.lecture || {};
-  els.courseMeta.textContent = `${payload.course?.title || state.courseId} · lecture ${lecture.sequence || ""}`;
+  state.lectureId = lecture.lecture_id || "";
+  els.courseMeta.textContent = `${payload.course?.title || state.courseId} / lecture ${lecture.sequence || ""}`;
   els.lectureTitle.textContent = lecture.title || "Lecture Reader";
   if (!payload.has_transcript) {
     els.segments.innerHTML = '<div class="empty">This lecture has no transcript segments yet.</div>';
-    setStatus("Reader ready · no transcript");
+    setStatus("Reader ready / no transcript");
     return;
   }
   els.segments.innerHTML = (payload.segments || [])
     .map(
       (segment) => `
         <article class="segment">
-          <p class="segment-title">${secondsLabel(segment.start_seconds)}-${secondsLabel(segment.end_seconds)}</p>
+          <div class="segment-head">
+            <p class="segment-title">${secondsLabel(segment.start_seconds)}-${secondsLabel(segment.end_seconds)}</p>
+            <button class="ghost-button bookmark-segment" type="button" data-segment-id="${escapeHtml(
+              segment.segment_id,
+            )}" title="Bookmark segment">Bookmark</button>
+          </div>
           <p>${escapeHtml(segment.text)}</p>
           <p class="citation">${escapeHtml(segment.segment_id)}</p>
         </article>
       `,
     )
     .join("");
-  setStatus(`Reader ready · ${payload.segment_count} segments`);
+  for (const button of els.segments.querySelectorAll(".bookmark-segment")) {
+    button.addEventListener("click", () => createBookmark("segment", button.dataset.segmentId));
+  }
+  setStatus(`Reader ready / ${payload.segment_count} segments`);
+}
+
+async function loadLearningState() {
+  if (!state.courseId || !state.lectureId) {
+    return;
+  }
+  const lectureQuery = `course_id=${encodeURIComponent(state.courseId)}&lecture_id=${encodeURIComponent(
+    state.lectureId,
+  )}`;
+  const [notesPayload, bookmarksPayload, progressPayload] = await Promise.all([
+    getJson(`/api/notes?${lectureQuery}`),
+    getJson(`/api/bookmarks?course_id=${encodeURIComponent(state.courseId)}`),
+    getJson(`/api/progress?${lectureQuery}`),
+  ]);
+  renderNotes(notesPayload.notes || []);
+  renderBookmarks(bookmarksPayload.bookmarks || []);
+  const progress = (progressPayload.progress || [])[0] || {};
+  els.progressSelect.value = progress.status || "not_started";
+}
+
+function renderNotes(notes) {
+  if (!notes.length) {
+    els.notesList.innerHTML = '<div class="empty">No notes for this lecture.</div>';
+    return;
+  }
+  els.notesList.innerHTML = notes
+    .map(
+      (note) => `
+        <article class="result">
+          <p>${escapeHtml(note.body)}</p>
+          <p class="citation">${escapeHtml(note.updated_at || note.created_at)} / ${escapeHtml(note.note_id)}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderBookmarks(bookmarks) {
+  if (!bookmarks.length) {
+    els.bookmarksList.innerHTML = '<div class="empty">No bookmarks yet.</div>';
+    return;
+  }
+  els.bookmarksList.innerHTML = bookmarks
+    .map(
+      (bookmark) => `
+        <article class="result">
+          <p>${escapeHtml(bookmark.target_type)}: ${escapeHtml(bookmark.target_id)}</p>
+          <p class="citation">${escapeHtml(bookmark.created_at)} / ${escapeHtml(bookmark.bookmark_id)}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+async function saveNote() {
+  if (!state.courseId || !state.lectureId) {
+    return;
+  }
+  const body = els.noteInput.value.trim();
+  if (!body) {
+    setStatus("Write a note first");
+    return;
+  }
+  await sendJson("/api/notes", {
+    course_id: state.courseId,
+    lecture_id: state.lectureId,
+    body,
+  });
+  els.noteInput.value = "";
+  await loadLearningState();
+  setStatus("Note saved");
+}
+
+async function createBookmark(targetType, targetId) {
+  if (!state.courseId || !targetId) {
+    return;
+  }
+  await sendJson("/api/bookmarks", {
+    course_id: state.courseId,
+    target_type: targetType,
+    target_id: targetId,
+  });
+  await loadLearningState();
+  setStatus("Bookmark saved");
+}
+
+async function setProgress() {
+  if (!state.courseId || !state.lectureId) {
+    return;
+  }
+  const status = els.progressSelect.value;
+  await sendJson("/api/progress", {
+    course_id: state.courseId,
+    lecture_id: state.lectureId,
+    status,
+  });
+  await loadCourses();
+  setStatus(`Progress set to ${status}`);
 }
 
 async function runSearch() {
@@ -160,9 +288,9 @@ async function runSearch() {
       const citation = result.citation || {};
       return `
         <article class="result">
-          <p class="citation">Lecture ${escapeHtml(citation.lecture_sequence)} · ${escapeHtml(
+          <p class="citation">Lecture ${escapeHtml(citation.lecture_sequence)} / ${escapeHtml(
             citation.lecture_title,
-          )} · ${secondsLabel(citation.start_seconds)}</p>
+          )} / ${secondsLabel(citation.start_seconds)}</p>
           <p>${escapeHtml(result.snippet || citation.text)}</p>
         </article>
       `;
@@ -186,13 +314,13 @@ async function runQa() {
   els.qaAnswer.innerHTML = `
     <article class="answer-card">
       <p class="${payload.status === "blocked" ? "blocked" : ""}">${escapeHtml(payload.answer)}</p>
-      <p class="citation">${escapeHtml(payload.status)} · ${Number(payload.citation_count || 0)} citations</p>
+      <p class="citation">${escapeHtml(payload.status)} / ${Number(payload.citation_count || 0)} citations</p>
       ${citations
         .map(
           (citation) =>
-            `<p class="citation">Lecture ${escapeHtml(citation.lecture_sequence)} · ${escapeHtml(
+            `<p class="citation">Lecture ${escapeHtml(citation.lecture_sequence)} / ${escapeHtml(
               citation.segment_id,
-            )} · ${secondsLabel(citation.start_seconds)}</p>`,
+            )} / ${secondsLabel(citation.start_seconds)}</p>`,
         )
         .join("")}
     </article>
@@ -202,9 +330,12 @@ async function runQa() {
 els.refreshButton.addEventListener("click", loadCourses);
 els.searchButton.addEventListener("click", runSearch);
 els.qaButton.addEventListener("click", runQa);
+els.noteButton.addEventListener("click", saveNote);
+els.progressSelect.addEventListener("change", setProgress);
 els.lectureSelect.addEventListener("change", async () => {
   state.lectureSequence = Number(els.lectureSelect.value || 1);
   await loadReader();
+  await loadLearningState();
 });
 
 loadCourses().catch((error) => {
