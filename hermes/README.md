@@ -1,6 +1,6 @@
 # Hermes Lite Profile
 
-This directory will contain a public Hermes profile template for Course2Knowledge
+This directory contains a public Hermes profile template for Course2Knowledge
 Lite.
 
 It must not contain production credentials, protected orchestration files, or
@@ -20,3 +20,14 @@ Current tools:
 
 These tools are package API wrappers, not shell-script entrypoints. A real
 Feishu/Lark frontdesk profile can call them through Hermes after profile setup.
+
+## Profile Template
+
+`profile-template/` contains public `SOUL.md`, `workspace/AGENTS.md`, and
+`config.overlay.yaml` files. They enable only the `course2knowledge-lite`
+toolset and do not contain production credentials.
+
+Use `scripts/sync_hermes_lite_profile.py` to copy the template and plugin into a
+local Hermes profile. The script may read model endpoint settings from Codex
+config when `--use-codex-config` is passed, but it never writes secret values to
+the repository.

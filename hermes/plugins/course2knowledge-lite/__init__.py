@@ -5,9 +5,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from .runtime import resolve_repo_root
+
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    return resolve_repo_root(__file__)
 
 
 def _bootstrap_public_packages() -> None:

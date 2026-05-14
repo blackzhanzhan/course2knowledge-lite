@@ -21,6 +21,7 @@ Future implementation slices should add:
 - Citation retrieval tests.
 - Q&A missing-evidence tests.
 - Hermes Lite tool registration and handler tests.
+- Hermes Lite public profile template and sync tests.
 - Web build tests.
 - Feishu Lite command tests.
 

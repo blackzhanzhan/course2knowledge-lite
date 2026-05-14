@@ -29,12 +29,15 @@ course status, and ask questions about course content from Feishu.
 
 ## Hermes Profile Shape
 
-The public Hermes profile should be a small template:
+The public Hermes profile is a small template:
 
 - product name
 - safe tool list
 - import/status/Q&A boundaries
 - no private production credentials
+
+The template lives in `hermes/profile-template/`. Local setup is handled by
+`scripts/sync_hermes_lite_profile.py`.
 
 ## Native Tool Boundary
 
@@ -50,7 +53,8 @@ The tools call public package APIs and write to a local JSON course store. They
 must not shell out to ad hoc scripts, read private mother-repo profiles, or
 mutate protected learning-state loops.
 
-Live Feishu/Lark gateway validation is a later acceptance contract.
+Live Feishu/Lark gateway validation belongs to the public Lite profile
+acceptance contract.
 
 ## Example User Requests
 

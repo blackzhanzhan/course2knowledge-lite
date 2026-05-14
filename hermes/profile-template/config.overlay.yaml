@@ -1,0 +1,27 @@
+agent:
+  reasoning_effort: low
+  verbose: false
+
+platform_toolsets:
+  feishu:
+    - course2knowledge-lite
+
+plugins:
+  enabled:
+    - course2knowledge-lite
+
+platforms:
+  feishu:
+    enabled: true
+    extra:
+      domain: feishu
+      connection_mode: websocket
+      media_batch_delay_seconds: 2.5
+      text_batch_delay_seconds: 0.6
+
+display:
+  tool_progress: all
+  interim_assistant_messages: true
+  background_process_notifications: all
+  busy_input_mode: queue
+

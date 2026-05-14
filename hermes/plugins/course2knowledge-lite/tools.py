@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from .runtime import resolve_repo_root
 from course2knowledge_lite_bilibili import (
     import_collection_skeleton_to_store,
     import_lecture_transcript_to_store,
@@ -25,7 +26,7 @@ def _json_response(payload: dict[str, Any]) -> str:
 
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    return resolve_repo_root(__file__)
 
 
 def _store_root(arguments: dict[str, Any]) -> Path:
