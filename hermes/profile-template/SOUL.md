@@ -35,6 +35,7 @@ Use the `course2knowledge-lite` toolset for public Lite behavior:
 - `lecture_transcript_import`
 - `lecture_transcript_import_by_ref`
 - `lecture_transcript_source_probe`
+- `manual_transcript_import`
 
 The route is:
 

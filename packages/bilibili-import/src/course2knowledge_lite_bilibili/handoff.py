@@ -3,7 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from course2knowledge_lite_store import JsonCourseStore, build_course_skeleton, build_transcript_segments
+from course2knowledge_lite_store import (
+    JsonCourseStore,
+    build_course_skeleton,
+    build_manual_transcript_segments,
+    build_transcript_segments,
+)
 
 from .collection import JsonFetcher, expand_bilibili_collection_url
 from .subtitles import fetch_bilibili_timed_subtitles, probe_bilibili_subtitle_source
@@ -147,6 +152,56 @@ def probe_lecture_transcript_source_by_reference(
         "lecture": lecture,
         "import_status": resolved_import_status,
         "subtitle_source": probe_bilibili_subtitle_source(str(lecture.get("source_url", "") or ""), fetch_json=fetch_json),
+    }
+
+
+def import_manual_transcript_by_reference_to_store(
+    *,
+    store_root: str | Path,
+    transcript_text: str,
+    course_id: str = "",
+    import_id: str = "",
+    lecture_sequence: int | str | None = None,
+    lecture_id: str = "",
+    source_id: str = "",
+) -> dict[str, Any]:
+    store = JsonCourseStore(store_root)
+    resolved_course_id = str(course_id or "").strip()
+    resolved_import_status: dict[str, Any] | None = None
+
+    cleaned_import_id = str(import_id or "").strip()
+    if cleaned_import_id:
+        resolved_import_status = store.read_import_status(cleaned_import_id)
+        import_course_id = str(resolved_import_status.get("course_id", "") or "").strip()
+        if not import_course_id:
+            raise ValueError(f"Import status {cleaned_import_id} does not expose a course_id")
+        if resolved_course_id and resolved_course_id != import_course_id:
+            raise ValueError(
+                f"course_id {resolved_course_id} does not match import {cleaned_import_id} course_id {import_course_id}"
+            )
+        resolved_course_id = import_course_id
+
+    if not resolved_course_id:
+        raise ValueError("course_id or import_id is required")
+
+    lecture = _select_lecture(
+        store.read_lectures(resolved_course_id),
+        lecture_sequence=lecture_sequence,
+        lecture_id=lecture_id,
+        source_id=source_id,
+    )
+    segments = build_manual_transcript_segments(lecture=lecture, transcript_text=transcript_text)
+    path = store.write_transcript_segments(resolved_course_id, str(lecture["lecture_id"]), segments)
+    return {
+        "course_id": resolved_course_id,
+        "import_id": cleaned_import_id,
+        "lecture": lecture,
+        "lecture_id": str(lecture["lecture_id"]),
+        "source_id": str(lecture.get("source_id", "") or ""),
+        "segment_count": len(segments),
+        "path": path,
+        "source_type": "manual_transcript_text",
+        "import_status": resolved_import_status,
     }
 
 

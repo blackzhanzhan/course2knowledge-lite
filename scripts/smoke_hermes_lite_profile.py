@@ -17,6 +17,7 @@ EXPECTED_TOOLS = [
     "lecture_transcript_import",
     "lecture_transcript_import_by_ref",
     "lecture_transcript_source_probe",
+    "manual_transcript_import",
 ]
 
 

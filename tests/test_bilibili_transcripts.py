@@ -16,6 +16,7 @@ from course2knowledge_lite_bilibili import fetch_bilibili_timed_subtitles  # noq
 from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
 from course2knowledge_lite_bilibili import import_lecture_transcript_by_reference_to_store  # noqa: E402
 from course2knowledge_lite_bilibili import import_lecture_transcript_to_store  # noqa: E402
+from course2knowledge_lite_bilibili import import_manual_transcript_by_reference_to_store  # noqa: E402
 from course2knowledge_lite_bilibili import probe_lecture_transcript_source_by_reference  # noqa: E402
 from course2knowledge_lite_store import JsonCourseStore  # noqa: E402
 import course2knowledge_lite_bilibili.subtitles as subtitles_module  # noqa: E402
@@ -220,6 +221,39 @@ class BilibiliTranscriptTests(unittest.TestCase):
         self.assertFalse(result["subtitle_source"]["available"])
         self.assertEqual(result["subtitle_source"]["error_type"], "RuntimeError")
         self.assertIn("Bilibili page did not expose subtitle metadata", result["subtitle_source"]["error"])
+
+    def test_import_manual_transcript_by_reference_writes_segments(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = import_collection_skeleton_to_store(
+                "https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                store_root=temp_dir,
+                now="2026-05-14T00:00:00Z",
+                fetch_json=lambda api_url, params, referer: {
+                    "code": 0,
+                    "data": {
+                        "meta": {"name": "AI interview course"},
+                        "archives": [{"title": "Lecture 1", "bvid": "BV00000001"}],
+                        "page": {"total": 1},
+                    },
+                },
+            )
+            result = import_manual_transcript_by_reference_to_store(
+                store_root=temp_dir,
+                import_id=skeleton["import_status"]["import_id"],
+                lecture_sequence=1,
+                transcript_text="第一段介绍课程目标。\n第二段说明 RAG 和 Agent 的区别。",
+            )
+            segments = JsonCourseStore(temp_dir).read_transcript_segments(
+                skeleton["course"]["course_id"],
+                result["lecture_id"],
+            )
+
+        self.assertEqual(result["source_type"], "manual_transcript_text")
+        self.assertEqual(result["segment_count"], 2)
+        self.assertEqual(segments[0]["segment_id"], f"{result['lecture_id']}::manual::00001")
+        self.assertEqual(segments[0]["start_seconds"], 0.0)
+        self.assertIn("课程目标", segments[0]["text"])
+        self.assertIn("RAG", segments[1]["text"])
 
 
 if __name__ == "__main__":

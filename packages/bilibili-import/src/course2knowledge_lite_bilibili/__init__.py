@@ -36,6 +36,12 @@ def import_lecture_transcript_by_reference_to_store(*args, **kwargs):
     return _import_lecture_transcript_by_reference_to_store(*args, **kwargs)
 
 
+def import_manual_transcript_by_reference_to_store(*args, **kwargs):
+    from .handoff import import_manual_transcript_by_reference_to_store as _import_manual_transcript_by_reference_to_store
+
+    return _import_manual_transcript_by_reference_to_store(*args, **kwargs)
+
+
 def probe_lecture_transcript_source_by_reference(*args, **kwargs):
     from .handoff import probe_lecture_transcript_source_by_reference as _probe_lecture_transcript_source_by_reference
 
@@ -53,6 +59,7 @@ __all__ = [
     "import_collection_skeleton_to_store",
     "import_lecture_transcript_by_reference_to_store",
     "import_lecture_transcript_to_store",
+    "import_manual_transcript_by_reference_to_store",
     "is_bilibili_collection_url",
     "parse_bilibili_collection_url",
     "probe_bilibili_subtitle_source",

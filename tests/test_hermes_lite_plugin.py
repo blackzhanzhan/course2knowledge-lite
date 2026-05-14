@@ -230,6 +230,46 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertFalse(payload["subtitle_source"]["available"])
         self.assertFalse(payload["subtitle_source"]["cookie_present"])
 
+    def test_manual_transcript_import_tool_calls_package_api(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+        tools_module = sys.modules[f"{module.__name__}.tools"]
+
+        def fake_manual_import(*, store_root, transcript_text, course_id, import_id, lecture_sequence, lecture_id, source_id):
+            return {
+                "course_id": course_id,
+                "import_id": import_id,
+                "lecture_id": lecture_id or "course_demo::lecture::001",
+                "source_id": source_id or "BV00000001",
+                "segment_count": 2,
+                "path": str(Path(store_root) / "manual.segments.json"),
+                "source_type": "manual_transcript_text",
+                "lecture": {"sequence": int(lecture_sequence), "title": "Lecture 1"},
+                "text_len": len(transcript_text),
+            }
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            tools_module,
+            "import_manual_transcript_by_reference_to_store",
+            side_effect=fake_manual_import,
+        ):
+            raw = ctx.tools["manual_transcript_import"]["handler"](
+                {
+                    "store_root": temp_dir,
+                    "import_id": "import_course_demo",
+                    "course_id": "course_demo",
+                    "lecture_sequence": 1,
+                    "transcript_text": "hello\nworld",
+                }
+            )
+
+        payload = json.loads(raw)
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["tool"], "manual_transcript_import")
+        self.assertEqual(payload["source_type"], "manual_transcript_text")
+        self.assertEqual(payload["segment_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

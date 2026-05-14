@@ -67,6 +67,11 @@ check whether a stored Bilibili lecture exposes public subtitle metadata and
 whether a local `BILIBILI_COOKIE` is present. The probe does not return cookie
 values and does not write transcript records.
 
+If Bilibili subtitles are unavailable, the user can paste transcript text into
+the frontdesk. `manual_transcript_import` splits that user-provided text into
+local `TRANSCRIPT_SEGMENT` records for the selected lecture. This is an explicit
+manual source path, not ASR and not a fallback to a private import pipeline.
+
 Some Bilibili subtitle metadata is visible only to an authenticated browser
 session. Public Lite never stores credentials in the repository. If a course
 requires authenticated subtitles, set `BILIBILI_COOKIE` in the local runtime

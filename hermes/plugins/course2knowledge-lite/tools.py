@@ -10,6 +10,7 @@ from course2knowledge_lite_bilibili import (
     import_collection_skeleton_to_store,
     import_lecture_transcript_by_reference_to_store,
     import_lecture_transcript_to_store,
+    import_manual_transcript_by_reference_to_store,
     probe_lecture_transcript_source_by_reference,
 )
 from course2knowledge_lite_store import JsonCourseStore
@@ -22,6 +23,7 @@ TOOL_NAMES = [
     "lecture_transcript_import",
     "lecture_transcript_import_by_ref",
     "lecture_transcript_source_probe",
+    "manual_transcript_import",
 ]
 
 
@@ -119,6 +121,22 @@ def _lecture_transcript_source_probe_handler(arguments: dict[str, Any], **_regis
         return _tool_error("lecture_transcript_source_probe", exc)
 
 
+def _manual_transcript_import_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        result = import_manual_transcript_by_reference_to_store(
+            store_root=_store_root(arguments),
+            transcript_text=str(arguments.get("transcript_text", "") or ""),
+            course_id=str(arguments.get("course_id", "") or "").strip(),
+            import_id=str(arguments.get("import_id", "") or "").strip(),
+            lecture_sequence=arguments.get("lecture_sequence"),
+            lecture_id=str(arguments.get("lecture_id", "") or "").strip(),
+            source_id=str(arguments.get("source_id", "") or "").strip(),
+        )
+        return _json_response({"status": "completed", "tool": "manual_transcript_import", **result})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("manual_transcript_import", exc)
+
+
 def _collection_import_start_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -175,6 +193,19 @@ def _lecture_transcript_import_by_ref_schema() -> dict[str, Any]:
         },
         "additionalProperties": False,
     }
+
+
+def _manual_transcript_import_schema() -> dict[str, Any]:
+    schema = _lecture_transcript_import_by_ref_schema()
+    schema["properties"] = {
+        **schema["properties"],
+        "transcript_text": {
+            "type": "string",
+            "description": "User-provided transcript text to split into local transcript segments.",
+        },
+    }
+    schema["required"] = ["transcript_text"]
+    return schema
 
 
 def _tool_schema(name: str, description: str, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -240,4 +271,15 @@ def register_course2knowledge_lite_tools(ctx: Any) -> None:
         ),
         handler=_lecture_transcript_source_probe_handler,
         description="Probe one public Lite lecture transcript source before import.",
+    )
+    ctx.register_tool(
+        name="manual_transcript_import",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "manual_transcript_import",
+            "Import user-provided transcript text into one stored lecture as local transcript segments.",
+            _manual_transcript_import_schema(),
+        ),
+        handler=_manual_transcript_import_handler,
+        description="Import user-provided transcript text for one public Lite lecture.",
     )

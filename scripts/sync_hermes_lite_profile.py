@@ -252,6 +252,7 @@ def sync_profile(
             "lecture_transcript_import",
             "lecture_transcript_import_by_ref",
             "lecture_transcript_source_probe",
+            "manual_transcript_import",
         ],
         "writes_secret_values": False,
         "uses_codex_config": use_codex_config,
