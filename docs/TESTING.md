@@ -22,6 +22,7 @@ Future implementation slices should add:
 - Q&A missing-evidence tests.
 - Hermes Lite tool registration and handler tests.
 - Hermes Lite public profile template and sync tests.
+- Hermes Lite synced-profile smoke tests.
 - Web build tests.
 - Feishu Lite command tests.
 

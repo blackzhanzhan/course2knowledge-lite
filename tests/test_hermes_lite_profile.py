@@ -9,6 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "sync_hermes_lite_profile.py"
+SMOKE_SCRIPT_PATH = ROOT / "scripts" / "smoke_hermes_lite_profile.py"
 TEMPLATE_ROOT = ROOT / "hermes" / "profile-template"
 
 
@@ -16,6 +17,15 @@ def load_sync_module():
     spec = importlib.util.spec_from_file_location("sync_hermes_lite_profile", SCRIPT_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("Could not load sync_hermes_lite_profile.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_smoke_module():
+    spec = importlib.util.spec_from_file_location("smoke_hermes_lite_profile", SMOKE_SCRIPT_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Could not load smoke_hermes_lite_profile.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -75,6 +85,34 @@ class HermesLiteProfileTests(unittest.TestCase):
             self.assertIn("course2knowledge-lite", config_text)
             self.assertIn("COURSE2KNOWLEDGE_TEST_KEY", config_text)
             self.assertFalse((target / ".env").exists())
+
+    def test_synced_profile_plugin_registers_tools_from_profile_copy(self) -> None:
+        sync_module = load_sync_module()
+        smoke_module = load_smoke_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sync_module.sync_profile(
+                profile_root=temp_dir,
+                apply=True,
+                create_profile=True,
+                provider="local-provider",
+                model="local-model",
+                base_url="https://example.invalid/v1",
+                key_env="COURSE2KNOWLEDGE_TEST_KEY",
+            )
+            report = smoke_module.smoke_profile(temp_dir)
+
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(report["toolset"], "course2knowledge-lite")
+        self.assertEqual(
+            report["registered_tools"],
+            [
+                "collection_import_start",
+                "import_status_get",
+                "lecture_transcript_import",
+            ],
+        )
+        self.assertEqual(report["sample_tool_status"], "completed")
+        self.assertEqual(report["sample_import_stage"], "collection_expanded")
 
 
 if __name__ == "__main__":
