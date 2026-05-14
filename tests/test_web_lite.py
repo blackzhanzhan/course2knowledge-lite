@@ -62,6 +62,25 @@ class WebLiteTests(unittest.TestCase):
             thread.start()
             host, port = server.server_address
             try:
+                coverage = _request_json(host, port, "GET", f"/api/coverage?course_id={course_id}")
+                generated = _request_json(
+                    host,
+                    port,
+                    "POST",
+                    "/api/cards/generate",
+                    {
+                        "course_id": course_id,
+                        "lecture_id": lecture["lecture_id"],
+                        "overwrite": True,
+                    },
+                    expected_status=201,
+                )
+                cards = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    f"/api/cards?course_id={course_id}&lecture_id={lecture['lecture_id']}",
+                )
                 note = _request_json(
                     host,
                     port,
@@ -81,8 +100,8 @@ class WebLiteTests(unittest.TestCase):
                     "/api/bookmarks",
                     {
                         "course_id": course_id,
-                        "target_type": "segment",
-                        "target_id": f"{lecture['lecture_id']}::manual::00001",
+                        "target_type": "card",
+                        "target_id": cards["cards"][0]["card_id"],
                     },
                     expected_status=201,
                 )
@@ -117,7 +136,12 @@ class WebLiteTests(unittest.TestCase):
                 thread.join(timeout=5)
 
         self.assertEqual(note["status"], "completed")
+        self.assertEqual(coverage["coverage"]["covered_lecture_count"], 1)
+        self.assertEqual(generated["generated_card_count"], 1)
+        self.assertEqual(cards["card_count"], 1)
+        self.assertEqual(cards["cards"][0]["source_segment_ids"], [f"{lecture['lecture_id']}::manual::00001"])
         self.assertEqual(bookmark["status"], "completed")
+        self.assertEqual(bookmark["bookmark"]["target_type"], "card")
         self.assertEqual(progress["progress"]["status"], "read")
         self.assertEqual(notes["note_count"], 1)
         self.assertEqual(bookmarks["bookmark_count"], 1)

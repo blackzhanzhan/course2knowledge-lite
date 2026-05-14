@@ -4,16 +4,19 @@ const state = {
   courseId: "",
   lectureSequence: 1,
   lectureId: "",
+  coverage: null,
 };
 
 const els = {
   status: document.querySelector("#status"),
   courseList: document.querySelector("#course-list"),
+  coveragePanel: document.querySelector("#coverage-panel"),
   courseMeta: document.querySelector("#course-meta"),
   lectureTitle: document.querySelector("#lecture-title"),
   lectureSelect: document.querySelector("#lecture-select"),
   progressSelect: document.querySelector("#progress-select"),
   segments: document.querySelector("#segments"),
+  cardsList: document.querySelector("#cards-list"),
   searchInput: document.querySelector("#search-input"),
   searchResults: document.querySelector("#search-results"),
   qaInput: document.querySelector("#qa-input"),
@@ -25,6 +28,7 @@ const els = {
   searchButton: document.querySelector("#search-button"),
   qaButton: document.querySelector("#qa-button"),
   noteButton: document.querySelector("#note-button"),
+  cardsButton: document.querySelector("#cards-button"),
 };
 
 function escapeHtml(value) {
@@ -79,6 +83,8 @@ async function loadCourses() {
     await selectCourse(nextCourseId);
   } else {
     els.segments.innerHTML = '<div class="empty">No local courses found.</div>';
+    els.coveragePanel.innerHTML = "";
+    els.cardsList.innerHTML = "";
     setStatus("No courses");
   }
 }
@@ -108,6 +114,7 @@ async function selectCourse(courseId) {
   renderCourses();
   const payload = await getJson(`/api/lectures?course_id=${encodeURIComponent(courseId)}`);
   state.lectures = payload.lectures || [];
+  await loadCoverage();
   state.lectureSequence = Number(state.lectures[0]?.sequence || 1);
   renderLectureSelect();
   await loadReader();
@@ -128,6 +135,32 @@ function renderLectureSelect() {
   els.lectureSelect.value = String(state.lectureSequence);
 }
 
+async function loadCoverage() {
+  const payload = await getJson(`/api/coverage?course_id=${encodeURIComponent(state.courseId)}`);
+  state.coverage = payload.coverage || null;
+  renderCoverage();
+}
+
+function renderCoverage() {
+  const coverage = state.coverage;
+  if (!coverage) {
+    els.coveragePanel.innerHTML = '<div class="empty">Coverage unavailable.</div>';
+    return;
+  }
+  const percent = Math.round(Number(coverage.coverage_ratio || 0) * 100);
+  const clampedPercent = Math.max(0, Math.min(percent, 100));
+  const covered = Number(coverage.covered_lecture_count || 0);
+  const total = Number(coverage.lecture_count || 0);
+  els.coveragePanel.innerHTML = `
+    <div class="coverage-meter" aria-label="Transcript coverage">
+      <div class="coverage-bar" style="width: ${clampedPercent}%"></div>
+    </div>
+    <p class="item-meta">${covered}/${total} lectures with transcripts / ${Number(
+      coverage.total_segment_count || 0,
+    )} segments</p>
+  `;
+}
+
 async function loadReader() {
   if (!state.courseId) {
     return;
@@ -144,6 +177,7 @@ async function loadReader() {
   els.lectureTitle.textContent = lecture.title || "Lecture Reader";
   if (!payload.has_transcript) {
     els.segments.innerHTML = '<div class="empty">This lecture has no transcript segments yet.</div>';
+    await loadCards();
     setStatus("Reader ready / no transcript");
     return;
   }
@@ -166,6 +200,7 @@ async function loadReader() {
   for (const button of els.segments.querySelectorAll(".bookmark-segment")) {
     button.addEventListener("click", () => createBookmark("segment", button.dataset.segmentId));
   }
+  await loadCards();
   setStatus(`Reader ready / ${payload.segment_count} segments`);
 }
 
@@ -185,6 +220,56 @@ async function loadLearningState() {
   renderBookmarks(bookmarksPayload.bookmarks || []);
   const progress = (progressPayload.progress || [])[0] || {};
   els.progressSelect.value = progress.status || "not_started";
+}
+
+async function loadCards() {
+  if (!state.courseId || !state.lectureId) {
+    return;
+  }
+  const payload = await getJson(
+    `/api/cards?course_id=${encodeURIComponent(state.courseId)}&lecture_id=${encodeURIComponent(state.lectureId)}`,
+  );
+  renderCards(payload.cards || []);
+}
+
+function renderCards(cards) {
+  if (!cards.length) {
+    els.cardsList.innerHTML = '<div class="empty">No knowledge cards for this lecture yet.</div>';
+    return;
+  }
+  els.cardsList.innerHTML = cards
+    .map(
+      (card) => `
+        <article class="knowledge-card">
+          <div class="segment-head">
+            <p class="segment-title">${escapeHtml(card.title || card.card_id)}</p>
+            <button class="ghost-button bookmark-card" type="button" data-card-id="${escapeHtml(
+              card.card_id,
+            )}" title="Bookmark card">Bookmark</button>
+          </div>
+          <p>${escapeHtml(card.body)}</p>
+          <p class="citation">${escapeHtml((card.source_segment_ids || []).join(", "))}</p>
+          <p class="tags">${(card.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</p>
+        </article>
+      `,
+    )
+    .join("");
+  for (const button of els.cardsList.querySelectorAll(".bookmark-card")) {
+    button.addEventListener("click", () => createBookmark("card", button.dataset.cardId));
+  }
+}
+
+async function generateCards() {
+  if (!state.courseId) {
+    return;
+  }
+  await sendJson("/api/cards/generate", {
+    course_id: state.courseId,
+    lecture_id: state.lectureId,
+    overwrite: true,
+  });
+  await loadCards();
+  setStatus("Knowledge cards generated");
 }
 
 function renderNotes(notes) {
@@ -331,6 +416,7 @@ els.refreshButton.addEventListener("click", loadCourses);
 els.searchButton.addEventListener("click", runSearch);
 els.qaButton.addEventListener("click", runQa);
 els.noteButton.addEventListener("click", saveNote);
+els.cardsButton.addEventListener("click", generateCards);
 els.progressSelect.addEventListener("change", setProgress);
 els.lectureSelect.addEventListener("change", async () => {
   state.lectureSequence = Number(els.lectureSelect.value || 1);

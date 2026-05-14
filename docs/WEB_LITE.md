@@ -31,7 +31,10 @@ It exposes:
 
 - `/api/courses`
 - `/api/lectures`
+- `/api/coverage`
 - `/api/reader`
+- `/api/cards`
+- `/api/cards/generate`
 - `/api/search`
 - `/api/qa`
 - `/api/notes`

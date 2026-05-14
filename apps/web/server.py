@@ -37,6 +37,11 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
                 self._send_json({"lectures": JsonCourseStore(self.store_root).read_lectures(course_id)})
+            elif parsed.path == "/api/coverage":
+                params = parse_qs(parsed.query)
+                course_id = _required_param(params, "course_id")
+                coverage = JsonCourseStore(self.store_root).summarize_transcript_coverage(course_id)
+                self._send_json({"status": "completed", "coverage": coverage})
             elif parsed.path == "/api/reader":
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
@@ -46,6 +51,12 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     lecture_id=_optional_param(params, "lecture_id"),
                 )
                 self._send_json(payload)
+            elif parsed.path == "/api/cards":
+                params = parse_qs(parsed.query)
+                course_id = _required_param(params, "course_id")
+                lecture_id = _optional_param(params, "lecture_id")
+                cards = JsonCourseStore(self.store_root).list_knowledge_cards(course_id=course_id, lecture_id=lecture_id)
+                self._send_json({"status": "completed", "course_id": course_id, "cards": cards, "card_count": len(cards)})
             elif parsed.path == "/api/search":
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
@@ -120,6 +131,13 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     _required_body(payload, "status"),
                 )
                 self._send_json({"status": "completed", "progress": progress}, status=201)
+            elif parsed.path == "/api/cards/generate":
+                result = store.generate_knowledge_cards(
+                    _required_body(payload, "course_id"),
+                    lecture_id=str(payload.get("lecture_id", "") or "").strip(),
+                    overwrite=_bool_body(payload.get("overwrite"), default=True),
+                )
+                self._send_json({"status": "completed", **result}, status=201)
             else:
                 self.send_error(404, "Not found")
         except Exception as exc:  # noqa: BLE001
@@ -230,6 +248,19 @@ def _limit(params: dict[str, list[str]], *, default: int) -> int:
     if not raw_value:
         return default
     return max(int(raw_value), 0)
+
+
+def _bool_body(raw_value: Any, *, default: bool) -> bool:
+    if raw_value in (None, ""):
+        return default
+    if isinstance(raw_value, bool):
+        return raw_value
+    normalized = str(raw_value).strip().lower()
+    if normalized in {"1", "true", "yes", "y"}:
+        return True
+    if normalized in {"0", "false", "no", "n"}:
+        return False
+    raise ValueError(f"boolean value expected: {raw_value}")
 
 
 def _is_relative_to(path: Path, parent: Path) -> bool:
