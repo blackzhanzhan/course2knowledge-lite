@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_ROOT = ROOT / "hermes" / "plugins" / "course2knowledge-lite"
 sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 
-from course2knowledge_lite_store import JsonCourseStore, build_course_skeleton  # noqa: E402
+from course2knowledge_lite_store import JsonCourseStore, TranscriptSegmentRecord, build_course_skeleton  # noqa: E402
 
 
 class FakeHermesContext:
@@ -269,6 +269,57 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(payload["tool"], "manual_transcript_import")
         self.assertEqual(payload["source_type"], "manual_transcript_text")
         self.assertEqual(payload["segment_count"], 2)
+
+    def test_reader_search_and_qa_tools_use_transcript_segments(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = build_course_skeleton(
+                title="AI interview course",
+                source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BV00000001",
+                        "title": "RAG and Agent",
+                        "source_url": "https://www.bilibili.com/video/BV00000001",
+                    }
+                ],
+                now="2026-05-14T00:00:00Z",
+            )
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            lecture = skeleton.lectures[0]
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=f"{lecture.lecture_id}::manual::00001",
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves course evidence, while an Agent plans actions and calls tools.",
+                    )
+                ],
+            )
+            common_args = {"store_root": temp_dir, "course_id": skeleton.course.course_id}
+            reader_raw = ctx.tools["lecture_reader_get"]["handler"]({**common_args, "lecture_sequence": 1})
+            search_raw = ctx.tools["course_search"]["handler"]({**common_args, "query": "RAG Agent"})
+            qa_raw = ctx.tools["course_question_answer"]["handler"](
+                {**common_args, "question": "RAG 和 Agent 的区别是什么？"}
+            )
+
+        reader_payload = json.loads(reader_raw)
+        search_payload = json.loads(search_raw)
+        qa_payload = json.loads(qa_raw)
+        self.assertEqual(reader_payload["status"], "completed")
+        self.assertTrue(reader_payload["reader"]["has_transcript"])
+        self.assertEqual(search_payload["result_count"], 1)
+        self.assertEqual(qa_payload["answer"]["status"], "answered")
+        self.assertEqual(qa_payload["answer"]["citation_count"], 1)
 
 
 if __name__ == "__main__":

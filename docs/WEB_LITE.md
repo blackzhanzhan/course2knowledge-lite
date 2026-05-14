@@ -19,6 +19,25 @@ Web Lite is the primary visual workspace.
 The learner can import a course, open a lecture, read structured notes, inspect
 source citations, ask course questions, and keep lightweight reading state.
 
+## Current Local App
+
+The current Web Lite workspace is a small local app:
+
+```bash
+python apps/web/server.py --port 3014
+```
+
+It exposes:
+
+- `/api/courses`
+- `/api/lectures`
+- `/api/reader`
+- `/api/search`
+- `/api/qa`
+
+The page reads the same child local JSON store as Hermes Lite and does not call
+private Learning OS routes.
+
 ## Explicitly Out Of Scope
 
 - automatic day-plan automation

@@ -107,7 +107,10 @@ class HermesLiteProfileTests(unittest.TestCase):
             report["registered_tools"],
             [
                 "collection_import_start",
+                "course_question_answer",
+                "course_search",
                 "import_status_get",
+                "lecture_reader_get",
                 "lecture_transcript_import",
                 "lecture_transcript_import_by_ref",
                 "lecture_transcript_source_probe",
@@ -116,6 +119,8 @@ class HermesLiteProfileTests(unittest.TestCase):
         )
         self.assertEqual(report["sample_tool_status"], "completed")
         self.assertEqual(report["sample_import_stage"], "collection_expanded")
+        self.assertEqual(report["sample_qa_status"], "answered")
+        self.assertEqual(report["sample_qa_citation_count"], 1)
 
 
 if __name__ == "__main__":

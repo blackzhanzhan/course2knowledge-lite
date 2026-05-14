@@ -17,6 +17,7 @@ def _bootstrap_public_packages() -> None:
     package_roots = [
         repo_root / "packages" / "bilibili-import" / "src",
         repo_root / "packages" / "course-store" / "src",
+        repo_root / "packages" / "qa" / "src",
     ]
     for package_root in package_roots:
         text_path = str(package_root)

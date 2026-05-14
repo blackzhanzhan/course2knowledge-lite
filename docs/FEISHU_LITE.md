@@ -51,6 +51,9 @@ Tools:
 - `lecture_transcript_import_by_ref`
 - `lecture_transcript_source_probe`
 - `manual_transcript_import`
+- `lecture_reader_get`
+- `course_search`
+- `course_question_answer`
 
 The tools call public package APIs and write to a local JSON course store. They
 must not shell out to ad hoc scripts, read unrelated private profiles, or

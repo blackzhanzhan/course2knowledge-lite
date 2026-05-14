@@ -13,6 +13,7 @@ from course2knowledge_lite_bilibili import (
     import_manual_transcript_by_reference_to_store,
     probe_lecture_transcript_source_by_reference,
 )
+from course2knowledge_lite_qa import answer_course_question
 from course2knowledge_lite_store import JsonCourseStore
 
 
@@ -24,6 +25,9 @@ TOOL_NAMES = [
     "lecture_transcript_import_by_ref",
     "lecture_transcript_source_probe",
     "manual_transcript_import",
+    "lecture_reader_get",
+    "course_search",
+    "course_question_answer",
 ]
 
 
@@ -137,6 +141,64 @@ def _manual_transcript_import_handler(arguments: dict[str, Any], **_registry_kwa
         return _tool_error("manual_transcript_import", exc)
 
 
+def _lecture_reader_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        course_id = str(arguments.get("course_id", "") or "").strip()
+        if not course_id:
+            raise ValueError("course_id is required")
+        payload = JsonCourseStore(_store_root(arguments)).read_lecture_reader(
+            course_id,
+            lecture_sequence=arguments.get("lecture_sequence"),
+            lecture_id=str(arguments.get("lecture_id", "") or "").strip(),
+        )
+        return _json_response({"status": "completed", "tool": "lecture_reader_get", "reader": payload})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("lecture_reader_get", exc)
+
+
+def _course_search_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        course_id = str(arguments.get("course_id", "") or "").strip()
+        query = str(arguments.get("query", "") or "").strip()
+        if not course_id:
+            raise ValueError("course_id is required")
+        if not query:
+            raise ValueError("query is required")
+        hits = JsonCourseStore(_store_root(arguments)).search_transcripts(
+            course_id,
+            query,
+            limit=_positive_limit(arguments.get("limit"), default=10),
+        )
+        return _json_response(
+            {
+                "status": "completed",
+                "tool": "course_search",
+                "course_id": course_id,
+                "query": query,
+                "results": hits,
+                "result_count": len(hits),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("course_search", exc)
+
+
+def _course_question_answer_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        course_id = str(arguments.get("course_id", "") or "").strip()
+        if not course_id:
+            raise ValueError("course_id is required")
+        payload = answer_course_question(
+            store=JsonCourseStore(_store_root(arguments)),
+            course_id=course_id,
+            question=str(arguments.get("question", "") or ""),
+            limit=_positive_limit(arguments.get("limit"), default=5),
+        )
+        return _json_response({"status": "completed", "tool": "course_question_answer", "answer": payload})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("course_question_answer", exc)
+
+
 def _collection_import_start_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -206,6 +268,60 @@ def _manual_transcript_import_schema() -> dict[str, Any]:
     }
     schema["required"] = ["transcript_text"]
     return schema
+
+
+def _lecture_reader_get_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "lecture_sequence": {
+                "type": ["integer", "string", "null"],
+                "description": "1-based lecture sequence number in the course.",
+            },
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id"],
+        "additionalProperties": False,
+    }
+
+
+def _course_search_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "query": {"type": "string", "description": "Transcript search query."},
+            "limit": {"type": ["integer", "string", "null"], "description": "Maximum result count."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "query"],
+        "additionalProperties": False,
+    }
+
+
+def _course_question_answer_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "question": {"type": "string", "description": "Question to answer from transcript evidence."},
+            "limit": {"type": ["integer", "string", "null"], "description": "Maximum citation count."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "question"],
+        "additionalProperties": False,
+    }
+
+
+def _positive_limit(raw_value: Any, *, default: int) -> int:
+    if raw_value in (None, ""):
+        return default
+    try:
+        return max(int(raw_value), 0)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"limit must be an integer: {raw_value}") from exc
 
 
 def _tool_schema(name: str, description: str, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -282,4 +398,37 @@ def register_course2knowledge_lite_tools(ctx: Any) -> None:
         ),
         handler=_manual_transcript_import_handler,
         description="Import user-provided transcript text for one public Lite lecture.",
+    )
+    ctx.register_tool(
+        name="lecture_reader_get",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "lecture_reader_get",
+            "Read one lecture's transcript payload for Web or Feishu reading surfaces.",
+            _lecture_reader_get_schema(),
+        ),
+        handler=_lecture_reader_get_handler,
+        description="Read a public Lite lecture transcript payload.",
+    )
+    ctx.register_tool(
+        name="course_search",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "course_search",
+            "Search local transcript segments and return citation-ready results.",
+            _course_search_schema(),
+        ),
+        handler=_course_search_handler,
+        description="Search public Lite course transcript evidence.",
+    )
+    ctx.register_tool(
+        name="course_question_answer",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "course_question_answer",
+            "Answer a course question from local transcript evidence with citations.",
+            _course_question_answer_schema(),
+        ),
+        handler=_course_question_answer_handler,
+        description="Answer public Lite course questions with citations.",
     )

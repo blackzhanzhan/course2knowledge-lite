@@ -13,7 +13,10 @@ from typing import Any
 PLUGIN_NAME = "course2knowledge-lite"
 EXPECTED_TOOLS = [
     "collection_import_start",
+    "course_question_answer",
+    "course_search",
     "import_status_get",
+    "lecture_reader_get",
     "lecture_transcript_import",
     "lecture_transcript_import_by_ref",
     "lecture_transcript_source_probe",
@@ -52,7 +55,7 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
     if registered_tools != sorted(EXPECTED_TOOLS):
         raise RuntimeError(f"Unexpected registered tools: {registered_tools}")
 
-    from course2knowledge_lite_store import JsonCourseStore, build_course_skeleton
+    from course2knowledge_lite_store import JsonCourseStore, TranscriptSegmentRecord, build_course_skeleton
 
     with tempfile.TemporaryDirectory() as temp_dir:
         skeleton = build_course_skeleton(
@@ -68,11 +71,33 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
             ],
             now="2026-05-14T00:00:00Z",
         )
-        JsonCourseStore(temp_dir).write_skeleton(skeleton)
+        store = JsonCourseStore(temp_dir)
+        store.write_skeleton(skeleton)
+        store.write_transcript_segments(
+            skeleton.course.course_id,
+            skeleton.lectures[0].lecture_id,
+            [
+                TranscriptSegmentRecord(
+                    segment_id=f"{skeleton.lectures[0].lecture_id}::manual::00001",
+                    lecture_id=skeleton.lectures[0].lecture_id,
+                    start_seconds=0.0,
+                    end_seconds=6.0,
+                    text="RAG retrieves evidence while an Agent plans tool-using actions.",
+                )
+            ],
+        )
         raw = ctx.tools["import_status_get"]["handler"](
             {"store_root": temp_dir, "import_id": skeleton.import_status.import_id}
         )
         sample_payload = json.loads(raw)
+        qa_raw = ctx.tools["course_question_answer"]["handler"](
+            {
+                "store_root": temp_dir,
+                "course_id": skeleton.course.course_id,
+                "question": "RAG 和 Agent 的区别是什么？",
+            }
+        )
+        qa_payload = json.loads(qa_raw)
 
     return {
         "status": "passed",
@@ -82,6 +107,8 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
         "sample_tool": "import_status_get",
         "sample_tool_status": sample_payload.get("status"),
         "sample_import_stage": (sample_payload.get("import_status") or {}).get("stage"),
+        "sample_qa_status": (qa_payload.get("answer") or {}).get("status"),
+        "sample_qa_citation_count": (qa_payload.get("answer") or {}).get("citation_count"),
     }
 
 

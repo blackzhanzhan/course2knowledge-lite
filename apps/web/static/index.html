@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Course2Knowledge Lite</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Course2Knowledge Lite</p>
+          <h1>Course Knowledge Workspace</h1>
+        </div>
+        <div class="status" id="status">Loading local store</div>
+      </header>
+
+      <section class="workspace" aria-label="Course workspace">
+        <aside class="sidebar">
+          <div class="panel-head">
+            <h2>Courses</h2>
+            <button id="refresh-button" type="button" title="Refresh courses">Refresh</button>
+          </div>
+          <div id="course-list" class="list"></div>
+        </aside>
+
+        <section class="reader">
+          <div class="panel-head reader-head">
+            <div>
+              <p class="eyebrow" id="course-meta">No course selected</p>
+              <h2 id="lecture-title">Lecture Reader</h2>
+            </div>
+            <label class="select-label">
+              Lecture
+              <select id="lecture-select"></select>
+            </label>
+          </div>
+          <div id="segments" class="segments"></div>
+        </section>
+
+        <aside class="tools">
+          <section class="tool-panel">
+            <div class="panel-head">
+              <h2>Search</h2>
+              <button id="search-button" type="button" title="Search transcript">Search</button>
+            </div>
+            <input id="search-input" type="search" value="RAG Agent" />
+            <div id="search-results" class="result-list"></div>
+          </section>
+
+          <section class="tool-panel">
+            <div class="panel-head">
+              <h2>Q&A</h2>
+              <button id="qa-button" type="button" title="Ask from transcript">Ask</button>
+            </div>
+            <textarea id="qa-input" rows="4">RAG 和 Agent 的区别是什么？</textarea>
+            <div id="qa-answer" class="answer"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

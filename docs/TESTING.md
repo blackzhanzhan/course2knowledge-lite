@@ -19,8 +19,8 @@ Future implementation slices should add:
 - Transcript normalization tests.
 - Course store CRUD tests.
 - Citation retrieval tests.
-- Q&A missing-evidence tests.
-- Hermes Lite tool registration and handler tests.
+- Q&A answer and missing-evidence tests.
+- Hermes Lite tool registration, reader, search, and Q&A handler tests.
 - Hermes Lite public profile template and sync tests.
 - Hermes Lite synced-profile smoke tests.
 - Web build tests.

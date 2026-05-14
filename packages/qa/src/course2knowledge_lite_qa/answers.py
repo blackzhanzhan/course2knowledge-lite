@@ -43,7 +43,7 @@ def answer_course_question(
         "course_id": course_id,
         "question": normalized_question,
         "query": query,
-        "answer": _compose_answer(evidence_texts),
+        "answer": _compose_answer(evidence_texts, question=normalized_question),
         "citations": citations,
         "citation_count": len(citations),
         "evidence_snippets": [str(hit.get("snippet", "") or "") for hit in hits],
@@ -89,10 +89,19 @@ def _question_to_query(question: str) -> str:
     return " ".join(terms) if terms else question.strip()
 
 
-def _compose_answer(evidence_texts: list[str]) -> str:
+def _compose_answer(evidence_texts: list[str], *, question: str) -> str:
     if not evidence_texts:
-        return "No answer can be composed without transcript evidence."
+        return "缺少课程转写证据，无法组成答案。" if _contains_cjk(question) else "No answer can be composed without transcript evidence."
+    if _contains_cjk(question):
+        if len(evidence_texts) == 1:
+            return f"根据命中的课程转写片段：{evidence_texts[0]}"
+        joined = " ".join(f"{index}. {text}" for index, text in enumerate(evidence_texts, start=1))
+        return f"根据命中的课程转写片段：{joined}"
     if len(evidence_texts) == 1:
         return f"Based on the matched transcript segment: {evidence_texts[0]}"
     joined = " ".join(f"{index}. {text}" for index, text in enumerate(evidence_texts, start=1))
     return f"Based on the matched transcript segments: {joined}"
+
+
+def _contains_cjk(text: str) -> bool:
+    return bool(_CJK_RUN.search(text))
