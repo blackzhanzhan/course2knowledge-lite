@@ -101,6 +101,28 @@ class TranscriptSegmentRecord:
 
 
 @dataclass(frozen=True)
+class KnowledgeCardRecord:
+    card_id: str
+    course_id: str
+    lecture_id: str
+    title: str
+    body: str
+    source_segment_ids: list[str]
+    tags: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "card_id": self.card_id,
+            "course_id": self.course_id,
+            "lecture_id": self.lecture_id,
+            "title": self.title,
+            "body": self.body,
+            "source_segment_ids": list(self.source_segment_ids),
+            "tags": list(self.tags),
+        }
+
+
+@dataclass(frozen=True)
 class NoteRecord:
     note_id: str
     course_id: str

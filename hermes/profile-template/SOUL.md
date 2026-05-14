@@ -39,6 +39,10 @@ Use the `course2knowledge-lite` toolset for public Lite behavior:
 - `lecture_transcript_import_by_ref`
 - `lecture_transcript_source_probe`
 - `manual_transcript_import`
+- `course_transcript_coverage_get`
+- `knowledge_cards_generate`
+- `knowledge_card_list`
+- `knowledge_card_get`
 - `lecture_reader_get`
 - `course_search`
 - `course_question_answer`

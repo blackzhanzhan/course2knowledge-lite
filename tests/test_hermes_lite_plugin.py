@@ -394,6 +394,67 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(invalid_progress_payload["status"], "failed")
         self.assertEqual(invalid_progress_payload["tool"], "reading_progress_set")
 
+    def test_knowledge_card_tools_use_local_transcript_segments(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = build_course_skeleton(
+                title="AI interview course",
+                source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BV00000001",
+                        "title": "RAG and Agent",
+                        "source_url": "https://www.bilibili.com/video/BV00000001",
+                    }
+                ],
+                now="2026-05-14T00:00:00Z",
+            )
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            lecture = skeleton.lectures[0]
+            segment_id = f"{lecture.lecture_id}::manual::00001"
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=segment_id,
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves course evidence before an Agent plans tool calls.",
+                    )
+                ],
+            )
+            common_args = {"store_root": temp_dir, "course_id": skeleton.course.course_id}
+
+            generated_raw = ctx.tools["knowledge_cards_generate"]["handler"](common_args)
+            listed_raw = ctx.tools["knowledge_card_list"]["handler"](common_args)
+            listed_payload = json.loads(listed_raw)
+            card_id = listed_payload["cards"][0]["card_id"]
+            read_raw = ctx.tools["knowledge_card_get"]["handler"]({**common_args, "card_id": card_id})
+            bookmark_raw = ctx.tools["bookmark_create"]["handler"](
+                {
+                    **common_args,
+                    "target_type": "card",
+                    "target_id": card_id,
+                }
+            )
+
+        generated_payload = json.loads(generated_raw)
+        read_payload = json.loads(read_raw)
+        bookmark_payload = json.loads(bookmark_raw)
+        self.assertEqual(generated_payload["status"], "completed")
+        self.assertEqual(generated_payload["generated_card_count"], 1)
+        self.assertEqual(listed_payload["card_count"], 1)
+        self.assertEqual(read_payload["card"]["source_segment_ids"], [segment_id])
+        self.assertEqual(bookmark_payload["bookmark"]["target_type"], "card")
+        self.assertEqual(bookmark_payload["bookmark"]["target_id"], card_id)
+
 
 if __name__ == "__main__":
     unittest.main()

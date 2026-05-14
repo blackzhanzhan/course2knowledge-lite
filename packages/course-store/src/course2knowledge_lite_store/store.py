@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 from typing import Any
 from datetime import datetime, timezone
+import hashlib
 from uuid import uuid4
 
 from .content import build_lecture_reader_payload, search_transcript_segments
@@ -12,6 +13,7 @@ from .models import (
     READING_PROGRESS_STATUSES,
     BookmarkRecord,
     CourseSkeleton,
+    KnowledgeCardRecord,
     NoteRecord,
     ReadingProgressRecord,
     TranscriptSegmentRecord,
@@ -157,6 +159,65 @@ class JsonCourseStore:
             query=query,
             limit=limit,
         )
+
+    def generate_knowledge_cards(
+        self,
+        course_id: str,
+        *,
+        lecture_id: str = "",
+        overwrite: bool = True,
+    ) -> dict[str, Any]:
+        self.read_course(course_id)
+        selected_lecture_id = str(lecture_id or "").strip()
+        lectures = self.read_lectures(course_id)
+        if selected_lecture_id:
+            lectures = [lecture for lecture in lectures if str(lecture.get("lecture_id") or "") == selected_lecture_id]
+            if not lectures:
+                raise ValueError(f"lecture not found: {selected_lecture_id}")
+        generated_cards: list[dict[str, Any]] = []
+        for lecture in lectures:
+            current_lecture_id = str(lecture.get("lecture_id") or "")
+            for segment in self.read_transcript_segments_if_exists(course_id, current_lecture_id):
+                generated_cards.append(
+                    self._build_knowledge_card(course_id=course_id, lecture=lecture, segment=segment).to_dict()
+                )
+        if overwrite:
+            cards = [
+                card
+                for card in self.list_knowledge_cards(course_id=course_id)
+                if not _is_generated_card(card)
+                or (selected_lecture_id and str(card.get("lecture_id") or "") != selected_lecture_id)
+            ]
+            existing_ids = {str(card.get("card_id") or "") for card in cards}
+            cards.extend(card for card in generated_cards if str(card.get("card_id") or "") not in existing_ids)
+        else:
+            cards = self.list_knowledge_cards(course_id=course_id)
+            existing_ids = {str(card.get("card_id") or "") for card in cards}
+            cards.extend(card for card in generated_cards if str(card.get("card_id") or "") not in existing_ids)
+        cards.sort(key=lambda card: (str(card.get("lecture_id") or ""), str(card.get("card_id") or "")))
+        self._write_json(self._knowledge_cards_path(course_id), cards)
+        return {
+            "course_id": course_id,
+            "card_count": len(cards),
+            "generated_card_count": len(generated_cards),
+            "cards": cards,
+            "path": str(self._knowledge_cards_path(course_id)),
+        }
+
+    def list_knowledge_cards(self, *, course_id: str, lecture_id: str = "") -> list[dict[str, Any]]:
+        cards = self._read_json_list_if_exists(self._knowledge_cards_path(course_id))
+        if lecture_id:
+            return [card for card in cards if str(card.get("lecture_id") or "") == lecture_id]
+        return cards
+
+    def read_knowledge_card(self, course_id: str, card_id: str) -> dict[str, Any]:
+        cleaned_card_id = str(card_id or "").strip()
+        if not cleaned_card_id:
+            raise ValueError("card_id is required")
+        for card in self.list_knowledge_cards(course_id=course_id):
+            if str(card.get("card_id") or "") == cleaned_card_id:
+                return dict(card)
+        raise ValueError(f"card not found: {cleaned_card_id}")
 
     def create_note(
         self,
@@ -361,6 +422,9 @@ class JsonCourseStore:
                 if any(str(segment.get("segment_id") or "") == target_id for segment in segments):
                     return
             raise ValueError(f"segment not found: {target_id}")
+        if target_type == "card":
+            self.read_knowledge_card(course_id, target_id)
+            return
 
     def _update_lecture_read_status(self, course_id: str, lecture_id: str, status: str) -> None:
         lectures = self.read_lectures(course_id)
@@ -381,6 +445,33 @@ class JsonCourseStore:
 
     def _reading_progress_path(self, course_id: str) -> Path:
         return self.root / "courses" / course_id / "reading_progress.json"
+
+    def _knowledge_cards_path(self, course_id: str) -> Path:
+        return self.root / "courses" / course_id / "knowledge_cards.json"
+
+    def _build_knowledge_card(
+        self,
+        *,
+        course_id: str,
+        lecture: dict[str, Any],
+        segment: dict[str, Any],
+    ) -> KnowledgeCardRecord:
+        segment_id = str(segment.get("segment_id") or "").strip()
+        if not segment_id:
+            raise ValueError("segment_id is required to build a knowledge card")
+        text = str(segment.get("text") or "").strip()
+        card_id = f"card_{hashlib.sha1(segment_id.encode('utf-8')).hexdigest()[:12]}"
+        lecture_title = str(lecture.get("title") or "").strip()
+        title = _card_title(text, fallback=lecture_title or card_id)
+        return KnowledgeCardRecord(
+            card_id=card_id,
+            course_id=course_id,
+            lecture_id=str(lecture.get("lecture_id") or segment.get("lecture_id") or ""),
+            title=title,
+            body=text,
+            source_segment_ids=[segment_id],
+            tags=_card_tags(text),
+        )
 
     @staticmethod
     def _write_json(path: Path, payload: Any) -> None:
@@ -408,3 +499,29 @@ class JsonCourseStore:
     @staticmethod
     def _utc_now() -> str:
         return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _is_generated_card(card: dict[str, Any]) -> bool:
+    return str(card.get("card_id") or "").startswith("card_") and bool(card.get("source_segment_ids"))
+
+
+def _card_title(text: str, *, fallback: str) -> str:
+    cleaned = str(text or "").strip()
+    if not cleaned:
+        return fallback
+    first_sentence = re.split(r"(?<=[.!?])\s+|\n+", cleaned, maxsplit=1)[0].strip()
+    title = first_sentence or cleaned or fallback
+    if len(title) > 72:
+        title = f"{title[:69].rstrip()}..."
+    return title
+
+
+def _card_tags(text: str) -> list[str]:
+    tags: list[str] = []
+    for term in re.findall(r"[A-Za-z][A-Za-z0-9_+-]{1,}", str(text or "")):
+        normalized = term.strip()
+        if normalized and normalized.lower() not in {item.lower() for item in tags}:
+            tags.append(normalized)
+        if len(tags) >= 8:
+            break
+    return tags

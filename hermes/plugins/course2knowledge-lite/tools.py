@@ -26,6 +26,9 @@ TOOL_NAMES = [
     "lecture_transcript_source_probe",
     "manual_transcript_import",
     "course_transcript_coverage_get",
+    "knowledge_cards_generate",
+    "knowledge_card_list",
+    "knowledge_card_get",
     "lecture_reader_get",
     "course_search",
     "course_question_answer",
@@ -166,6 +169,49 @@ def _course_transcript_coverage_get_handler(arguments: dict[str, Any], **_regist
         )
     except Exception as exc:  # noqa: BLE001
         return _tool_error("course_transcript_coverage_get", exc)
+
+
+def _knowledge_cards_generate_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        store = JsonCourseStore(_store_root(arguments))
+        result = store.generate_knowledge_cards(
+            _required_text(arguments, "course_id"),
+            lecture_id=str(arguments.get("lecture_id", "") or "").strip(),
+            overwrite=_bool_argument(arguments.get("overwrite"), default=True),
+        )
+        return _json_response({"status": "completed", "tool": "knowledge_cards_generate", **result})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("knowledge_cards_generate", exc)
+
+
+def _knowledge_card_list_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        store = JsonCourseStore(_store_root(arguments))
+        course_id = _required_text(arguments, "course_id")
+        lecture_id = str(arguments.get("lecture_id", "") or "").strip()
+        cards = store.list_knowledge_cards(course_id=course_id, lecture_id=lecture_id)
+        return _json_response(
+            {
+                "status": "completed",
+                "tool": "knowledge_card_list",
+                "course_id": course_id,
+                "cards": cards,
+                "card_count": len(cards),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("knowledge_card_list", exc)
+
+
+def _knowledge_card_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        card = JsonCourseStore(_store_root(arguments)).read_knowledge_card(
+            _required_text(arguments, "course_id"),
+            _required_text(arguments, "card_id"),
+        )
+        return _json_response({"status": "completed", "tool": "knowledge_card_get", "card": card})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("knowledge_card_get", exc)
 
 
 def _lecture_reader_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
@@ -452,6 +498,52 @@ def _course_transcript_coverage_get_schema() -> dict[str, Any]:
     }
 
 
+def _knowledge_cards_generate_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "lecture_id": {
+                "type": ["string", "null"],
+                "description": "Optional exact local lecture id to generate cards for one lecture.",
+            },
+            "overwrite": {
+                "type": ["boolean", "string", "null"],
+                "description": "Whether to replace previously generated source cards. Defaults to true.",
+            },
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id"],
+        "additionalProperties": False,
+    }
+
+
+def _knowledge_card_list_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id filter."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id"],
+        "additionalProperties": False,
+    }
+
+
+def _knowledge_card_get_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "card_id": {"type": "string", "description": "Local knowledge card id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id", "card_id"],
+        "additionalProperties": False,
+    }
+
+
 def _course_search_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -635,6 +727,19 @@ def _positive_limit(raw_value: Any, *, default: int) -> int:
         raise ValueError(f"limit must be an integer: {raw_value}") from exc
 
 
+def _bool_argument(raw_value: Any, *, default: bool) -> bool:
+    if raw_value in (None, ""):
+        return default
+    if isinstance(raw_value, bool):
+        return raw_value
+    normalized = str(raw_value).strip().lower()
+    if normalized in {"1", "true", "yes", "y"}:
+        return True
+    if normalized in {"0", "false", "no", "n"}:
+        return False
+    raise ValueError(f"boolean value expected: {raw_value}")
+
+
 def _tool_schema(name: str, description: str, parameters: dict[str, Any]) -> dict[str, Any]:
     return {
         "name": name,
@@ -731,6 +836,39 @@ def register_course2knowledge_lite_tools(ctx: Any) -> None:
         ),
         handler=_course_transcript_coverage_get_handler,
         description="Summarize public Lite transcript coverage.",
+    )
+    ctx.register_tool(
+        name="knowledge_cards_generate",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "knowledge_cards_generate",
+            "Generate conservative source-linked knowledge cards from local transcript segments.",
+            _knowledge_cards_generate_schema(),
+        ),
+        handler=_knowledge_cards_generate_handler,
+        description="Generate public Lite knowledge cards from transcript evidence.",
+    )
+    ctx.register_tool(
+        name="knowledge_card_list",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "knowledge_card_list",
+            "List generated or learner-visible local knowledge cards for a course.",
+            _knowledge_card_list_schema(),
+        ),
+        handler=_knowledge_card_list_handler,
+        description="List public Lite knowledge cards.",
+    )
+    ctx.register_tool(
+        name="knowledge_card_get",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "knowledge_card_get",
+            "Read one source-linked local knowledge card.",
+            _knowledge_card_get_schema(),
+        ),
+        handler=_knowledge_card_get_handler,
+        description="Read a public Lite knowledge card.",
     )
     ctx.register_tool(
         name="course_search",

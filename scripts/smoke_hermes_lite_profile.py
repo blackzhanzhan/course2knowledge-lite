@@ -17,6 +17,9 @@ EXPECTED_TOOLS = [
     "course_question_answer",
     "course_search",
     "import_status_get",
+    "knowledge_card_get",
+    "knowledge_card_list",
+    "knowledge_cards_generate",
     "lecture_reader_get",
     "lecture_transcript_import",
     "lecture_transcript_import_by_ref",
@@ -108,6 +111,10 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
             }
         )
         qa_payload = json.loads(qa_raw)
+        cards_raw = ctx.tools["knowledge_cards_generate"]["handler"](
+            {"store_root": temp_dir, "course_id": skeleton.course.course_id}
+        )
+        cards_payload = json.loads(cards_raw)
         common_args = {
             "store_root": temp_dir,
             "course_id": skeleton.course.course_id,
@@ -128,6 +135,8 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
         "sample_import_stage": (sample_payload.get("import_status") or {}).get("stage"),
         "sample_qa_status": (qa_payload.get("answer") or {}).get("status"),
         "sample_qa_citation_count": (qa_payload.get("answer") or {}).get("citation_count"),
+        "sample_card_count": cards_payload.get("card_count"),
+        "sample_generated_card_count": cards_payload.get("generated_card_count"),
         "sample_note_status": note_payload.get("status"),
         "sample_note_body": (note_payload.get("note") or {}).get("body"),
         "sample_progress_status": (progress_payload.get("progress") or {}).get("status"),

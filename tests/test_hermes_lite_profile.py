@@ -114,6 +114,9 @@ class HermesLiteProfileTests(unittest.TestCase):
                 "course_search",
                 "course_transcript_coverage_get",
                 "import_status_get",
+                "knowledge_card_get",
+                "knowledge_card_list",
+                "knowledge_cards_generate",
                 "lecture_reader_get",
                 "lecture_transcript_import",
                 "lecture_transcript_import_by_ref",
@@ -131,6 +134,8 @@ class HermesLiteProfileTests(unittest.TestCase):
         self.assertEqual(report["sample_import_stage"], "collection_expanded")
         self.assertEqual(report["sample_qa_status"], "answered")
         self.assertEqual(report["sample_qa_citation_count"], 1)
+        self.assertEqual(report["sample_card_count"], 1)
+        self.assertEqual(report["sample_generated_card_count"], 1)
         self.assertEqual(report["sample_note_status"], "completed")
         self.assertEqual(report["sample_progress_status"], "read")
 

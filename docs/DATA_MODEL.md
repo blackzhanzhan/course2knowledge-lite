@@ -53,6 +53,8 @@ citation Q&A.
 ### KNOWLEDGE_CARD
 
 Represents a concept, definition, summary, or cited explanation.
+Current generated cards are conservative source cards: each card is derived
+from one transcript segment and must retain `source_segment_ids`.
 
 Fields:
 

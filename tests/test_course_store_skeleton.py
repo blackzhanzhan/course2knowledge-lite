@@ -270,6 +270,94 @@ class CourseStoreSkeletonTests(unittest.TestCase):
         self.assertEqual(persisted_progress["status"], "read")
         self.assertEqual(lectures[0]["read_status"], "read")
 
+    def test_source_linked_knowledge_cards_generate_list_read_and_bookmark(self) -> None:
+        skeleton = build_course_skeleton(
+            title="AI interview course",
+            source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+            video_refs=[
+                {
+                    "sequence": 1,
+                    "bvid": "BV00000001",
+                    "title": "RAG and Agent",
+                    "source_url": "https://www.bilibili.com/video/BV00000001",
+                },
+                {
+                    "sequence": 2,
+                    "bvid": "BV00000002",
+                    "title": "Evaluation",
+                    "source_url": "https://www.bilibili.com/video/BV00000002",
+                },
+            ],
+            now="2026-05-14T00:00:00Z",
+        )
+        first_lecture = skeleton.lectures[0]
+        second_lecture = skeleton.lectures[1]
+        first_segment_id = f"{first_lecture.lecture_id}::manual::00001"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                first_lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=first_segment_id,
+                        lecture_id=first_lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves evidence before an Agent calls tools.",
+                    )
+                ],
+            )
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                second_lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=f"{second_lecture.lecture_id}::manual::00001",
+                        lecture_id=second_lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="Evaluation checks whether answers stay grounded in course transcripts.",
+                    )
+                ],
+            )
+
+            result = store.generate_knowledge_cards(skeleton.course.course_id)
+            cards = store.list_knowledge_cards(course_id=skeleton.course.course_id)
+            first_card = store.read_knowledge_card(skeleton.course.course_id, cards[0]["card_id"])
+            bookmark = store.create_bookmark(
+                skeleton.course.course_id,
+                "card",
+                first_card["card_id"],
+                bookmark_id="bookmark_card",
+                now="2026-05-14T01:20:00Z",
+            )
+            lecture_cards = store.list_knowledge_cards(
+                course_id=skeleton.course.course_id,
+                lecture_id=first_lecture.lecture_id,
+            )
+            first_only = store.generate_knowledge_cards(
+                skeleton.course.course_id,
+                lecture_id=first_lecture.lecture_id,
+                overwrite=True,
+            )
+            regenerated = store.generate_knowledge_cards(skeleton.course.course_id, overwrite=False)
+
+        self.assertEqual(result["generated_card_count"], 2)
+        self.assertEqual(result["card_count"], 2)
+        self.assertEqual(len(cards), 2)
+        self.assertEqual(first_card["source_segment_ids"], [first_segment_id])
+        self.assertEqual(first_card["course_id"], skeleton.course.course_id)
+        self.assertIn("RAG", first_card["tags"])
+        self.assertEqual(bookmark["target_type"], "card")
+        self.assertEqual(bookmark["target_id"], first_card["card_id"])
+        self.assertEqual(len(lecture_cards), 1)
+        self.assertEqual(first_only["card_count"], 2)
+        self.assertEqual(first_only["generated_card_count"], 1)
+        self.assertEqual(regenerated["card_count"], 2)
+
     def test_reading_progress_rejects_unknown_status(self) -> None:
         skeleton = build_course_skeleton(
             title="AI interview course",
