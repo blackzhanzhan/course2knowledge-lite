@@ -306,15 +306,19 @@ class HermesLitePluginTests(unittest.TestCase):
                 ],
             )
             common_args = {"store_root": temp_dir, "course_id": skeleton.course.course_id}
+            coverage_raw = ctx.tools["course_transcript_coverage_get"]["handler"](common_args)
             reader_raw = ctx.tools["lecture_reader_get"]["handler"]({**common_args, "lecture_sequence": 1})
             search_raw = ctx.tools["course_search"]["handler"]({**common_args, "query": "RAG Agent"})
             qa_raw = ctx.tools["course_question_answer"]["handler"](
                 {**common_args, "question": "RAG 和 Agent 的区别是什么？"}
             )
 
+        coverage_payload = json.loads(coverage_raw)
         reader_payload = json.loads(reader_raw)
         search_payload = json.loads(search_raw)
         qa_payload = json.loads(qa_raw)
+        self.assertEqual(coverage_payload["status"], "completed")
+        self.assertEqual(coverage_payload["coverage"]["covered_lecture_count"], 1)
         self.assertEqual(reader_payload["status"], "completed")
         self.assertTrue(reader_payload["reader"]["has_transcript"])
         self.assertEqual(search_payload["result_count"], 1)

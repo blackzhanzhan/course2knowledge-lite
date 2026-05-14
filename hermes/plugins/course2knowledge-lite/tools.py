@@ -25,6 +25,7 @@ TOOL_NAMES = [
     "lecture_transcript_import_by_ref",
     "lecture_transcript_source_probe",
     "manual_transcript_import",
+    "course_transcript_coverage_get",
     "lecture_reader_get",
     "course_search",
     "course_question_answer",
@@ -148,6 +149,23 @@ def _manual_transcript_import_handler(arguments: dict[str, Any], **_registry_kwa
         return _json_response({"status": "completed", "tool": "manual_transcript_import", **result})
     except Exception as exc:  # noqa: BLE001
         return _tool_error("manual_transcript_import", exc)
+
+
+def _course_transcript_coverage_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        course_id = str(arguments.get("course_id", "") or "").strip()
+        if not course_id:
+            raise ValueError("course_id is required")
+        coverage = JsonCourseStore(_store_root(arguments)).summarize_transcript_coverage(course_id)
+        return _json_response(
+            {
+                "status": "completed",
+                "tool": "course_transcript_coverage_get",
+                "coverage": coverage,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("course_transcript_coverage_get", exc)
 
 
 def _lecture_reader_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
@@ -415,6 +433,18 @@ def _lecture_reader_get_schema() -> dict[str, Any]:
                 "description": "1-based lecture sequence number in the course.",
             },
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id"],
+        "additionalProperties": False,
+    }
+
+
+def _course_transcript_coverage_get_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
             "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
         },
         "required": ["course_id"],
@@ -690,6 +720,17 @@ def register_course2knowledge_lite_tools(ctx: Any) -> None:
         ),
         handler=_lecture_reader_get_handler,
         description="Read a public Lite lecture transcript payload.",
+    )
+    ctx.register_tool(
+        name="course_transcript_coverage_get",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "course_transcript_coverage_get",
+            "Summarize transcript coverage for a local Course2Knowledge Lite course.",
+            _course_transcript_coverage_get_schema(),
+        ),
+        handler=_course_transcript_coverage_get_handler,
+        description="Summarize public Lite transcript coverage.",
     )
     ctx.register_tool(
         name="course_search",

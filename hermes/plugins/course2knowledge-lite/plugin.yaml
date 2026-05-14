@@ -8,6 +8,7 @@ provides_tools:
   - lecture_transcript_import_by_ref
   - lecture_transcript_source_probe
   - manual_transcript_import
+  - course_transcript_coverage_get
   - lecture_reader_get
   - course_search
   - course_question_answer

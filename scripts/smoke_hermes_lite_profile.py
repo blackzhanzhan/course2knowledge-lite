@@ -13,6 +13,7 @@ from typing import Any
 PLUGIN_NAME = "course2knowledge-lite"
 EXPECTED_TOOLS = [
     "collection_import_start",
+    "course_transcript_coverage_get",
     "course_question_answer",
     "course_search",
     "import_status_get",

@@ -112,6 +112,7 @@ class HermesLiteProfileTests(unittest.TestCase):
                 "collection_import_start",
                 "course_question_answer",
                 "course_search",
+                "course_transcript_coverage_get",
                 "import_status_get",
                 "lecture_reader_get",
                 "lecture_transcript_import",

@@ -139,6 +139,61 @@ class CourseStoreSkeletonTests(unittest.TestCase):
         self.assertEqual(results[0]["citation"]["segment_id"], f"{lecture_id}::manual::00001")
         self.assertIn("RAG", results[0]["snippet"])
 
+    def test_transcript_coverage_summarizes_covered_and_missing_lectures(self) -> None:
+        skeleton = build_course_skeleton(
+            title="AI interview course",
+            source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+            video_refs=[
+                {
+                    "sequence": 1,
+                    "bvid": "BV00000001",
+                    "title": "RAG and Agent",
+                    "source_url": "https://www.bilibili.com/video/BV00000001",
+                },
+                {
+                    "sequence": 2,
+                    "bvid": "BV00000002",
+                    "title": "RAG accuracy",
+                    "source_url": "https://www.bilibili.com/video/BV00000002",
+                },
+                {
+                    "sequence": 3,
+                    "bvid": "BV00000003",
+                    "title": "Learning route",
+                    "source_url": "https://www.bilibili.com/video/BV00000003",
+                },
+            ],
+            now="2026-05-14T00:00:00Z",
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            for lecture in skeleton.lectures[:2]:
+                store.write_transcript_segments(
+                    skeleton.course.course_id,
+                    lecture.lecture_id,
+                    [
+                        TranscriptSegmentRecord(
+                            segment_id=f"{lecture.lecture_id}::manual::00001",
+                            lecture_id=lecture.lecture_id,
+                            start_seconds=0.0,
+                            end_seconds=6.0,
+                            text=f"{lecture.title} transcript segment",
+                        )
+                    ],
+                )
+
+            coverage = store.summarize_transcript_coverage(skeleton.course.course_id)
+
+        self.assertEqual(coverage["lecture_count"], 3)
+        self.assertEqual(coverage["covered_lecture_count"], 2)
+        self.assertEqual(coverage["missing_lecture_count"], 1)
+        self.assertEqual(coverage["total_segment_count"], 2)
+        self.assertAlmostEqual(coverage["coverage_ratio"], 0.6667)
+        self.assertTrue(coverage["lectures"][0]["has_transcript"])
+        self.assertFalse(coverage["lectures"][2]["has_transcript"])
+
     def test_learning_state_round_trips_notes_bookmarks_and_progress(self) -> None:
         skeleton = build_course_skeleton(
             title="AI interview course",

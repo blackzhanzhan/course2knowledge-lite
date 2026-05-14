@@ -92,6 +92,44 @@ class JsonCourseStore:
             for lecture in self.read_lectures(course_id)
         }
 
+    def summarize_transcript_coverage(self, course_id: str) -> dict[str, Any]:
+        course = self.read_course(course_id)
+        lectures = self.read_lectures(course_id)
+        lecture_summaries: list[dict[str, Any]] = []
+        covered_count = 0
+        total_segments = 0
+        for lecture in lectures:
+            lecture_id = str(lecture.get("lecture_id", "") or "")
+            segments = self.read_transcript_segments_if_exists(course_id, lecture_id)
+            segment_count = len(segments)
+            has_transcript = segment_count > 0
+            if has_transcript:
+                covered_count += 1
+            total_segments += segment_count
+            lecture_summaries.append(
+                {
+                    "lecture_id": lecture_id,
+                    "sequence": lecture.get("sequence"),
+                    "title": str(lecture.get("title", "") or ""),
+                    "source_id": str(lecture.get("source_id", "") or ""),
+                    "source_url": str(lecture.get("source_url", "") or ""),
+                    "has_transcript": has_transcript,
+                    "segment_count": segment_count,
+                }
+            )
+        lecture_count = len(lectures)
+        missing_count = max(lecture_count - covered_count, 0)
+        return {
+            "course": dict(course),
+            "course_id": course_id,
+            "lecture_count": lecture_count,
+            "covered_lecture_count": covered_count,
+            "missing_lecture_count": missing_count,
+            "total_segment_count": total_segments,
+            "coverage_ratio": round(covered_count / lecture_count, 4) if lecture_count else 0.0,
+            "lectures": lecture_summaries,
+        }
+
     def read_lecture_reader(
         self,
         course_id: str,
