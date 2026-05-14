@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "course2knowledge-lite"
+version = "0.1.0"
+description = "Course2Knowledge Lite public course knowledge workspace"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Course2Knowledge Lite"}]
+dependencies = []
+
+[project.scripts]
+course2knowledge-lite = "course2knowledge_lite.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src", "packages/bilibili-import/src", "packages/course-store/src", "packages/qa/src", "hermes/plugins"]
+include = ["course2knowledge_lite*", "course2knowledge_lite_bilibili*", "course2knowledge_lite_store*", "course2knowledge_lite_qa*", "course2knowledge_lite_hermes*", "public_release*"]

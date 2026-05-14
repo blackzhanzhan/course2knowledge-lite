@@ -12,6 +12,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+*.egg-info/
 
 # Node
 node_modules/
@@ -29,4 +30,3 @@ tmp/
 .env.*
 *.secret
 *.token
-
