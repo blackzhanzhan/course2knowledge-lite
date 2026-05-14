@@ -62,6 +62,11 @@ ask for a sequence such as "import the transcript for lecture 1". The frontdesk
 uses `lecture_transcript_import_by_ref` to resolve the stored lecture from the
 child local JSON store and then runs the normal single-video transcript handoff.
 
+Before importing, the frontdesk can call `lecture_transcript_source_probe` to
+check whether a stored Bilibili lecture exposes public subtitle metadata and
+whether a local `BILIBILI_COOKIE` is present. The probe does not return cookie
+values and does not write transcript records.
+
 Some Bilibili subtitle metadata is visible only to an authenticated browser
 session. Public Lite never stores credentials in the repository. If a course
 requires authenticated subtitles, set `BILIBILI_COOKIE` in the local runtime

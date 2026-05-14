@@ -265,3 +265,56 @@ def fetch_bilibili_timed_subtitles(
         subtitle_url=subtitle_url,
         timed_lines=_normalize_subtitle_body(subtitle_payload),
     )
+
+
+def probe_bilibili_subtitle_source(
+    source_url: str,
+    *,
+    fetch_json: JsonFetcher | None = None,
+) -> dict[str, Any]:
+    json_fetcher = fetch_json or _default_json_fetcher
+    cookie_present = bool(os.environ.get("BILIBILI_COOKIE", "").strip())
+    result: dict[str, Any] = {
+        "source_url": str(source_url or "").strip(),
+        "source_platform": "bilibili",
+        "cookie_present": cookie_present,
+        "available": False,
+    }
+    try:
+        metadata = resolve_bilibili_page_metadata(source_url, fetch_json=json_fetcher)
+        result["metadata"] = {
+            "source_id": metadata.bvid,
+            "cid": metadata.cid,
+            "page": metadata.page,
+            "video_title": metadata.video_title,
+            "page_title": metadata.page_title,
+        }
+        subtitles = _fetch_subtitle_entries(metadata, referer=source_url, fetch_json=json_fetcher)
+        selected = _select_subtitle(subtitles)
+        subtitle_url = _normalize_subtitle_url(str(selected.get("subtitle_url", "") or ""))
+        if not subtitle_url and str(selected.get("lan", "") or "").startswith("ai-"):
+            subtitle_url = _resolve_ai_subtitle_url(metadata, referer=source_url, fetch_json=json_fetcher)
+        result.update(
+            {
+                "available": bool(subtitle_url),
+                "subtitle_count": len(subtitles),
+                "selected_language": str(selected.get("lan", "") or "").strip(),
+                "subtitle_url_present": bool(subtitle_url),
+            }
+        )
+        if not subtitle_url:
+            result.update(
+                {
+                    "error_type": "RuntimeError",
+                    "error": "Bilibili subtitle metadata exists but did not expose a usable subtitle_url.",
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        result.update(
+            {
+                "available": False,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }
+        )
+    return result

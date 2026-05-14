@@ -11,6 +11,7 @@ from .subtitles import (
     BilibiliTimedSubtitle,
     extract_bilibili_bvid_and_page,
     fetch_bilibili_timed_subtitles,
+    probe_bilibili_subtitle_source,
     resolve_bilibili_page_metadata,
 )
 
@@ -34,6 +35,12 @@ def import_lecture_transcript_by_reference_to_store(*args, **kwargs):
 
     return _import_lecture_transcript_by_reference_to_store(*args, **kwargs)
 
+
+def probe_lecture_transcript_source_by_reference(*args, **kwargs):
+    from .handoff import probe_lecture_transcript_source_by_reference as _probe_lecture_transcript_source_by_reference
+
+    return _probe_lecture_transcript_source_by_reference(*args, **kwargs)
+
 __all__ = [
     "BilibiliCollection",
     "BilibiliCollectionUrl",
@@ -48,5 +55,7 @@ __all__ = [
     "import_lecture_transcript_to_store",
     "is_bilibili_collection_url",
     "parse_bilibili_collection_url",
+    "probe_bilibili_subtitle_source",
+    "probe_lecture_transcript_source_by_reference",
     "resolve_bilibili_page_metadata",
 ]

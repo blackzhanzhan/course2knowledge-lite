@@ -251,6 +251,7 @@ def sync_profile(
             "import_status_get",
             "lecture_transcript_import",
             "lecture_transcript_import_by_ref",
+            "lecture_transcript_source_probe",
         ],
         "writes_secret_values": False,
         "uses_codex_config": use_codex_config,

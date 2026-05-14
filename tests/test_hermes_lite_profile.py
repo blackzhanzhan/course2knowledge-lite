@@ -110,6 +110,7 @@ class HermesLiteProfileTests(unittest.TestCase):
                 "import_status_get",
                 "lecture_transcript_import",
                 "lecture_transcript_import_by_ref",
+                "lecture_transcript_source_probe",
             ],
         )
         self.assertEqual(report["sample_tool_status"], "completed")

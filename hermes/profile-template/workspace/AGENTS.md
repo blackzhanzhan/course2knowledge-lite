@@ -10,6 +10,7 @@ The profile may use only the public `course2knowledge-lite` Hermes toolset:
 - `import_status_get`
 - `lecture_transcript_import`
 - `lecture_transcript_import_by_ref`
+- `lecture_transcript_source_probe`
 
 These tools call public package APIs and a local JSON course store. They are not
 agent-managed script shortcuts.

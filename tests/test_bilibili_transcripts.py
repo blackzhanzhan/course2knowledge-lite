@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -15,6 +16,7 @@ from course2knowledge_lite_bilibili import fetch_bilibili_timed_subtitles  # noq
 from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
 from course2knowledge_lite_bilibili import import_lecture_transcript_by_reference_to_store  # noqa: E402
 from course2knowledge_lite_bilibili import import_lecture_transcript_to_store  # noqa: E402
+from course2knowledge_lite_bilibili import probe_lecture_transcript_source_by_reference  # noqa: E402
 from course2knowledge_lite_store import JsonCourseStore  # noqa: E402
 import course2knowledge_lite_bilibili.subtitles as subtitles_module  # noqa: E402
 
@@ -152,6 +154,72 @@ class BilibiliTranscriptTests(unittest.TestCase):
         self.assertEqual(result["lecture"]["sequence"], 1)
         self.assertEqual(result["segment_count"], 2)
         self.assertEqual(segments[0]["text"], "first line")
+
+    def test_probe_lecture_transcript_source_by_reference_reports_available_source(self) -> None:
+        def fake_collection_and_subtitle_fetch(api_url: str, params: dict[str, str], referer: str) -> dict[str, object]:
+            if api_url.endswith("/x/polymer/web-space/seasons_archives_list"):
+                return {
+                    "code": 0,
+                    "data": {
+                        "meta": {"name": "AI interview course"},
+                        "archives": [{"title": "Lecture 1", "bvid": "BV00000001"}],
+                        "page": {"total": 1},
+                    },
+                }
+            return fake_bilibili_fetch_json(api_url, params, referer)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = import_collection_skeleton_to_store(
+                "https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                store_root=temp_dir,
+                now="2026-05-14T00:00:00Z",
+                fetch_json=fake_collection_and_subtitle_fetch,
+            )
+            result = probe_lecture_transcript_source_by_reference(
+                store_root=temp_dir,
+                import_id=skeleton["import_status"]["import_id"],
+                lecture_sequence=1,
+                fetch_json=fake_collection_and_subtitle_fetch,
+            )
+
+        self.assertEqual(result["course_id"], skeleton["course"]["course_id"])
+        self.assertEqual(result["lecture"]["sequence"], 1)
+        self.assertTrue(result["subtitle_source"]["available"])
+        self.assertEqual(result["subtitle_source"]["selected_language"], "ai-zh")
+        self.assertNotIn("BILIBILI_COOKIE=", json.dumps(result, ensure_ascii=False))
+
+    def test_probe_lecture_transcript_source_by_reference_reports_missing_source(self) -> None:
+        def fake_missing_subtitle_fetch(api_url: str, params: dict[str, str], referer: str) -> dict[str, object]:
+            if api_url.endswith("/x/polymer/web-space/seasons_archives_list"):
+                return {
+                    "code": 0,
+                    "data": {
+                        "meta": {"name": "AI interview course"},
+                        "archives": [{"title": "Lecture 1", "bvid": "BV00000001"}],
+                        "page": {"total": 1},
+                    },
+                }
+            if api_url.endswith("/x/player/wbi/v2") or api_url.endswith("/x/player/v2"):
+                return {"code": 0, "data": {"subtitle": {"subtitles": []}}}
+            return fake_bilibili_fetch_json(api_url, params, referer)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = import_collection_skeleton_to_store(
+                "https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                store_root=temp_dir,
+                now="2026-05-14T00:00:00Z",
+                fetch_json=fake_missing_subtitle_fetch,
+            )
+            result = probe_lecture_transcript_source_by_reference(
+                store_root=temp_dir,
+                import_id=skeleton["import_status"]["import_id"],
+                lecture_sequence=1,
+                fetch_json=fake_missing_subtitle_fetch,
+            )
+
+        self.assertFalse(result["subtitle_source"]["available"])
+        self.assertEqual(result["subtitle_source"]["error_type"], "RuntimeError")
+        self.assertIn("Bilibili page did not expose subtitle metadata", result["subtitle_source"]["error"])
 
 
 if __name__ == "__main__":

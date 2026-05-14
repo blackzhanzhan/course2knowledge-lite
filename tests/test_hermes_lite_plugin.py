@@ -196,6 +196,40 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(payload["segment_count"], 2)
         self.assertEqual(payload["lecture"]["sequence"], 1)
 
+    def test_lecture_transcript_source_probe_tool_calls_package_api(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+        tools_module = sys.modules[f"{module.__name__}.tools"]
+
+        def fake_probe(*, store_root, course_id, import_id, lecture_sequence, lecture_id, source_id):
+            return {
+                "course_id": course_id,
+                "import_id": import_id,
+                "lecture": {"sequence": int(lecture_sequence), "lecture_id": lecture_id or "course_demo::lecture::001"},
+                "subtitle_source": {"available": False, "cookie_present": False},
+            }
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            tools_module,
+            "probe_lecture_transcript_source_by_reference",
+            side_effect=fake_probe,
+        ):
+            raw = ctx.tools["lecture_transcript_source_probe"]["handler"](
+                {
+                    "store_root": temp_dir,
+                    "import_id": "import_course_demo",
+                    "course_id": "course_demo",
+                    "lecture_sequence": 1,
+                }
+            )
+
+        payload = json.loads(raw)
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["tool"], "lecture_transcript_source_probe")
+        self.assertFalse(payload["subtitle_source"]["available"])
+        self.assertFalse(payload["subtitle_source"]["cookie_present"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,7 @@ from typing import Any
 from course2knowledge_lite_store import JsonCourseStore, build_course_skeleton, build_transcript_segments
 
 from .collection import JsonFetcher, expand_bilibili_collection_url
-from .subtitles import fetch_bilibili_timed_subtitles
+from .subtitles import fetch_bilibili_timed_subtitles, probe_bilibili_subtitle_source
 
 
 def import_collection_skeleton_to_store(
@@ -103,6 +103,50 @@ def import_lecture_transcript_by_reference_to_store(
         "import_id": cleaned_import_id,
         "lecture": lecture,
         "import_status": resolved_import_status,
+    }
+
+
+def probe_lecture_transcript_source_by_reference(
+    *,
+    store_root: str | Path,
+    course_id: str = "",
+    import_id: str = "",
+    lecture_sequence: int | str | None = None,
+    lecture_id: str = "",
+    source_id: str = "",
+    fetch_json: JsonFetcher | None = None,
+) -> dict[str, Any]:
+    store = JsonCourseStore(store_root)
+    resolved_course_id = str(course_id or "").strip()
+    resolved_import_status: dict[str, Any] | None = None
+
+    cleaned_import_id = str(import_id or "").strip()
+    if cleaned_import_id:
+        resolved_import_status = store.read_import_status(cleaned_import_id)
+        import_course_id = str(resolved_import_status.get("course_id", "") or "").strip()
+        if not import_course_id:
+            raise ValueError(f"Import status {cleaned_import_id} does not expose a course_id")
+        if resolved_course_id and resolved_course_id != import_course_id:
+            raise ValueError(
+                f"course_id {resolved_course_id} does not match import {cleaned_import_id} course_id {import_course_id}"
+            )
+        resolved_course_id = import_course_id
+
+    if not resolved_course_id:
+        raise ValueError("course_id or import_id is required")
+
+    lecture = _select_lecture(
+        store.read_lectures(resolved_course_id),
+        lecture_sequence=lecture_sequence,
+        lecture_id=lecture_id,
+        source_id=source_id,
+    )
+    return {
+        "course_id": resolved_course_id,
+        "import_id": cleaned_import_id,
+        "lecture": lecture,
+        "import_status": resolved_import_status,
+        "subtitle_source": probe_bilibili_subtitle_source(str(lecture.get("source_url", "") or ""), fetch_json=fetch_json),
     }
 
 
