@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+READING_PROGRESS_STATUSES = {"not_started", "reading", "read"}
+
 
 @dataclass(frozen=True)
 class CourseRecord:
@@ -95,6 +97,58 @@ class TranscriptSegmentRecord:
             "start_seconds": self.start_seconds,
             "end_seconds": self.end_seconds,
             "text": self.text,
+        }
+
+
+@dataclass(frozen=True)
+class NoteRecord:
+    note_id: str
+    course_id: str
+    lecture_id: str
+    body: str
+    created_at: str
+    updated_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "note_id": self.note_id,
+            "course_id": self.course_id,
+            "lecture_id": self.lecture_id,
+            "body": self.body,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+
+@dataclass(frozen=True)
+class BookmarkRecord:
+    bookmark_id: str
+    target_type: str
+    target_id: str
+    created_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "bookmark_id": self.bookmark_id,
+            "target_type": self.target_type,
+            "target_id": self.target_id,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass(frozen=True)
+class ReadingProgressRecord:
+    course_id: str
+    lecture_id: str
+    status: str
+    last_opened_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "course_id": self.course_id,
+            "lecture_id": self.lecture_id,
+            "status": self.status,
+            "last_opened_at": self.last_opened_at,
         }
 
 

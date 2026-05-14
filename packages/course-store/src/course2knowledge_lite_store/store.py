@@ -4,9 +4,18 @@ import json
 from pathlib import Path
 import re
 from typing import Any
+from datetime import datetime, timezone
+from uuid import uuid4
 
 from .content import build_lecture_reader_payload, search_transcript_segments
-from .models import CourseSkeleton, TranscriptSegmentRecord
+from .models import (
+    READING_PROGRESS_STATUSES,
+    BookmarkRecord,
+    CourseSkeleton,
+    NoteRecord,
+    ReadingProgressRecord,
+    TranscriptSegmentRecord,
+)
 
 _UNSAFE_FILENAME_CHARS = re.compile(r'[\\/:*?"<>|]+')
 
@@ -111,6 +120,172 @@ class JsonCourseStore:
             limit=limit,
         )
 
+    def create_note(
+        self,
+        course_id: str,
+        lecture_id: str,
+        body: str,
+        *,
+        note_id: str = "",
+        now: str = "",
+    ) -> dict[str, Any]:
+        self._ensure_lecture_exists(course_id, lecture_id)
+        cleaned_body = str(body or "").strip()
+        if not cleaned_body:
+            raise ValueError("note body is required")
+        created_at = now or self._utc_now()
+        note = NoteRecord(
+            note_id=note_id or f"note_{uuid4().hex[:12]}",
+            course_id=course_id,
+            lecture_id=lecture_id,
+            body=cleaned_body,
+            created_at=created_at,
+            updated_at=created_at,
+        )
+        notes = self.list_notes(course_id=course_id)
+        if any(str(item.get("note_id") or "") == note.note_id for item in notes):
+            raise ValueError(f"note_id already exists: {note.note_id}")
+        notes.append(note.to_dict())
+        self._write_json(self._notes_path(course_id), notes)
+        return note.to_dict()
+
+    def list_notes(self, *, course_id: str, lecture_id: str = "") -> list[dict[str, Any]]:
+        notes = self._read_json_list_if_exists(self._notes_path(course_id))
+        if lecture_id:
+            return [note for note in notes if str(note.get("lecture_id") or "") == lecture_id]
+        return notes
+
+    def update_note(
+        self,
+        course_id: str,
+        note_id: str,
+        body: str,
+        *,
+        now: str = "",
+    ) -> dict[str, Any]:
+        cleaned_note_id = str(note_id or "").strip()
+        cleaned_body = str(body or "").strip()
+        if not cleaned_note_id:
+            raise ValueError("note_id is required")
+        if not cleaned_body:
+            raise ValueError("note body is required")
+        notes = self.list_notes(course_id=course_id)
+        updated: dict[str, Any] | None = None
+        for note in notes:
+            if str(note.get("note_id") or "") != cleaned_note_id:
+                continue
+            note["body"] = cleaned_body
+            note["updated_at"] = now or self._utc_now()
+            updated = dict(note)
+            break
+        if updated is None:
+            raise ValueError(f"note not found: {cleaned_note_id}")
+        self._write_json(self._notes_path(course_id), notes)
+        return updated
+
+    def delete_note(self, course_id: str, note_id: str) -> dict[str, Any]:
+        cleaned_note_id = str(note_id or "").strip()
+        if not cleaned_note_id:
+            raise ValueError("note_id is required")
+        notes = self.list_notes(course_id=course_id)
+        kept = [note for note in notes if str(note.get("note_id") or "") != cleaned_note_id]
+        deleted = len(kept) != len(notes)
+        self._write_json(self._notes_path(course_id), kept)
+        return {"deleted": deleted, "note_id": cleaned_note_id}
+
+    def create_bookmark(
+        self,
+        course_id: str,
+        target_type: str,
+        target_id: str,
+        *,
+        bookmark_id: str = "",
+        now: str = "",
+    ) -> dict[str, Any]:
+        cleaned_type = str(target_type or "").strip()
+        cleaned_target = str(target_id or "").strip()
+        if cleaned_type not in {"lecture", "segment", "card"}:
+            raise ValueError("target_type must be one of: lecture, segment, card")
+        if not cleaned_target:
+            raise ValueError("target_id is required")
+        self._ensure_bookmark_target_exists(course_id, cleaned_type, cleaned_target)
+        created_at = now or self._utc_now()
+        bookmark = BookmarkRecord(
+            bookmark_id=bookmark_id or f"bookmark_{uuid4().hex[:12]}",
+            target_type=cleaned_type,
+            target_id=cleaned_target,
+            created_at=created_at,
+        )
+        bookmarks = self.list_bookmarks(course_id=course_id)
+        if any(str(item.get("bookmark_id") or "") == bookmark.bookmark_id for item in bookmarks):
+            raise ValueError(f"bookmark_id already exists: {bookmark.bookmark_id}")
+        bookmarks.append(bookmark.to_dict())
+        self._write_json(self._bookmarks_path(course_id), bookmarks)
+        return bookmark.to_dict()
+
+    def list_bookmarks(self, *, course_id: str, target_type: str = "") -> list[dict[str, Any]]:
+        bookmarks = self._read_json_list_if_exists(self._bookmarks_path(course_id))
+        if target_type:
+            return [item for item in bookmarks if str(item.get("target_type") or "") == target_type]
+        return bookmarks
+
+    def delete_bookmark(self, course_id: str, bookmark_id: str) -> dict[str, Any]:
+        cleaned_bookmark_id = str(bookmark_id or "").strip()
+        if not cleaned_bookmark_id:
+            raise ValueError("bookmark_id is required")
+        bookmarks = self.list_bookmarks(course_id=course_id)
+        kept = [item for item in bookmarks if str(item.get("bookmark_id") or "") != cleaned_bookmark_id]
+        deleted = len(kept) != len(bookmarks)
+        self._write_json(self._bookmarks_path(course_id), kept)
+        return {"deleted": deleted, "bookmark_id": cleaned_bookmark_id}
+
+    def set_reading_progress(
+        self,
+        course_id: str,
+        lecture_id: str,
+        status: str,
+        *,
+        now: str = "",
+    ) -> dict[str, Any]:
+        cleaned_status = str(status or "").strip()
+        if cleaned_status not in READING_PROGRESS_STATUSES:
+            allowed = ", ".join(sorted(READING_PROGRESS_STATUSES))
+            raise ValueError(f"status must be one of: {allowed}")
+        self._ensure_lecture_exists(course_id, lecture_id)
+        progress = self.list_reading_progress(course_id=course_id)
+        record = ReadingProgressRecord(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            status=cleaned_status,
+            last_opened_at=now or self._utc_now(),
+        ).to_dict()
+        replaced = False
+        for index, item in enumerate(progress):
+            if str(item.get("lecture_id") or "") == lecture_id:
+                progress[index] = record
+                replaced = True
+                break
+        if not replaced:
+            progress.append(record)
+        self._write_json(self._reading_progress_path(course_id), progress)
+        self._update_lecture_read_status(course_id, lecture_id, cleaned_status)
+        return record
+
+    def get_reading_progress(self, course_id: str, lecture_id: str) -> dict[str, Any]:
+        self._ensure_lecture_exists(course_id, lecture_id)
+        for item in self.list_reading_progress(course_id=course_id):
+            if str(item.get("lecture_id") or "") == lecture_id:
+                return dict(item)
+        return ReadingProgressRecord(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            status="not_started",
+            last_opened_at="",
+        ).to_dict()
+
+    def list_reading_progress(self, *, course_id: str) -> list[dict[str, Any]]:
+        return self._read_json_list_if_exists(self._reading_progress_path(course_id))
+
     def _select_lecture(
         self,
         course_id: str,
@@ -133,15 +308,65 @@ class JsonCourseStore:
         selector = f"lecture_id={cleaned_lecture_id}" if cleaned_lecture_id else f"lecture_sequence={parsed_sequence}"
         raise ValueError(f"No lecture matched {selector}")
 
+    def _ensure_lecture_exists(self, course_id: str, lecture_id: str) -> dict[str, Any]:
+        cleaned_lecture_id = str(lecture_id or "").strip()
+        if not cleaned_lecture_id:
+            raise ValueError("lecture_id is required")
+        return self._select_lecture(course_id, lecture_id=cleaned_lecture_id)
+
+    def _ensure_bookmark_target_exists(self, course_id: str, target_type: str, target_id: str) -> None:
+        if target_type == "lecture":
+            self._ensure_lecture_exists(course_id, target_id)
+            return
+        if target_type == "segment":
+            for segments in self.read_all_transcript_segments(course_id).values():
+                if any(str(segment.get("segment_id") or "") == target_id for segment in segments):
+                    return
+            raise ValueError(f"segment not found: {target_id}")
+
+    def _update_lecture_read_status(self, course_id: str, lecture_id: str, status: str) -> None:
+        lectures = self.read_lectures(course_id)
+        changed = False
+        for lecture in lectures:
+            if str(lecture.get("lecture_id") or "") == lecture_id:
+                lecture["read_status"] = status
+                changed = True
+                break
+        if changed:
+            self._write_json(self.root / "courses" / course_id / "lectures.json", lectures)
+
+    def _notes_path(self, course_id: str) -> Path:
+        return self.root / "courses" / course_id / "notes.json"
+
+    def _bookmarks_path(self, course_id: str) -> Path:
+        return self.root / "courses" / course_id / "bookmarks.json"
+
+    def _reading_progress_path(self, course_id: str) -> Path:
+        return self.root / "courses" / course_id / "reading_progress.json"
+
     @staticmethod
     def _write_json(path: Path, payload: Any) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     @staticmethod
     def _read_json(path: Path) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
 
+    @classmethod
+    def _read_json_list_if_exists(cls, path: Path) -> list[dict[str, Any]]:
+        if not path.exists():
+            return []
+        payload = cls._read_json(path)
+        if not isinstance(payload, list):
+            raise ValueError(f"JSON payload is not a list: {path}")
+        return [dict(item) for item in payload if isinstance(item, dict)]
+
     @staticmethod
     def _safe_filename(raw_name: str) -> str:
         cleaned = _UNSAFE_FILENAME_CHARS.sub("_", str(raw_name or "").strip()).strip(" ._")
         return cleaned or "untitled"
+
+    @staticmethod
+    def _utc_now() -> str:
+        return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")

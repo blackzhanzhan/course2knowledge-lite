@@ -139,6 +139,102 @@ class CourseStoreSkeletonTests(unittest.TestCase):
         self.assertEqual(results[0]["citation"]["segment_id"], f"{lecture_id}::manual::00001")
         self.assertIn("RAG", results[0]["snippet"])
 
+    def test_learning_state_round_trips_notes_bookmarks_and_progress(self) -> None:
+        skeleton = build_course_skeleton(
+            title="AI interview course",
+            source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+            video_refs=[
+                {
+                    "sequence": 1,
+                    "bvid": "BV00000001",
+                    "title": "RAG and Agent",
+                    "source_url": "https://www.bilibili.com/video/BV00000001",
+                }
+            ],
+            now="2026-05-14T00:00:00Z",
+        )
+        lecture = skeleton.lectures[0]
+        segment_id = f"{lecture.lecture_id}::manual::00001"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=segment_id,
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves course evidence, while an Agent plans actions and calls tools.",
+                    )
+                ],
+            )
+
+            note = store.create_note(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                "RAG uses retrieved evidence.",
+                note_id="note_test",
+                now="2026-05-14T01:00:00Z",
+            )
+            updated_note = store.update_note(
+                skeleton.course.course_id,
+                "note_test",
+                "RAG grounds answers in retrieved evidence.",
+                now="2026-05-14T01:05:00Z",
+            )
+            bookmark = store.create_bookmark(
+                skeleton.course.course_id,
+                "segment",
+                segment_id,
+                bookmark_id="bookmark_test",
+                now="2026-05-14T01:10:00Z",
+            )
+            progress = store.set_reading_progress(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                "read",
+                now="2026-05-14T01:15:00Z",
+            )
+            persisted = JsonCourseStore(temp_dir)
+            persisted_notes = persisted.list_notes(course_id=skeleton.course.course_id, lecture_id=lecture.lecture_id)
+            persisted_bookmarks = persisted.list_bookmarks(course_id=skeleton.course.course_id)
+            persisted_progress = persisted.get_reading_progress(skeleton.course.course_id, lecture.lecture_id)
+            lectures = persisted.read_lectures(skeleton.course.course_id)
+
+        self.assertEqual(note["note_id"], "note_test")
+        self.assertEqual(updated_note["body"], "RAG grounds answers in retrieved evidence.")
+        self.assertEqual(bookmark["target_id"], segment_id)
+        self.assertEqual(progress["status"], "read")
+        self.assertEqual(len(persisted_notes), 1)
+        self.assertEqual(persisted_notes[0]["updated_at"], "2026-05-14T01:05:00Z")
+        self.assertEqual(len(persisted_bookmarks), 1)
+        self.assertEqual(persisted_progress["status"], "read")
+        self.assertEqual(lectures[0]["read_status"], "read")
+
+    def test_reading_progress_rejects_unknown_status(self) -> None:
+        skeleton = build_course_skeleton(
+            title="AI interview course",
+            source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+            video_refs=[
+                {
+                    "sequence": 1,
+                    "bvid": "BV00000001",
+                    "title": "RAG and Agent",
+                    "source_url": "https://www.bilibili.com/video/BV00000001",
+                }
+            ],
+            now="2026-05-14T00:00:00Z",
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            with self.assertRaisesRegex(ValueError, "status must be one of"):
+                store.set_reading_progress(skeleton.course.course_id, skeleton.lectures[0].lecture_id, "mastered")
+
 
 if __name__ == "__main__":
     unittest.main()
