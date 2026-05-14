@@ -5,3 +5,9 @@ Lite.
 
 It must not contain production credentials, protected orchestration files, or
 protected production evidence.
+
+## Plugin
+
+`plugins/course2knowledge-lite/` is the public Hermes-native tool surface. It
+registers only Lite tools that call public package APIs and a local JSON course
+store.
