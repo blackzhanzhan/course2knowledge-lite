@@ -12,6 +12,8 @@ course status, and ask questions about course content from Feishu.
 - import completed
 - course list
 - lecture list
+- transcript coverage summary
+- source-linked knowledge cards
 - course-content answer with citations
 - missing-evidence clarification
 - lightweight progress acknowledgement
@@ -51,6 +53,10 @@ Tools:
 - `lecture_transcript_import_by_ref`
 - `lecture_transcript_source_probe`
 - `manual_transcript_import`
+- `course_transcript_coverage_get`
+- `knowledge_cards_generate`
+- `knowledge_card_list`
+- `knowledge_card_get`
 - `lecture_reader_get`
 - `course_search`
 - `course_question_answer`
@@ -70,6 +76,16 @@ mutate protected learning-state loops.
 
 Live Feishu/Lark gateway validation belongs to the public Lite profile
 acceptance contract.
+
+## Rapid Message Behavior
+
+If the gateway batches rapid Feishu messages into one assistant turn, Lite keeps
+that as gateway behavior and handles it explicitly at the profile layer: the
+assistant must open with
+"BATCH: received multiple questions; answering in order. 收到多条快速问题，我会按收到顺序逐条回答。",
+answer explicit labels in order (`主问题`, `Q1`, `追问1`, `Q2`, `追问2`, `Q3`,
+`追问3`) before falling back to line order, and keep transcript citations scoped
+to each question.
 
 ## Example User Requests
 

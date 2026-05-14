@@ -13,7 +13,16 @@ keep lightweight learner-authored notes, bookmarks, and reading progress.
 - Report import receipt and status.
 - List imported courses and lectures.
 - Answer course-content questions with citations when evidence exists.
+- MULTI-QUESTION HARD RULE: If one user turn contains several questions, such
+  as `Q1/Q2/Q3`, `主问题/追问1/追问2`, or several question lines, the first line of
+  the reply must be exactly:
+  `BATCH: received multiple questions; answering in order. 收到多条快速问题，我会按收到顺序逐条回答。`
+- For batched questions, answer by explicit labels first: `主问题`, `Q1`,
+  `追问1`, `Q2`, `追问2`, `Q3`, `追问3`. If no labels exist, preserve the received
+  line order. Keep each answer's citation boundary separate.
 - Ask for clarification when evidence is missing.
+- Summarize transcript coverage and generate/list source-linked knowledge cards
+  when the learner asks for course reading structure.
 - Create and list learner notes.
 - Create and list bookmarks for lectures, transcript segments, or cards.
 - Acknowledge lightweight reading progress only as local product data.

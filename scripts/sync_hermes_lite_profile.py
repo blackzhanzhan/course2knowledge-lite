@@ -16,6 +16,30 @@ PLUGIN_ROOT = REPO_ROOT / "hermes" / "plugins"
 PLUGIN_NAME = "course2knowledge-lite"
 METADATA_FILE = "course2knowledge_lite_repo_root.json"
 DEFAULT_PROFILE = "course2knowledge-lite"
+ENABLED_TOOLS = [
+    "collection_import_start",
+    "import_status_get",
+    "lecture_transcript_import",
+    "lecture_transcript_import_by_ref",
+    "lecture_transcript_source_probe",
+    "manual_transcript_import",
+    "course_transcript_coverage_get",
+    "knowledge_cards_generate",
+    "knowledge_card_list",
+    "knowledge_card_get",
+    "lecture_reader_get",
+    "course_search",
+    "course_question_answer",
+    "note_create",
+    "note_list",
+    "note_update",
+    "note_delete",
+    "bookmark_create",
+    "bookmark_list",
+    "bookmark_delete",
+    "reading_progress_set",
+    "reading_progress_get",
+]
 
 
 BASE_CONFIG: dict[str, Any] = {
@@ -246,26 +270,7 @@ def sync_profile(
         "plugin_target_root": str(target_root / "plugins" / PLUGIN_NAME),
         "config_target": str(target_root / "config.yaml"),
         "toolset": PLUGIN_NAME,
-        "enabled_tools": [
-            "collection_import_start",
-            "import_status_get",
-            "lecture_transcript_import",
-            "lecture_transcript_import_by_ref",
-            "lecture_transcript_source_probe",
-            "manual_transcript_import",
-            "lecture_reader_get",
-            "course_search",
-            "course_question_answer",
-            "note_create",
-            "note_list",
-            "note_update",
-            "note_delete",
-            "bookmark_create",
-            "bookmark_list",
-            "bookmark_delete",
-            "reading_progress_set",
-            "reading_progress_get",
-        ],
+        "enabled_tools": ENABLED_TOOLS,
         "writes_secret_values": False,
         "uses_codex_config": use_codex_config,
         "status": "dry_run",

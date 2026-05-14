@@ -42,6 +42,11 @@ class HermesLiteProfileTests(unittest.TestCase):
         )
         self.assertIn("course2knowledge-lite", combined)
         self.assertIn("collection_import_start", combined)
+        self.assertIn("course_transcript_coverage_get", combined)
+        self.assertIn("knowledge_cards_generate", combined)
+        self.assertIn("MULTI-QUESTION HARD RULE", combined)
+        self.assertIn("BATCH: received multiple questions; answering in order.", combined)
+        self.assertIn("收到多条快速问题，我会按收到顺序逐条回答。", combined)
         blocked_terms = [
             "learning" + "-os-importer",
             "studio" + "_office_teaching_route",
@@ -85,6 +90,7 @@ class HermesLiteProfileTests(unittest.TestCase):
             self.assertIn("course2knowledge-lite", config_text)
             self.assertIn("COURSE2KNOWLEDGE_TEST_KEY", config_text)
             self.assertFalse((target / ".env").exists())
+            self.assertIn("knowledge_cards_generate", report["enabled_tools"])
 
     def test_synced_profile_plugin_registers_tools_from_profile_copy(self) -> None:
         sync_module = load_sync_module()
