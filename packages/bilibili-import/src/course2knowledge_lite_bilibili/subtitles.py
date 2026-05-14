@@ -162,7 +162,14 @@ def _fetch_subtitle_entries(
         subtitles = subtitle_payload.get("subtitles") if isinstance(subtitle_payload, Mapping) else []
         if isinstance(subtitles, list) and subtitles:
             return [item for item in subtitles if isinstance(item, Mapping)]
-    raise RuntimeError(first_error or "Bilibili page did not expose subtitle metadata")
+    raise RuntimeError(
+        first_error
+        or (
+            "Bilibili page did not expose subtitle metadata. If this video shows subtitles in a browser, "
+            "set BILIBILI_COOKIE in the local runtime and retry. Public Lite does not use private ASR or non-Lite "
+            "import chains as a fallback."
+        )
+    )
 
 
 def _resolve_ai_subtitle_url(

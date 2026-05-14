@@ -9,6 +9,7 @@ The profile may use only the public `course2knowledge-lite` Hermes toolset:
 - `collection_import_start`
 - `import_status_get`
 - `lecture_transcript_import`
+- `lecture_transcript_import_by_ref`
 
 These tools call public package APIs and a local JSON course store. They are not
 agent-managed script shortcuts.
@@ -39,4 +40,3 @@ Not allowed:
 Answer as a small course assistant. Keep user-facing text plain and grounded in
 tool results. If evidence is missing, say what is missing and ask for the next
 usable input.
-

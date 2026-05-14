@@ -12,6 +12,8 @@ sys.path.insert(0, str(ROOT / "packages" / "bilibili-import" / "src"))
 sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 
 from course2knowledge_lite_bilibili import fetch_bilibili_timed_subtitles  # noqa: E402
+from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
+from course2knowledge_lite_bilibili import import_lecture_transcript_by_reference_to_store  # noqa: E402
 from course2knowledge_lite_bilibili import import_lecture_transcript_to_store  # noqa: E402
 from course2knowledge_lite_store import JsonCourseStore  # noqa: E402
 import course2knowledge_lite_bilibili.subtitles as subtitles_module  # noqa: E402
@@ -113,6 +115,43 @@ class BilibiliTranscriptTests(unittest.TestCase):
         self.assertTrue(result["path"].endswith(".segments.json"))
         self.assertEqual(segments[0]["segment_id"], "course_demo::lecture::001::seg::00001")
         self.assertEqual(segments[1]["text"], "second line")
+
+    def test_import_lecture_transcript_by_reference_resolves_import_sequence(self) -> None:
+        def fake_collection_and_subtitle_fetch(api_url: str, params: dict[str, str], referer: str) -> dict[str, object]:
+            if api_url.endswith("/x/polymer/web-space/seasons_archives_list"):
+                return {
+                    "code": 0,
+                    "data": {
+                        "meta": {"name": "AI interview course"},
+                        "archives": [{"title": "Lecture 1", "bvid": "BV00000001"}],
+                        "page": {"total": 1},
+                    },
+                }
+            return fake_bilibili_fetch_json(api_url, params, referer)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = import_collection_skeleton_to_store(
+                "https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                store_root=temp_dir,
+                now="2026-05-14T00:00:00Z",
+                fetch_json=fake_collection_and_subtitle_fetch,
+            )
+            result = import_lecture_transcript_by_reference_to_store(
+                store_root=temp_dir,
+                import_id=skeleton["import_status"]["import_id"],
+                lecture_sequence=1,
+                fetch_json=fake_collection_and_subtitle_fetch,
+            )
+            segments = JsonCourseStore(temp_dir).read_transcript_segments(
+                skeleton["course"]["course_id"],
+                result["lecture_id"],
+            )
+
+        self.assertEqual(result["course_id"], skeleton["course"]["course_id"])
+        self.assertEqual(result["import_id"], skeleton["import_status"]["import_id"])
+        self.assertEqual(result["lecture"]["sequence"], 1)
+        self.assertEqual(result["segment_count"], 2)
+        self.assertEqual(segments[0]["text"], "first line")
 
 
 if __name__ == "__main__":

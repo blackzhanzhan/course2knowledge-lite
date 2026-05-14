@@ -15,6 +15,7 @@ EXPECTED_TOOLS = [
     "collection_import_start",
     "import_status_get",
     "lecture_transcript_import",
+    "lecture_transcript_import_by_ref",
 ]
 
 
@@ -102,4 +103,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

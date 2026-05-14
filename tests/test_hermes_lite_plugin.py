@@ -159,6 +159,43 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(payload["segment_count"], 2)
         self.assertEqual(payload["source_id"], "BV00000001")
 
+    def test_lecture_transcript_by_ref_tool_calls_package_api(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+        tools_module = sys.modules[f"{module.__name__}.tools"]
+
+        def fake_import_transcript_by_ref(*, store_root, course_id, import_id, lecture_sequence, lecture_id, source_id):
+            return {
+                "course_id": course_id,
+                "import_id": import_id,
+                "lecture_id": lecture_id or "course_demo::lecture::001",
+                "source_id": source_id or "BV00000001",
+                "segment_count": 2,
+                "path": str(Path(store_root) / "segments.json"),
+                "lecture": {"sequence": int(lecture_sequence), "title": "Lecture 1"},
+            }
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            tools_module,
+            "import_lecture_transcript_by_reference_to_store",
+            side_effect=fake_import_transcript_by_ref,
+        ):
+            raw = ctx.tools["lecture_transcript_import_by_ref"]["handler"](
+                {
+                    "store_root": temp_dir,
+                    "import_id": "import_course_demo",
+                    "course_id": "course_demo",
+                    "lecture_sequence": 1,
+                }
+            )
+
+        payload = json.loads(raw)
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["tool"], "lecture_transcript_import_by_ref")
+        self.assertEqual(payload["segment_count"], 2)
+        self.assertEqual(payload["lecture"]["sequence"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

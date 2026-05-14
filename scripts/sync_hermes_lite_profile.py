@@ -250,6 +250,7 @@ def sync_profile(
             "collection_import_start",
             "import_status_get",
             "lecture_transcript_import",
+            "lecture_transcript_import_by_ref",
         ],
         "writes_secret_values": False,
         "uses_codex_config": use_codex_config,
@@ -304,4 +305,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -8,6 +8,7 @@ from typing import Any
 from .runtime import resolve_repo_root
 from course2knowledge_lite_bilibili import (
     import_collection_skeleton_to_store,
+    import_lecture_transcript_by_reference_to_store,
     import_lecture_transcript_to_store,
 )
 from course2knowledge_lite_store import JsonCourseStore
@@ -18,6 +19,7 @@ TOOL_NAMES = [
     "collection_import_start",
     "import_status_get",
     "lecture_transcript_import",
+    "lecture_transcript_import_by_ref",
 ]
 
 
@@ -85,6 +87,21 @@ def _lecture_transcript_import_handler(arguments: dict[str, Any], **_registry_kw
         return _tool_error("lecture_transcript_import", exc)
 
 
+def _lecture_transcript_import_by_ref_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        result = import_lecture_transcript_by_reference_to_store(
+            store_root=_store_root(arguments),
+            course_id=str(arguments.get("course_id", "") or "").strip(),
+            import_id=str(arguments.get("import_id", "") or "").strip(),
+            lecture_sequence=arguments.get("lecture_sequence"),
+            lecture_id=str(arguments.get("lecture_id", "") or "").strip(),
+            source_id=str(arguments.get("source_id", "") or "").strip(),
+        )
+        return _json_response({"status": "completed", "tool": "lecture_transcript_import_by_ref", **result})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("lecture_transcript_import_by_ref", exc)
+
+
 def _collection_import_start_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -118,6 +135,27 @@ def _lecture_transcript_import_schema() -> dict[str, Any]:
             "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
         },
         "required": ["course_id", "lecture"],
+        "additionalProperties": False,
+    }
+
+
+def _lecture_transcript_import_by_ref_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "import_id": {
+                "type": ["string", "null"],
+                "description": "Import receipt id returned by collection_import_start.",
+            },
+            "course_id": {"type": ["string", "null"], "description": "Local course id."},
+            "lecture_sequence": {
+                "type": ["integer", "string", "null"],
+                "description": "1-based lecture sequence number in the course.",
+            },
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
+            "source_id": {"type": ["string", "null"], "description": "Optional Bilibili BV id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
         "additionalProperties": False,
     }
 
@@ -163,4 +201,15 @@ def register_course2knowledge_lite_tools(ctx: Any) -> None:
         ),
         handler=_lecture_transcript_import_handler,
         description="Import one public Lite lecture transcript.",
+    )
+    ctx.register_tool(
+        name="lecture_transcript_import_by_ref",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "lecture_transcript_import_by_ref",
+            "Import one Bilibili lecture transcript by import id, course id, sequence, lecture id, or BV id.",
+            _lecture_transcript_import_by_ref_schema(),
+        ),
+        handler=_lecture_transcript_import_by_ref_handler,
+        description="Import one public Lite lecture transcript by course reference.",
     )

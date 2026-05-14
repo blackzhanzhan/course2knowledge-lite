@@ -48,9 +48,10 @@ Tools:
 - `collection_import_start`
 - `import_status_get`
 - `lecture_transcript_import`
+- `lecture_transcript_import_by_ref`
 
 The tools call public package APIs and write to a local JSON course store. They
-must not shell out to ad hoc scripts, read private mother-repo profiles, or
+must not shell out to ad hoc scripts, read unrelated private profiles, or
 mutate protected learning-state loops.
 
 Live Feishu/Lark gateway validation belongs to the public Lite profile

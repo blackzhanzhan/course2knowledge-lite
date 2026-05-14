@@ -33,9 +33,9 @@ Use the `course2knowledge-lite` toolset for public Lite behavior:
 - `collection_import_start`
 - `import_status_get`
 - `lecture_transcript_import`
+- `lecture_transcript_import_by_ref`
 
 The route is:
 
 Feishu/Hermes Lite -> Hermes native tool -> public package API -> local JSON
 course store.
-

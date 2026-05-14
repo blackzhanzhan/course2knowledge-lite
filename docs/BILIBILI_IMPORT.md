@@ -56,6 +56,12 @@ For a single lecture video URL, the importer can fetch available Bilibili
 subtitles and write timestamped `TRANSCRIPT_SEGMENT` records to the local course
 store.
 
+The Feishu/Hermes Lite frontdesk can also import a lecture transcript by local
+course reference. After a collection import returns an `import_id`, the user may
+ask for a sequence such as "import the transcript for lecture 1". The frontdesk
+uses `lecture_transcript_import_by_ref` to resolve the stored lecture from the
+child local JSON store and then runs the normal single-video transcript handoff.
+
 Some Bilibili subtitle metadata is visible only to an authenticated browser
 session. Public Lite never stores credentials in the repository. If a course
 requires authenticated subtitles, set `BILIBILI_COOKIE` in the local runtime

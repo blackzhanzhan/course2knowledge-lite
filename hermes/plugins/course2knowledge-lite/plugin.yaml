@@ -5,3 +5,4 @@ provides_tools:
   - collection_import_start
   - import_status_get
   - lecture_transcript_import
+  - lecture_transcript_import_by_ref

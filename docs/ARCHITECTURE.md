@@ -115,7 +115,7 @@ Web or Feishu
 
 ## Architecture Invariants
 
-- The public repository is independent from the private mother repository.
+- The public repository is independent from unrelated private development workspaces.
 - No protected production evidence is required to run the public product.
 - No protected orchestration or private study loop is copied here.
 - Bilibili import is real; other platform adapters are out of scope.

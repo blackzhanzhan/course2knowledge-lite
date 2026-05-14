@@ -54,3 +54,97 @@ def import_lecture_transcript_to_store(
         "segment_count": len(segments),
         "path": path,
     }
+
+
+def import_lecture_transcript_by_reference_to_store(
+    *,
+    store_root: str | Path,
+    course_id: str = "",
+    import_id: str = "",
+    lecture_sequence: int | str | None = None,
+    lecture_id: str = "",
+    source_id: str = "",
+    fetch_json: JsonFetcher | None = None,
+) -> dict[str, Any]:
+    store = JsonCourseStore(store_root)
+    resolved_course_id = str(course_id or "").strip()
+    resolved_import_status: dict[str, Any] | None = None
+
+    cleaned_import_id = str(import_id or "").strip()
+    if cleaned_import_id:
+        resolved_import_status = store.read_import_status(cleaned_import_id)
+        import_course_id = str(resolved_import_status.get("course_id", "") or "").strip()
+        if not import_course_id:
+            raise ValueError(f"Import status {cleaned_import_id} does not expose a course_id")
+        if resolved_course_id and resolved_course_id != import_course_id:
+            raise ValueError(
+                f"course_id {resolved_course_id} does not match import {cleaned_import_id} course_id {import_course_id}"
+            )
+        resolved_course_id = import_course_id
+
+    if not resolved_course_id:
+        raise ValueError("course_id or import_id is required")
+
+    lecture = _select_lecture(
+        store.read_lectures(resolved_course_id),
+        lecture_sequence=lecture_sequence,
+        lecture_id=lecture_id,
+        source_id=source_id,
+    )
+    result = import_lecture_transcript_to_store(
+        store_root=store_root,
+        course_id=resolved_course_id,
+        lecture=lecture,
+        fetch_json=fetch_json,
+    )
+    return {
+        **result,
+        "course_id": resolved_course_id,
+        "import_id": cleaned_import_id,
+        "lecture": lecture,
+        "import_status": resolved_import_status,
+    }
+
+
+def _select_lecture(
+    lectures: list[dict[str, Any]],
+    *,
+    lecture_sequence: int | str | None = None,
+    lecture_id: str = "",
+    source_id: str = "",
+) -> dict[str, Any]:
+    cleaned_lecture_id = str(lecture_id or "").strip()
+    cleaned_source_id = str(source_id or "").strip()
+    parsed_sequence: int | None = None
+    if lecture_sequence not in (None, ""):
+        try:
+            parsed_sequence = int(lecture_sequence)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"lecture_sequence must be an integer: {lecture_sequence}") from exc
+        if parsed_sequence <= 0:
+            raise ValueError(f"lecture_sequence must be positive: {parsed_sequence}")
+
+    if not any((cleaned_lecture_id, cleaned_source_id, parsed_sequence is not None)):
+        raise ValueError("lecture_sequence, lecture_id, or source_id is required")
+
+    for lecture in lectures:
+        if cleaned_lecture_id and str(lecture.get("lecture_id", "") or "").strip() == cleaned_lecture_id:
+            return dict(lecture)
+        if cleaned_source_id and str(lecture.get("source_id", "") or "").strip() == cleaned_source_id:
+            return dict(lecture)
+        if parsed_sequence is not None:
+            try:
+                sequence = int(lecture.get("sequence", 0) or 0)
+            except (TypeError, ValueError):
+                sequence = 0
+            if sequence == parsed_sequence:
+                return dict(lecture)
+
+    selectors: list[str] = []
+    if parsed_sequence is not None:
+        selectors.append(f"sequence={parsed_sequence}")
+    if cleaned_lecture_id:
+        selectors.append(f"lecture_id={cleaned_lecture_id}")
+    if cleaned_source_id:
+        selectors.append(f"source_id={cleaned_source_id}")
+    raise ValueError(f"No lecture matched {'; '.join(selectors)}")
