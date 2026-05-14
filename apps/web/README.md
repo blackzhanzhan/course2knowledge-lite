@@ -15,3 +15,9 @@ Run:
 ```bash
 python apps/web/server.py --port 3014
 ```
+
+Package-style run:
+
+```bash
+course2knowledge-lite web
+```

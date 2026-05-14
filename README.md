@@ -11,6 +11,21 @@ progress.
 This repository is intentionally focused. It is a course knowledge product, not
 a full learning coach.
 
+## Quick Start
+
+```bash
+pip install -e .
+course2knowledge-lite --help
+course2knowledge-lite web
+```
+
+To sync the public Hermes profile:
+
+```bash
+course2knowledge-lite sync-profile --apply --create-profile
+course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profiles\\course2knowledge-lite
+```
+
 ## What It Does
 
 - Import Bilibili course videos and transcripts.
@@ -43,6 +58,8 @@ Bilibili URL
 ## Repository Layout
 
 ```text
+pyproject.toml     Installable public package entry
+src/               CLI and installer shims
 apps/
   web/              Web Lite workspace
   feishu-lite/      Feishu/Hermes Lite chat entry
@@ -71,3 +88,4 @@ will arrive in later slices.
 - [Bilibili Import](docs/BILIBILI_IMPORT.md)
 - [Data Model](docs/DATA_MODEL.md)
 - [Testing](docs/TESTING.md)
+- [Deployment](docs/DEPLOYMENT.md)

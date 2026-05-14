@@ -13,3 +13,9 @@ Current native tool surface:
 
 This is a Hermes-native tool boundary. The public app should call tools through
 Hermes instead of asking an agent to run scripts.
+
+Recommended setup:
+
+```bash
+course2knowledge-lite sync-profile --apply --create-profile
+```

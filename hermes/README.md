@@ -50,3 +50,10 @@ Use `scripts/sync_hermes_lite_profile.py` to copy the template and plugin into a
 local Hermes profile. The script may read model endpoint settings from Codex
 config when `--use-codex-config` is passed, but it never writes secret values to
 the repository.
+
+For package-style setup, the top-level CLI also exposes:
+
+```bash
+course2knowledge-lite sync-profile --apply --create-profile
+course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profiles\\course2knowledge-lite
+```
