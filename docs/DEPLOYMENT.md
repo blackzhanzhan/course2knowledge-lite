@@ -33,7 +33,7 @@ course2knowledge-lite sync-profile --apply --create-profile
 6. Run the Hermes profile smoke test:
 
 ```bash
-course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profiles\\course2knowledge-lite
+course2knowledge-lite smoke-profile --profile-root <profile-root>
 ```
 
 ## Deployment Modes
@@ -71,11 +71,11 @@ store. They are static documentation assets, not runtime data.
 - Docker.
 - Kubernetes.
 - A remote backend.
-- Private Learning OS runtime files.
+- Private parent-runtime files.
 - Private production credentials or sessions.
 
 ## Notes
 
 - The Web workspace reads the local course store only.
 - Hermes profile sync copies the public profile template and plugin only.
-- If you are on Windows PowerShell, replace `%USERPROFILE%` with `$env:USERPROFILE`.
+- Use the profile path printed by `sync-profile` as `<profile-root>`.

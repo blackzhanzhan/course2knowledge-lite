@@ -34,37 +34,45 @@ the conversational workspace. Both consume the same public course store.
      store, Web Lite, and Feishu/Hermes Lite.
    - Primary evidence slots: Web overview and dual-frontdesk boundary proof.
 
-2. **Walkthrough**
+2. **Demo Video**
+   - Embed the public short demo video after the system section.
+   - Show the same case chain as the screenshot gallery: import receipt,
+     lecture expansion, transcript segments, Web reader/search/Q&A, cards, and
+     Hermes Lite boundary proof.
+   - Link directly to `DEMO_VIDEO.md` and `DEMO_PRIVACY.md` so the showcase
+     keeps its technical-dossier responsibility.
+
+3. **Walkthrough**
    - Six-step flow: import collection, expand lectures, capture evidence, build
      course store, read on Web, ask from Feishu.
    - This section explains the runtime sequence before individual screenshots.
 
-3. **Frontdesks**
+4. **Frontdesks**
    - Web Lite: deep reading, search, annotation, citation inspection.
    - Feishu/Hermes Lite: ask, lookup, status, citation-based Q&A in chat.
    - The section must not present Feishu as a footnote or optional afterthought.
 
-4. **Module Evidence Plan**
+5. **Module Evidence Plan**
    - The current page includes 15 real screenshots or evidence captures.
    - The shot set keeps stable `SHOT-*` IDs.
    - `SHOT-02` remains a future safe Feishu chat capture; it is not shown with a
      private production substitute.
    - Detailed capture contract: [`SHOWCASE_SHOT_LIST.md`](SHOWCASE_SHOT_LIST.md).
 
-5. **Product Thought**
+6. **Product Thought**
    - Express the core idea: course videos are not lacking content; the content is
      trapped in the timeline.
    - Lite turns the timeline into evidence, evidence into a course store, and the
      store into two user-facing entry points.
 
-6. **Public Boundary**
+7. **Public Boundary**
    - Included: Bilibili import, transcript evidence, course store, Web Lite,
      Feishu/Hermes Lite, citation Q&A, notes, bookmarks, progress.
    - Removed: planning layer, feedback layer, exercise review, learner scoring,
      private orchestration, production identifiers, private logs.
    - The public version is a deliberately trimmed loop, not a thin demo.
 
-7. **Technical Dossier**
+8. **Technical Dossier**
    - Demo video: [`DEMO_VIDEO.md`](DEMO_VIDEO.md)
    - Privacy and masking rules: [`DEMO_PRIVACY.md`](DEMO_PRIVACY.md)
    - Product boundary: [`PRODUCT_BOUNDARY.md`](PRODUCT_BOUNDARY.md)
@@ -76,7 +84,7 @@ the conversational workspace. Both consume the same public course store.
    - Testing: [`TESTING.md`](TESTING.md)
    - Deployment: [`DEPLOYMENT.md`](DEPLOYMENT.md)
 
-8. **Deploy**
+9. **Deploy**
    - Minimal local install path.
    - Web Lite command.
    - Optional public Hermes profile sync and smoke command.
@@ -114,6 +122,12 @@ rules in [`DEMO_PRIVACY.md`](DEMO_PRIVACY.md). The short homepage video should
 reuse the same public course case as the screenshot gallery: import receipt,
 lecture expansion, transcript segments, Web reader/search/Q&A, knowledge cards,
 and Hermes Lite boundary proof. Raw footage must stay out of git.
+
+Committed public homepage assets:
+
+- `docs/assets/demo-video/course2knowledge-lite-demo.webm`
+- `docs/assets/demo-video/course2knowledge-lite-demo.mp4`
+- `docs/assets/demo-video/poster.png`
 
 ## GitHub Pages Setup
 

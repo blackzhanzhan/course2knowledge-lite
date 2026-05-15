@@ -42,7 +42,7 @@ It exposes:
 - `/api/progress`
 
 The page reads the same child local JSON store as Hermes Lite and does not call
-private Learning OS routes.
+private parent-runtime routes.
 
 ## Explicitly Out Of Scope
 

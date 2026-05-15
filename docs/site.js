@@ -1,6 +1,7 @@
 (function () {
   const english = {
     "nav.system": "System",
+    "nav.demo": "Demo",
     "nav.walkthrough": "Flow",
     "nav.frontdesks": "Frontdesks",
     "nav.evidence": "Case",
@@ -23,6 +24,19 @@
       "SHOT-01 Web Lite overview. A real local run showing reading, search, Q&A, notes, bookmarks, and progress.",
     "hero.dualShot":
       "SHOT-03 dual-frontdesk boundary. The Web side is a real frontend capture; Hermes is public profile/tool smoke evidence, not a production Feishu chat export.",
+    "demo.kicker": "Public demo video",
+    "demo.title":
+      "In eighty seconds: import, evidence, Q&A, and dual frontdesks.",
+    "demo.lead":
+      "This video is cut from real public-child-repo screenshots and local run assets: collection import, lecture expansion, transcript evidence, Web reading, cited Q&A, knowledge cards, and Hermes Lite smoke all come from the same public case.",
+    "demo.videoFallback": "Open the demo video",
+    "demo.railLabel": "Video evidence",
+    "demo.fact.duration":
+      "Short silent cut for the GitHub Pages homepage, placed after the system view.",
+    "demo.fact.assets":
+      "Covers import, store, reader, search, Q&A, cards, notes, bookmarks, progress, and Hermes smoke.",
+    "demo.fact.private":
+      "Contains no private parent-runtime evidence, production Feishu chat, private logs, or personal study positioning.",
     "walk.kicker": "Real case flow",
     "walk.title": "From one collection URL to two usable learning entries.",
     "walk.lead":
@@ -156,6 +170,8 @@
     "boundary.out6": "Protected closed-loop automation",
     "dossier.kicker": "Technical dossier",
     "dossier.title": "The showcase site is also the engineering document entry.",
+    "doc.demoVideo": "Script, storyboard, and acceptance rules",
+    "doc.demoPrivacy": "Public media privacy boundary",
     "doc.boundary": "Public boundary and trimming rationale",
     "doc.arch": "Module boundaries and runtime flow",
     "doc.data": "Course, Lecture, Segment, Card, and state",

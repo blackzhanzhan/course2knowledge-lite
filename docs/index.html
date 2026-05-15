@@ -18,6 +18,7 @@
       </a>
       <nav class="nav" aria-label="Site sections">
         <a href="#system" data-i18n="nav.system">系统</a>
+        <a href="#demo" data-i18n="nav.demo">演示</a>
         <a href="#walkthrough" data-i18n="nav.walkthrough">流程</a>
         <a href="#frontdesks" data-i18n="nav.frontdesks">双前台</a>
         <a href="#evidence" data-i18n="nav.evidence">案例</a>
@@ -93,6 +94,52 @@
               SHOT-03 双前台边界。Web 是真实前台截图；Hermes 是公开 profile/tool smoke，不冒充生产飞书聊天。
             </figcaption>
           </figure>
+        </div>
+      </section>
+
+      <section id="demo" class="section demo-video">
+        <div class="section-title demo-heading">
+          <p class="kicker" data-i18n="demo.kicker">公开演示视频</p>
+          <h2 data-i18n="demo.title">一分二十秒，把导入、证据、问答和双前台走一遍。</h2>
+          <p data-i18n="demo.lead">
+            这段视频由公开子仓库的真实截图和本地运行素材剪成：合集导入、课程展开、转写证据、Web 深读、引用问答、知识卡片、Hermes Lite smoke 都来自同一条公开案例链路。
+          </p>
+        </div>
+        <div class="demo-stage" aria-label="Course2Knowledge Lite public demo video">
+          <div class="demo-media">
+            <video
+              controls
+              playsinline
+              preload="metadata"
+              poster="assets/demo-video/poster.png"
+              aria-label="Course2Knowledge Lite public demo video"
+            >
+              <source src="assets/demo-video/course2knowledge-lite-demo.webm" type="video/webm" />
+              <source src="assets/demo-video/course2knowledge-lite-demo.mp4" type="video/mp4" />
+              <a href="assets/demo-video/course2knowledge-lite-demo.mp4" data-i18n="demo.videoFallback">打开演示视频</a>
+            </video>
+          </div>
+          <aside class="demo-rail" aria-label="Demo video evidence summary">
+            <p class="rail-label" data-i18n="demo.railLabel">视频证据</p>
+            <dl class="demo-facts">
+              <div>
+                <dt>81s</dt>
+                <dd data-i18n="demo.fact.duration">短视频成片，无音频，适合放在 GitHub Pages 首屏之后。</dd>
+              </div>
+              <div>
+                <dt>15+</dt>
+                <dd data-i18n="demo.fact.assets">覆盖导入、store、reader、search、Q&A、cards、notes、bookmarks、progress、Hermes smoke。</dd>
+              </div>
+              <div>
+                <dt>0</dt>
+                <dd data-i18n="demo.fact.private">不包含母项目运行证据、生产飞书聊天、私有日志或个人学习定位。</dd>
+              </div>
+            </dl>
+            <div class="demo-links">
+              <a href="DEMO_VIDEO.md"><span>DEMO_VIDEO</span><strong data-i18n="doc.demoVideo">脚本、分镜与验收规则</strong></a>
+              <a href="DEMO_PRIVACY.md"><span>DEMO_PRIVACY</span><strong data-i18n="doc.demoPrivacy">公开素材脱敏边界</strong></a>
+            </div>
+          </aside>
         </div>
       </section>
 
@@ -406,6 +453,8 @@
           <h2 data-i18n="dossier.title">展示站也是工程文档入口。</h2>
         </div>
         <div class="doc-index" aria-label="Technical document index">
+          <a href="DEMO_VIDEO.md"><span>Demo video</span><strong data-i18n="doc.demoVideo">脚本、分镜与验收规则</strong></a>
+          <a href="DEMO_PRIVACY.md"><span>Privacy</span><strong data-i18n="doc.demoPrivacy">公开素材脱敏边界</strong></a>
           <a href="PRODUCT_BOUNDARY.md"><span>Boundary</span><strong data-i18n="doc.boundary">公开边界与裁剪说明</strong></a>
           <a href="ARCHITECTURE.md"><span>Architecture</span><strong data-i18n="doc.arch">模块边界与运行流</strong></a>
           <a href="DATA_MODEL.md"><span>Data model</span><strong data-i18n="doc.data">Course、Lecture、Segment、Card 与状态</strong></a>
@@ -426,7 +475,7 @@
           <code>pip install -e .</code>
           <code>course2knowledge-lite web</code>
           <code>course2knowledge-lite sync-profile --apply --create-profile</code>
-          <code>course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profiles\\course2knowledge-lite</code>
+          <code>course2knowledge-lite smoke-profile --profile-root &lt;profile-root&gt;</code>
         </div>
       </section>
     </main>

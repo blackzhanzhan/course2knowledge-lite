@@ -61,6 +61,11 @@ img {
   max-width: 100%;
 }
 
+video {
+  display: block;
+  max-width: 100%;
+}
+
 a {
   color: inherit;
 }
@@ -396,6 +401,105 @@ figcaption {
   margin: 18px 0 0;
 }
 
+.demo-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.32fr);
+  border-left: 1px solid var(--line-strong);
+  border-top: 1px solid var(--line-strong);
+}
+
+.demo-media,
+.demo-rail {
+  min-width: 0;
+  border-right: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.demo-media {
+  background: #0e1015;
+}
+
+.demo-media video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0e1015;
+}
+
+.demo-rail {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 22px;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 20px;
+}
+
+.rail-label {
+  margin: 0;
+  color: var(--quiet);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.demo-facts {
+  margin: 0;
+}
+
+.demo-facts div {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+}
+
+.demo-facts div:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.demo-facts dt {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.demo-facts dd {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.demo-links {
+  display: grid;
+  gap: 10px;
+}
+
+.demo-links a {
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  padding-top: 10px;
+  text-decoration: none;
+}
+
+.demo-links a:hover strong {
+  color: var(--feishu);
+}
+
+.demo-links span {
+  display: block;
+  color: var(--quiet);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.demo-links strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 16px;
+  line-height: 1.24;
+}
+
 .process-line {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -697,7 +801,8 @@ figcaption {
   .hero,
   .frontdesk-comparison,
   .thought-grid,
-  .boundary-table {
+  .boundary-table,
+  .demo-stage {
     grid-template-columns: 1fr;
   }
 
