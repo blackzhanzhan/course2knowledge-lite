@@ -27,6 +27,71 @@ def load_web_server_module():
 
 
 class WebLiteTests(unittest.TestCase):
+    def test_web_import_api_writes_collection_skeleton_and_returns_receipt(self) -> None:
+        web_server = load_web_server_module()
+
+        def fake_import(source_url: str, *, store_root: str | Path, **_: object) -> dict[str, object]:
+            skeleton = build_course_skeleton(
+                title="AI interview collection",
+                source_url=source_url,
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BV00000001",
+                        "title": "RAG and Agent",
+                        "source_url": "https://www.bilibili.com/video/BV00000001",
+                    },
+                    {
+                        "sequence": 2,
+                        "bvid": "BV00000002",
+                        "title": "Embedding and retrieval",
+                        "source_url": "https://www.bilibili.com/video/BV00000002",
+                    },
+                ],
+                now="2026-05-15T00:00:00Z",
+            )
+            paths = JsonCourseStore(store_root).write_skeleton(skeleton)
+            return {
+                "course": skeleton.course.to_dict(),
+                "lectures": [lecture.to_dict() for lecture in skeleton.lectures],
+                "import_status": skeleton.import_status.to_dict(),
+                "paths": paths,
+            }
+
+        previous_import = web_server.import_collection_skeleton_to_store
+        web_server.import_collection_skeleton_to_store = fake_import
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+                web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                host, port = server.server_address
+                try:
+                    payload = _request_json(
+                        host,
+                        port,
+                        "POST",
+                        "/api/import",
+                        {
+                            "source_url": "https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                        },
+                        expected_status=201,
+                    )
+                    courses = _request_json(host, port, "GET", "/api/courses")
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=5)
+        finally:
+            web_server.import_collection_skeleton_to_store = previous_import
+
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["lecture_count"], 2)
+        self.assertEqual(payload["import_status"]["stage"], "collection_expanded")
+        self.assertEqual(len(courses["courses"]), 1)
+        self.assertEqual(courses["courses"][0]["lecture_count"], 2)
+
     def test_web_api_helpers_read_reader_search_and_qa_from_transcripts(self) -> None:
         web_server = load_web_server_module()
 

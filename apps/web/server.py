@@ -16,7 +16,9 @@ DEFAULT_STORE_ROOT = REPO_ROOT / "data" / "course-store"
 
 sys.path.insert(0, str(REPO_ROOT / "packages" / "course-store" / "src"))
 sys.path.insert(0, str(REPO_ROOT / "packages" / "qa" / "src"))
+sys.path.insert(0, str(REPO_ROOT / "packages" / "bilibili-import" / "src"))
 
+from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
 from course2knowledge_lite_qa import answer_course_question  # noqa: E402
 from course2knowledge_lite_store import JsonCourseStore  # noqa: E402
 
@@ -138,6 +140,22 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     overwrite=_bool_body(payload.get("overwrite"), default=True),
                 )
                 self._send_json({"status": "completed", **result}, status=201)
+            elif parsed.path == "/api/import":
+                result = import_collection_skeleton_to_store(
+                    _required_body(payload, "source_url"),
+                    store_root=self.store_root,
+                )
+                import_status = result.get("import_status") or {}
+                self._send_json(
+                    {
+                        "status": "completed",
+                        "course": result.get("course") or {},
+                        "lecture_count": len(result.get("lectures") or []),
+                        "import_status": import_status,
+                        "paths": result.get("paths") or {},
+                    },
+                    status=201,
+                )
             else:
                 self.send_error(404, "Not found")
         except Exception as exc:  # noqa: BLE001

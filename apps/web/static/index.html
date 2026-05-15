@@ -18,6 +18,19 @@
 
       <section class="workspace" aria-label="Course workspace">
         <aside class="sidebar">
+          <section class="import-panel" aria-label="Import Bilibili collection">
+            <div class="panel-head">
+              <h2>Import</h2>
+              <button id="import-button" type="button" title="Import collection">Import</button>
+            </div>
+            <input
+              id="import-url"
+              type="url"
+              value="https://space.bilibili.com/1112988584/lists/7726472?type=season"
+              autocomplete="off"
+            />
+            <div id="import-receipt" class="import-receipt" aria-live="polite"></div>
+          </section>
           <div class="panel-head">
             <h2>Courses</h2>
             <button id="refresh-button" type="button" title="Refresh courses">Refresh</button>

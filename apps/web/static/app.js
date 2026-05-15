@@ -11,6 +11,8 @@ const els = {
   status: document.querySelector("#status"),
   courseList: document.querySelector("#course-list"),
   coveragePanel: document.querySelector("#coverage-panel"),
+  importUrl: document.querySelector("#import-url"),
+  importReceipt: document.querySelector("#import-receipt"),
   courseMeta: document.querySelector("#course-meta"),
   lectureTitle: document.querySelector("#lecture-title"),
   lectureSelect: document.querySelector("#lecture-select"),
@@ -24,6 +26,7 @@ const els = {
   noteInput: document.querySelector("#note-input"),
   notesList: document.querySelector("#notes-list"),
   bookmarksList: document.querySelector("#bookmarks-list"),
+  importButton: document.querySelector("#import-button"),
   refreshButton: document.querySelector("#refresh-button"),
   searchButton: document.querySelector("#search-button"),
   qaButton: document.querySelector("#qa-button"),
@@ -86,6 +89,40 @@ async function loadCourses() {
     els.coveragePanel.innerHTML = "";
     els.cardsList.innerHTML = "";
     setStatus("No courses");
+  }
+}
+
+async function importCollection() {
+  const sourceUrl = els.importUrl.value.trim();
+  if (!sourceUrl) {
+    els.importReceipt.textContent = "Paste a Bilibili collection URL.";
+    setStatus("Import needs a URL");
+    return;
+  }
+  els.importButton.disabled = true;
+  els.importReceipt.textContent = "Importing collection metadata...";
+  setStatus("Importing Bilibili collection");
+  try {
+    const payload = await sendJson("/api/import", { source_url: sourceUrl });
+    const course = payload.course || {};
+    const importStatus = payload.import_status || {};
+    els.importReceipt.innerHTML = `
+      <p class="item-meta">Accepted ${escapeHtml(course.title || course.course_id)}</p>
+      <p class="citation">${Number(payload.lecture_count || importStatus.total_lectures || 0)} lectures / ${escapeHtml(
+        importStatus.stage || "collection_expanded",
+      )}</p>
+    `;
+    state.courseId = course.course_id || state.courseId;
+    await loadCourses();
+    if (course.course_id) {
+      await selectCourse(course.course_id);
+    }
+    setStatus("Import accepted");
+  } catch (error) {
+    els.importReceipt.innerHTML = `<p class="blocked">${escapeHtml(error.message)}</p>`;
+    setStatus("Import failed");
+  } finally {
+    els.importButton.disabled = false;
   }
 }
 
@@ -412,6 +449,7 @@ async function runQa() {
   `;
 }
 
+els.importButton.addEventListener("click", importCollection);
 els.refreshButton.addEventListener("click", loadCourses);
 els.searchButton.addEventListener("click", runSearch);
 els.qaButton.addEventListener("click", runQa);
