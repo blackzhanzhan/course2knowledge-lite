@@ -106,7 +106,7 @@ Boundary:
 
 - no naked local image paths
 - no repo-external files
-- no private Obsidian or production chat evidence
+- no private note-system or production chat evidence
 - image replies reuse Hermes `MEDIA:<path>` and do not change gateway behavior
 
 ### Citation Q&A

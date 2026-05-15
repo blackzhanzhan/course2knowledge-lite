@@ -71,7 +71,7 @@ store. They are static documentation assets, not runtime data.
 - Docker.
 - Kubernetes.
 - A remote backend.
-- Private parent-runtime files.
+- Private runtime files.
 - Private production credentials or sessions.
 
 ## Notes

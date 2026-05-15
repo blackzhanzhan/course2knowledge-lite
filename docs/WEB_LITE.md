@@ -44,7 +44,7 @@ It exposes:
 - `/api/progress`
 
 The page reads the same child local JSON store as Hermes Lite and does not call
-private parent-runtime routes.
+external private-runtime routes.
 
 The import panel owns these stable demo selectors:
 
@@ -54,7 +54,28 @@ The import panel owns these stable demo selectors:
 
 Visual evidence is read from public child-local records only. Web Lite may show
 the same evidence that Feishu/Hermes Lite can explain and send, but it must not
-load private Obsidian, production Feishu, or mother-project runtime files.
+load private note systems, production chat exports, or unrelated workspace
+files.
+
+## Real Demo Acceptance
+
+The current public demo case uses:
+
+- source URL: `https://space.bilibili.com/1112988584/lists/7726472?type=season`
+- course id: `course_e4af83f2c407`
+- expanded lectures: `30`
+- transcript-backed lectures: `3`
+- transcript segments: `9`
+
+The in-app browser acceptance run on `http://127.0.0.1:3014/` verified:
+
+- `#import-url`, `#import-button`, and `#import-receipt` render after reload.
+- the course library opens one public demo course with 30 lecture options.
+- the reader opens a transcript-backed lecture.
+- the `RAG Agent` search returns 5 transcript hits.
+- Q&A returns an answered state with 5 citations from the same local store.
+
+Evidence screenshots are stored under ignored `tmp/lite-demo-capability/`.
 
 ## Explicitly Out Of Scope
 

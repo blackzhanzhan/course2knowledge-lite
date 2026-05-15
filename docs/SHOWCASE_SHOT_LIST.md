@@ -2,16 +2,17 @@
 
 This document is the capture contract for the public showcase site. The page
 must contain at least 15 real screenshots or evidence captures. The current
-public page meets that visual threshold with safe Web/API/store/Hermes evidence.
+public page carries 16 safe Web/API/store/visual-evidence/Hermes captures.
 Real Feishu chat remains a separate safe-capture gap and must not be faked with
-mother-project production screenshots.
+private production screenshots.
 
 ## Demo Case
 
 - Source: `https://space.bilibili.com/1112988584/lists/7726472?type=season`
 - Public store: `data/course-store/courses/course_e4af83f2c407/`
 - Current known facts: 30 expanded lectures, 3 transcript-backed lectures, 9
-  transcript segments, Web Lite workspace, public Hermes Lite profile skeleton.
+  transcript segments, 2 public visual-evidence records, Web Lite workspace,
+  public Hermes Lite profile skeleton.
 
 ## Required Shots
 
@@ -33,11 +34,11 @@ mother-project production screenshots.
 | SHOT-14 | Reading progress | Status change persisted and reflected in the workspace | Browser at Web Lite | Available |
 | SHOT-15 | Hermes profile smoke | Public profile/plugin smoke proving the Lite tool boundary | CLI/profile smoke output | Available |
 | SHOT-16 | Mobile Web | Responsive mobile view of the same public store | Browser mobile viewport | Available |
+| SHOT-17 | Visual evidence reply | `course_visual_evidence_send` selects `visual_rag_agent_flow`, explains it, and returns exactly one `MEDIA:<path>` | Hermes tool output + public visual asset | Available |
 
 ## Capture Rules
 
-- Do not use parent-project private chats, production identifiers, or private
-  parent runtime files.
+- Do not use private chats, production identifiers, or private runtime files.
 - Do not replace a pending slot with a mock image.
 - Keep private tokens, cookies, account identifiers, and local secrets out of all
   screenshots.
@@ -49,8 +50,8 @@ mother-project production screenshots.
 ## Acceptance
 
 The showcase is visually ready when at least 15 shot slots are backed by real
-evidence captures. The current gallery has 15 available shots: `SHOT-01`,
-`SHOT-03` through `SHOT-16`. `SHOT-02` remains pending because a real Feishu chat
+evidence captures. The current gallery has 16 available shots: `SHOT-01`,
+`SHOT-03` through `SHOT-17`. `SHOT-02` remains pending because a real Feishu chat
 capture needs a safe public Lite conversation, not an unsafe private export.
 
 ## Demo Video Mapping
@@ -66,7 +67,7 @@ separate case.
 | Web reading and search | `SHOT-08`, `SHOT-09` |
 | Citation Q&A and cards | `SHOT-10`, `SHOT-11` |
 | Personal workspace features | `SHOT-12`, `SHOT-13`, `SHOT-14` |
-| Dual frontdesk | `SHOT-03`, `SHOT-15` |
+| Dual frontdesk and image reply | `SHOT-03`, `SHOT-15`, `SHOT-17` |
 | Responsive polish | `SHOT-16` |
 
 The video may include a safe Lite chat capture later, but it must not use an

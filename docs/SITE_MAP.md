@@ -53,7 +53,7 @@ the conversational workspace. Both consume the same public course store.
    - The section must not present Feishu as a footnote or optional afterthought.
 
 5. **Module Evidence Plan**
-   - The current page includes 15 real screenshots or evidence captures.
+   - The current page includes 16 real screenshots or evidence captures.
    - The shot set keeps stable `SHOT-*` IDs.
    - `SHOT-02` remains a future safe Feishu chat capture; it is not shown with a
      private production substitute.
@@ -108,12 +108,13 @@ The real demo gallery lives under `docs/assets/demos/`:
 - `shot-14-reading-progress.png`
 - `shot-15-hermes-smoke.png`
 - `shot-16-mobile-web.png`
+- `docs/assets/visual-evidence/rag-agent-flow.png` as `SHOT-17`
 
 These images were captured from the local public Lite Web workspace at
 `http://127.0.0.1:3027/`, local API/store evidence, and public Hermes Lite
 profile smoke against the public demo course store. They satisfy the 15-shot
-visual-evidence requirement while keeping real Feishu production chat out of the
-public repo.
+threshold and include a public visual-evidence reply while keeping production
+chat captures out of the public repo.
 
 ## Demo Video Plan
 

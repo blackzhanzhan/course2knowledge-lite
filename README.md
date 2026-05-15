@@ -32,10 +32,10 @@ workspace over the same public course store.
 
 Use [`docs/SITE_MAP.md`](docs/SITE_MAP.md) for the page structure and
 [`docs/SHOWCASE_SHOT_LIST.md`](docs/SHOWCASE_SHOT_LIST.md) for the real evidence
-capture contract. The current showcase carries 15 real shots from the Web Lite,
-API/store, and Hermes Lite profile-smoke surfaces. Real Feishu production chat is
-not used as public evidence; that gap remains explicitly labelled until a safe
-Lite chat capture exists.
+capture contract. The current showcase carries 16 real evidence slots from the
+Web Lite, API/store, visual-evidence, and Hermes Lite profile-smoke surfaces.
+Real production chat is not used as public evidence; that gap remains explicitly
+labelled until a safe Lite chat capture exists.
 
 ## Quick Start
 
@@ -60,6 +60,8 @@ course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profi
 - Provide a Web workspace for reading, search, notes, bookmarks, and progress.
 - Provide a Feishu/Hermes Lite chat entry for import receipt, status, course
   lookup, and citation-based course Q&A.
+- Send selected public visual evidence with an explanation through the existing
+  Hermes `MEDIA:<path>` reply protocol.
 
 ## What It Does Not Do
 
@@ -103,8 +105,9 @@ data/               Local public runtime data, ignored by default later
 
 The Lite repo has the public architecture, local Web Lite workspace,
 Bilibili-course store, citation Q&A, public Hermes profile skeleton, deployment
-smoke coverage, and GitHub Pages showcase scaffold. It deliberately excludes
-private planning, scoring, feedback, and exercise-review loops.
+smoke coverage, child-local visual evidence, and GitHub Pages showcase scaffold.
+It deliberately excludes private planning, scoring, feedback, and
+exercise-review loops.
 
 ## Start Here
 

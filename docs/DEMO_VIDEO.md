@@ -49,8 +49,8 @@ Format:
 | 40-52s | Course store files / records | "The course store keeps courses, lectures, segments, cards, notes, bookmarks, and progress." | `SHOT-06` |
 | 52-65s | Web reader and search | "Web Lite is the inspectable workspace for reading, search, and citation review." | `SHOT-08`, `SHOT-09` |
 | 65-78s | Q&A answer with citations and knowledge cards | "Answers are grounded in visible course evidence, not free-floating chat." | `SHOT-10`, `SHOT-11` |
-| 78-88s | Dual-frontdesk and Hermes smoke | "The Feishu/Hermes Lite surface uses the same public course store as the Web workspace." | `SHOT-03`, `SHOT-15` |
-| 88-96s | Closing system slice | "One store. Two frontdesks. A course that can be read, searched, and asked." | Site system slice |
+| 78-88s | Hermes visual evidence reply | "The chat frontdesk can select a public course diagram, explain it, and send one image through the existing MEDIA protocol." | `SHOT-15`, `SHOT-17` |
+| 88-96s | Closing system slice | "One store. Two frontdesks. A course that can be read, searched, asked, and illustrated." | Site system slice |
 
 ### On-Screen Text
 
@@ -60,8 +60,31 @@ Keep on-screen text short and factual:
 - Transcript evidence, not vague summaries
 - Web Lite for inspection
 - Feishu/Hermes Lite for conversation
+- Public visual evidence through `MEDIA:<path>`
 - One local course store
 - Public Lite: no private learning loops
+
+## Current Real Acceptance Script
+
+Use this as the next recording script. It is intentionally product-first, not a
+slide deck:
+
+1. Open `http://127.0.0.1:3014/` and reload once so the import panel is visible.
+2. Show the Bilibili collection URL already in `#import-url`.
+3. Click `Import` or show the already captured import receipt for the same URL.
+4. Open the course list and show 30 lecture options.
+5. Open a transcript-backed lecture and pause on timestamped segments.
+6. Run the `RAG Agent` search and show 5 transcript hits.
+7. Ask the default Q&A question and show the answered state with 5 citations.
+8. Show knowledge cards, notes, bookmarks, and reading progress in the same Web
+   workspace.
+9. Run the Hermes Lite visual evidence proof for `course_e4af83f2c407` with
+   query `Agent`.
+10. Show the selected `visual_rag_agent_flow` explanation and the public image
+    `docs/assets/visual-evidence/rag-agent-flow.png`.
+
+The final cut should feel like the same course moving through the product, not
+like separate screenshots arranged after the fact.
 
 Avoid marketing cliches and inflated claims. The demo should feel like a real
 tool that can be inspected.
@@ -139,6 +162,7 @@ Record in this order so the video has one coherent case:
 - The same public course case appears across all shown modules.
 - At least one timestamped transcript segment is visible.
 - At least one answer with visible citations is visible.
+- At least one public visual-evidence image reply is visible.
 - The dual-frontdesk idea is explicit.
 - No private workspace, private production chat, secret, raw recording, or
   personal study context is visible.

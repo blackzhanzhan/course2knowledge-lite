@@ -96,5 +96,5 @@ Before committing public video assets:
 ## Acceptance
 
 The demo is publishable only when a reviewer can watch it without learning
-anything about the private parent workspace, private accounts, private logs, or
-personal study data.
+anything about private workspaces, private accounts, private logs, or personal
+study data.

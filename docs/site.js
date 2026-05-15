@@ -23,7 +23,7 @@
     "hero.webShot":
       "SHOT-01 Web Lite overview. A real local run showing reading, search, Q&A, notes, bookmarks, and progress.",
     "hero.dualShot":
-      "SHOT-03 dual-frontdesk boundary. The Web side is a real frontend capture; Hermes is public profile/tool smoke evidence, not a production Feishu chat export.",
+      "SHOT-03 dual-frontdesk boundary. The Web side is a real frontend capture; Hermes is public profile/tool smoke evidence, not a production chat export.",
     "demo.kicker": "Public demo video",
     "demo.title":
       "In eighty seconds: import, evidence, Q&A, and dual frontdesks.",
@@ -34,9 +34,9 @@
     "demo.fact.duration":
       "Short silent cut for the GitHub Pages homepage, placed after the system view.",
     "demo.fact.assets":
-      "Covers import, store, reader, search, Q&A, cards, notes, bookmarks, progress, and Hermes smoke.",
+      "Covers import, store, reader, search, Q&A, cards, notes, bookmarks, progress, Hermes smoke, and visual evidence.",
     "demo.fact.private":
-      "Contains no private parent-runtime evidence, production Feishu chat, private logs, or personal study positioning.",
+      "Contains no private runtime evidence, production chat capture, private logs, or personal study positioning.",
     "walk.kicker": "Real case flow",
     "walk.title": "From one collection URL to two usable learning entries.",
     "walk.lead":
@@ -73,13 +73,13 @@
     "front.chat1":
       "It does not duplicate chat memory; it reads the same course store.",
     "front.chat2":
-      "The tool layer supports course lookup, search, Q&A, notes, bookmarks, and progress.",
+      "The tool layer supports course lookup, search, Q&A, notes, bookmarks, progress, and visual evidence replies.",
     "front.chat3":
-      "The public site currently shows safe smoke evidence, without exposing production Feishu identity.",
+      "The public site currently shows safe smoke evidence, without exposing production chat identity.",
     "evidence.kicker": "Real case shots",
-    "evidence.title": "15 screenshots turn the chain from explainable into visible.",
+    "evidence.title": "16 evidence captures turn the chain from explainable into visible.",
     "evidence.lead":
-      "These images come from the actual Web Lite, API bundle, local store, and Hermes profile smoke run. The Feishu chat gap is labelled honestly instead of being replaced by a private production screenshot.",
+      "These images come from the actual Web Lite, API bundle, local store, visual evidence, and Hermes profile smoke run. The chat gap is labelled honestly instead of being replaced by a private production screenshot.",
     "shot.01.title": "Web overview",
     "shot.01.body":
       "A real Web Lite page with course, reader, search, Q&A, notes, bookmarks, and progress.",
@@ -121,6 +121,9 @@
     "shot.15.title": "Hermes smoke",
     "shot.15.body":
       "Public profile sync/smoke passes with 22 registered tools.",
+    "shot.17.title": "Visual evidence reply",
+    "shot.17.body":
+      "Hermes Lite selects a public course image, explains it, and returns exactly one MEDIA path.",
     "shot.16.title": "Mobile Web",
     "shot.16.body": "The same course store remains readable on mobile.",
     "status.real": "real",
@@ -139,6 +142,7 @@
     "gallery.13": "SHOT-13 bookmarks state",
     "gallery.14": "SHOT-14 reading progress",
     "gallery.15": "SHOT-15 Hermes smoke",
+    "gallery.17": "SHOT-17 visual evidence reply",
     "gallery.16": "SHOT-16 mobile Web",
     "thought.kicker": "Product thought",
     "thought.title":

@@ -82,8 +82,20 @@ repo-local, public, present on disk, and tied to a course and lecture with an
 explanation. The tool returns text plus exactly one `MEDIA:<path>` line for the
 existing Hermes gateway media protocol.
 
+Current real public-data smoke:
+
+- tool: `course_visual_evidence_send`
+- course id: `course_e4af83f2c407`
+- query: `Agent`
+- selected visual id: `visual_rag_agent_flow`
+- bound lecture: `course_e4af83f2c407::lecture::005`
+- bound segment: `course_e4af83f2c407::lecture::005::manual::00001`
+- media asset: `docs/assets/visual-evidence/rag-agent-flow.png`
+- gateway reply: explanation text plus exactly one `MEDIA:<path>` line
+
 Live Feishu/Lark gateway validation belongs to the public Lite profile
-acceptance contract.
+acceptance contract. Public docs should use the safe Lite profile and avoid
+production chat exports.
 
 ## Rapid Message Behavior
 
@@ -106,4 +118,5 @@ Show me the source for that answer.
 Mark lecture 3 as read.
 Add a note to lecture 3.
 Bookmark this transcript segment.
+Show the visual evidence for Agent.
 ```
