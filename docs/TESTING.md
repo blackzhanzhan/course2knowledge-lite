@@ -17,13 +17,14 @@ Current acceptance commands:
 
 ```bash
 python -m unittest discover -s tests
-python -m unittest tests.test_web_lite tests.test_course_store_skeleton tests.test_hermes_lite_plugin tests.test_hermes_lite_profile
+python -m unittest tests.test_guidance tests.test_web_lite tests.test_course_store_skeleton tests.test_hermes_lite_plugin tests.test_hermes_lite_profile
 git diff --check
 ```
 
 The LDC-4 public case also verifies the running Web app at
-`http://127.0.0.1:3014/` and the Hermes Lite `course_visual_evidence_send` tool
-against the child-local public store.
+`http://127.0.0.1:3014/`, the Web guided-learning panel, and the Hermes Lite
+`learning_guide_get` / `course_visual_evidence_send` tools against the
+child-local public store.
 
 Product tests cover:
 
@@ -34,8 +35,8 @@ Product tests cover:
 - Q&A answer and missing-evidence tests.
 - Guided learning derivation tests for continue-learning, lecture walkthrough,
   self-check, and recap modes.
-- Hermes Lite tool registration, reader, search, Q&A, and visual-evidence
-  handler tests.
+- Hermes Lite tool registration, reader, guided learning, search, Q&A, and
+  visual-evidence handler tests.
 - Hermes Lite public profile template and sync tests.
 - Hermes Lite synced-profile smoke tests.
 - Web build tests.

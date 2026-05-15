@@ -36,6 +36,10 @@ course2knowledge-lite sync-profile --apply --create-profile
 course2knowledge-lite smoke-profile --profile-root <profile-root>
 ```
 
+The smoke test registers the synced Hermes plugin and verifies import status,
+Q&A, knowledge cards, `learning_guide_get`, visual evidence media replies,
+notes, and reading progress against a temporary public course store.
+
 ## Deployment Modes
 
 - Local single-machine deployment: the default and recommended mode.

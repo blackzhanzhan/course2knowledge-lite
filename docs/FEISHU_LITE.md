@@ -13,6 +13,7 @@ course status, and ask questions about course content from Feishu.
 - course list
 - lecture list
 - transcript coverage summary
+- guided learning suggestion, walkthrough, self-check, or recap
 - source-linked knowledge cards
 - course-content answer with citations
 - visual evidence explanation plus one `MEDIA:<path>` directive
@@ -59,6 +60,7 @@ Tools:
 - `knowledge_card_list`
 - `knowledge_card_get`
 - `lecture_reader_get`
+- `learning_guide_get`
 - `course_search`
 - `course_question_answer`
 - `note_create`
@@ -82,7 +84,14 @@ repo-local, public, present on disk, and tied to a course and lecture with an
 explanation. The tool returns text plus exactly one `MEDIA:<path>` line for the
 existing Hermes gateway media protocol.
 
-Current real public-data smoke:
+Current guided-learning public-data smoke:
+
+- tool: `learning_guide_get`
+- mode: `self_check`
+- result: source-linked questions from transcript/cards, with no grading,
+  scoring, diagnosis, schedule, or review queue
+
+Current visual public-data smoke:
 
 - tool: `course_visual_evidence_send`
 - course id: `course_e4af83f2c407`
@@ -118,5 +127,9 @@ Show me the source for that answer.
 Mark lecture 3 as read.
 Add a note to lecture 3.
 Bookmark this transcript segment.
+What should I read next?
+Walk me through lecture 3.
+Give me a few self-check questions.
+Recap this lecture.
 Show the visual evidence for Agent.
 ```

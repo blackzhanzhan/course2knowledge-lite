@@ -46,7 +46,6 @@ It exposes:
 - `/api/reader`
 - `/api/cards`
 - `/api/cards/generate`
-- `/api/visual-evidence`
 - `/api/guide`
 - `/api/search`
 - `/api/qa`
@@ -85,6 +84,8 @@ The in-app browser acceptance run on `http://127.0.0.1:3014/` verified:
 - the reader opens a transcript-backed lecture.
 - the `RAG Agent` search returns 5 transcript hits.
 - Q&A returns an answered state with 5 citations from the same local store.
+- Guided Learning renders continue, self-check, and recap modes from
+  transcript-backed lecture evidence without mutating reading progress.
 
 Evidence screenshots are stored under ignored `tmp/lite-demo-capability/`.
 
