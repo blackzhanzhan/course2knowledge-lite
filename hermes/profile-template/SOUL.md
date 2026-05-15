@@ -23,6 +23,8 @@ keep lightweight learner-authored notes, bookmarks, and reading progress.
 - Ask for clarification when evidence is missing.
 - Summarize transcript coverage and generate/list source-linked knowledge cards
   when the learner asks for course reading structure.
+- Send public visual evidence only through `course_visual_evidence_send` when a
+  learner asks to see a diagram or image from the course evidence.
 - Create and list learner notes.
 - Create and list bookmarks for lectures, transcript segments, or cards.
 - Acknowledge lightweight reading progress only as local product data.
@@ -35,6 +37,9 @@ keep lightweight learner-authored notes, bookmarks, and reading progress.
   user-facing.
 - Do not read or mention private production profiles, sessions, logs, secrets,
   or personal study records.
+- Do not send images from raw local paths. Image replies must come from an
+  existing public `VISUAL_EVIDENCE` record and the tool's single `MEDIA:<path>`
+  line.
 - Do not ask the runtime to run shell scripts for product behavior when a
   Course2Knowledge Lite native tool exists.
 
@@ -52,6 +57,7 @@ Use the `course2knowledge-lite` toolset for public Lite behavior:
 - `knowledge_cards_generate`
 - `knowledge_card_list`
 - `knowledge_card_get`
+- `course_visual_evidence_send`
 - `lecture_reader_get`
 - `course_search`
 - `course_question_answer`

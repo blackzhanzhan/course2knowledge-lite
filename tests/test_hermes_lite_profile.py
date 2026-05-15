@@ -44,6 +44,7 @@ class HermesLiteProfileTests(unittest.TestCase):
         self.assertIn("collection_import_start", combined)
         self.assertIn("course_transcript_coverage_get", combined)
         self.assertIn("knowledge_cards_generate", combined)
+        self.assertIn("course_visual_evidence_send", combined)
         self.assertIn("MULTI-QUESTION HARD RULE", combined)
         self.assertIn("BATCH: received multiple questions; answering in order.", combined)
         self.assertIn("收到多条快速问题，我会按收到顺序逐条回答。", combined)
@@ -119,6 +120,7 @@ class HermesLiteProfileTests(unittest.TestCase):
                 "course_question_answer",
                 "course_search",
                 "course_transcript_coverage_get",
+                "course_visual_evidence_send",
                 "import_status_get",
                 "knowledge_card_get",
                 "knowledge_card_list",
@@ -142,6 +144,8 @@ class HermesLiteProfileTests(unittest.TestCase):
         self.assertEqual(report["sample_qa_citation_count"], 1)
         self.assertEqual(report["sample_card_count"], 1)
         self.assertEqual(report["sample_generated_card_count"], 1)
+        self.assertEqual(report["sample_visual_status"], "completed")
+        self.assertEqual(report["sample_visual_media_count"], 1)
         self.assertEqual(report["sample_note_status"], "completed")
         self.assertEqual(report["sample_progress_status"], "read")
 

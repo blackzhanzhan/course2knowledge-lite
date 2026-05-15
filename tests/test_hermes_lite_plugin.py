@@ -13,7 +13,12 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_ROOT = ROOT / "hermes" / "plugins" / "course2knowledge-lite"
 sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 
-from course2knowledge_lite_store import JsonCourseStore, TranscriptSegmentRecord, build_course_skeleton  # noqa: E402
+from course2knowledge_lite_store import (  # noqa: E402
+    JsonCourseStore,
+    TranscriptSegmentRecord,
+    VisualEvidenceRecord,
+    build_course_skeleton,
+)
 
 
 class FakeHermesContext:
@@ -454,6 +459,94 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(read_payload["card"]["source_segment_ids"], [segment_id])
         self.assertEqual(bookmark_payload["bookmark"]["target_type"], "card")
         self.assertEqual(bookmark_payload["bookmark"]["target_id"], card_id)
+
+    def test_visual_evidence_tool_returns_explanation_and_single_media_directive(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = build_course_skeleton(
+                title="AI interview course",
+                source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BV00000001",
+                        "title": "RAG and Agent",
+                        "source_url": "https://www.bilibili.com/video/BV00000001",
+                    }
+                ],
+                now="2026-05-14T00:00:00Z",
+            )
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            lecture = skeleton.lectures[0]
+            segment_id = f"{lecture.lecture_id}::manual::00001"
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=segment_id,
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves course evidence before an Agent plans tool calls.",
+                    )
+                ],
+            )
+            card = store.generate_knowledge_cards(skeleton.course.course_id)["cards"][0]
+            store.write_visual_evidence_records(
+                skeleton.course.course_id,
+                [
+                    VisualEvidenceRecord(
+                        visual_id="visual_rag_agent_flow",
+                        course_id=skeleton.course.course_id,
+                        lecture_id=lecture.lecture_id,
+                        segment_id=segment_id,
+                        card_id=card["card_id"],
+                        title="RAG and Agent flow",
+                        explanation="RAG grounds answers in evidence; Agent plans tool-backed actions.",
+                        image_path="docs/assets/visual-evidence/rag-agent-flow.png",
+                        source_url=lecture.source_url,
+                        provenance="public demo diagram derived from transcript segment",
+                        created_at="2026-05-15T00:00:00Z",
+                    )
+                ],
+            )
+            raw = ctx.tools["course_visual_evidence_send"]["handler"](
+                {
+                    "store_root": temp_dir,
+                    "course_id": skeleton.course.course_id,
+                    "query": "Agent",
+                }
+            )
+
+        payload = json.loads(raw)
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["tool"], "course_visual_evidence_send")
+        self.assertEqual(payload["visual_evidence"]["visual_id"], "visual_rag_agent_flow")
+        self.assertIn("RAG grounds answers", payload["gateway_reply"])
+        self.assertEqual(payload["gateway_reply"].count("MEDIA:"), 1)
+        self.assertTrue(Path(payload["media_path"]).exists())
+
+    def test_visual_evidence_tool_rejects_raw_image_path_argument(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        raw = ctx.tools["course_visual_evidence_send"]["handler"](
+            {
+                "course_id": "course_demo",
+                "image_path": "docs/assets/visual-evidence/rag-agent-flow.png",
+            }
+        )
+
+        payload = json.loads(raw)
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(payload["tool"], "course_visual_evidence_send")
+        self.assertIn("image_path is not accepted", payload["error"])
 
 
 if __name__ == "__main__":

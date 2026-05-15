@@ -29,6 +29,7 @@ TOOL_NAMES = [
     "knowledge_cards_generate",
     "knowledge_card_list",
     "knowledge_card_get",
+    "course_visual_evidence_send",
     "lecture_reader_get",
     "course_search",
     "course_question_answer",
@@ -212,6 +213,40 @@ def _knowledge_card_get_handler(arguments: dict[str, Any], **_registry_kwargs: A
         return _json_response({"status": "completed", "tool": "knowledge_card_get", "card": card})
     except Exception as exc:  # noqa: BLE001
         return _tool_error("knowledge_card_get", exc)
+
+
+def _course_visual_evidence_send_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        if "image_path" in arguments:
+            raise ValueError("image_path is not accepted; select an existing visual evidence record")
+        store = JsonCourseStore(_store_root(arguments))
+        course_id = _required_text(arguments, "course_id")
+        lecture_id = str(arguments.get("lecture_id", "") or "").strip()
+        lecture_sequence = arguments.get("lecture_sequence")
+        if not lecture_id and lecture_sequence not in (None, ""):
+            lecture_id = str(store.read_lecture_reader(course_id, lecture_sequence=lecture_sequence)["lecture"]["lecture_id"])
+        visual = store.select_visual_evidence(
+            course_id=course_id,
+            visual_id=str(arguments.get("visual_id", "") or "").strip(),
+            lecture_id=lecture_id,
+            query=str(arguments.get("query", "") or "").strip(),
+        )
+        media_path = _resolve_public_media_path(str(visual.get("image_path") or ""))
+        explanation = _visual_evidence_explanation(visual)
+        media_directive = f"MEDIA:{media_path}"
+        return _json_response(
+            {
+                "status": "completed",
+                "tool": "course_visual_evidence_send",
+                "course_id": course_id,
+                "visual_evidence": visual,
+                "media_path": media_path,
+                "media_directive": media_directive,
+                "gateway_reply": f"{explanation}\n{media_directive}",
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("course_visual_evidence_send", exc)
 
 
 def _lecture_reader_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
@@ -544,6 +579,31 @@ def _knowledge_card_get_schema() -> dict[str, Any]:
     }
 
 
+def _course_visual_evidence_send_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "string", "description": "Local course id."},
+            "visual_id": {
+                "type": ["string", "null"],
+                "description": "Optional exact visual evidence id. Preferred when known.",
+            },
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id filter."},
+            "lecture_sequence": {
+                "type": ["integer", "string", "null"],
+                "description": "Optional 1-based lecture sequence filter.",
+            },
+            "query": {
+                "type": ["string", "null"],
+                "description": "Optional topic query used to select a public visual evidence record.",
+            },
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "required": ["course_id"],
+        "additionalProperties": False,
+    }
+
+
 def _course_search_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -740,6 +800,45 @@ def _bool_argument(raw_value: Any, *, default: bool) -> bool:
     raise ValueError(f"boolean value expected: {raw_value}")
 
 
+def _resolve_public_media_path(relative_image_path: str) -> str:
+    cleaned = str(relative_image_path or "").strip().replace("\\", "/")
+    if not cleaned:
+        raise ValueError("visual evidence image_path is missing")
+    raw_path = Path(cleaned)
+    if raw_path.is_absolute() or ".." in raw_path.parts:
+        raise ValueError("visual evidence image_path must be a repo-local relative path")
+    repo_root = _repo_root().resolve()
+    media_path = (repo_root / cleaned).resolve()
+    if not _is_relative_to(media_path, repo_root):
+        raise ValueError("visual evidence image_path resolved outside the public repo")
+    if not media_path.exists() or not media_path.is_file():
+        raise ValueError(f"visual evidence image file is missing: {cleaned}")
+    return str(media_path).replace("\\", "/")
+
+
+def _visual_evidence_explanation(visual: dict[str, Any]) -> str:
+    title = str(visual.get("title") or "Course visual evidence").strip()
+    explanation = str(visual.get("explanation") or "").strip()
+    provenance = str(visual.get("provenance") or "").strip()
+    source_url = str(visual.get("source_url") or "").strip()
+    lines = [title]
+    if explanation:
+        lines.append(explanation)
+    if provenance:
+        lines.append(f"Evidence: {provenance}")
+    if source_url:
+        lines.append(f"Source: {source_url}")
+    return "\n".join(lines)
+
+
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
 def _tool_schema(name: str, description: str, parameters: dict[str, Any]) -> dict[str, Any]:
     return {
         "name": name,
@@ -869,6 +968,17 @@ def register_course2knowledge_lite_tools(ctx: Any) -> None:
         ),
         handler=_knowledge_card_get_handler,
         description="Read a public Lite knowledge card.",
+    )
+    ctx.register_tool(
+        name="course_visual_evidence_send",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "course_visual_evidence_send",
+            "Select public course-bound visual evidence and return explanation text plus one MEDIA directive.",
+            _course_visual_evidence_send_schema(),
+        ),
+        handler=_course_visual_evidence_send_handler,
+        description="Send public Lite visual evidence through Hermes MEDIA reply format.",
     )
     ctx.register_tool(
         name="course_search",
