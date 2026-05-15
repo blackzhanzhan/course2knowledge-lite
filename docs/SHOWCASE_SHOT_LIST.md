@@ -36,8 +36,8 @@ mother-project production screenshots.
 
 ## Capture Rules
 
-- Do not use mother-project private chats, production identifiers, or private
-  Learning OS runtime files.
+- Do not use parent-project private chats, production identifiers, or private
+  parent runtime files.
 - Do not replace a pending slot with a mock image.
 - Keep private tokens, cookies, account identifiers, and local secrets out of all
   screenshots.
@@ -51,4 +51,23 @@ mother-project production screenshots.
 The showcase is visually ready when at least 15 shot slots are backed by real
 evidence captures. The current gallery has 15 available shots: `SHOT-01`,
 `SHOT-03` through `SHOT-16`. `SHOT-02` remains pending because a real Feishu chat
-capture needs a safe public Lite conversation, not a private production export.
+capture needs a safe public Lite conversation, not an unsafe private export.
+
+## Demo Video Mapping
+
+The short public demo video should reuse this shot list instead of inventing a
+separate case.
+
+| Video Segment | Required Shot IDs |
+| --- | --- |
+| Product opening | `SHOT-01`, system slice from `docs/index.html` |
+| Import boundary | `SHOT-04`, `SHOT-05` |
+| Evidence model | `SHOT-07`, `SHOT-06` |
+| Web reading and search | `SHOT-08`, `SHOT-09` |
+| Citation Q&A and cards | `SHOT-10`, `SHOT-11` |
+| Personal workspace features | `SHOT-12`, `SHOT-13`, `SHOT-14` |
+| Dual frontdesk | `SHOT-03`, `SHOT-15` |
+| Responsive polish | `SHOT-16` |
+
+The video may include a safe Lite chat capture later, but it must not use an
+unsafe private chat as a stand-in for `SHOT-02`.

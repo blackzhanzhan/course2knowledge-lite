@@ -65,6 +65,8 @@ the conversational workspace. Both consume the same public course store.
    - The public version is a deliberately trimmed loop, not a thin demo.
 
 7. **Technical Dossier**
+   - Demo video: [`DEMO_VIDEO.md`](DEMO_VIDEO.md)
+   - Privacy and masking rules: [`DEMO_PRIVACY.md`](DEMO_PRIVACY.md)
    - Product boundary: [`PRODUCT_BOUNDARY.md`](PRODUCT_BOUNDARY.md)
    - Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md)
    - Data model: [`DATA_MODEL.md`](DATA_MODEL.md)
@@ -104,6 +106,14 @@ These images were captured from the local public Lite Web workspace at
 profile smoke against the public demo course store. They satisfy the 15-shot
 visual-evidence requirement while keeping real Feishu production chat out of the
 public repo.
+
+## Demo Video Plan
+
+The public video plan lives in [`DEMO_VIDEO.md`](DEMO_VIDEO.md), with masking
+rules in [`DEMO_PRIVACY.md`](DEMO_PRIVACY.md). The short homepage video should
+reuse the same public course case as the screenshot gallery: import receipt,
+lecture expansion, transcript segments, Web reader/search/Q&A, knowledge cards,
+and Hermes Lite boundary proof. Raw footage must stay out of git.
 
 ## GitHub Pages Setup
 
