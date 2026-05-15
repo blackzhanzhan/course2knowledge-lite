@@ -43,6 +43,8 @@ Purpose:
 - receive a Bilibili URL
 - return import receipt and status
 - answer questions from course content
+- send selected public visual evidence with an explanation through
+  `MEDIA:<path>`
 - look up courses, lectures, and knowledge cards
 
 Boundary:
@@ -77,6 +79,7 @@ Purpose:
 - lecture records
 - transcript segments
 - knowledge cards
+- visual evidence records
 - notes
 - bookmarks
 - reading progress
@@ -85,6 +88,26 @@ Boundary:
 
 - local public product store only
 - no private learning-state entities
+
+### Visual Evidence Store
+
+Owned paths:
+
+- `packages/course-store/`
+- `docs/assets/visual-evidence/`
+
+Purpose:
+
+- bind public repo-local images to a course and lecture
+- preserve explanation and provenance for each image
+- support Web reading/demo views and Feishu/Hermes Lite image replies
+
+Boundary:
+
+- no naked local image paths
+- no repo-external files
+- no private Obsidian or production chat evidence
+- image replies reuse Hermes `MEDIA:<path>` and do not change gateway behavior
 
 ### Citation Q&A
 
@@ -109,6 +132,7 @@ Web or Feishu
   -> Bilibili import job
   -> transcript segments
   -> lecture notes and cards
+  -> visual evidence
   -> course knowledge store
   -> citation Q&A and reading workspace
 ```
@@ -120,3 +144,5 @@ Web or Feishu
 - No protected orchestration or private study loop is copied here.
 - Bilibili import is real; other platform adapters are out of scope.
 - Web Lite and Feishu Lite are user surfaces, not hidden learning-state engines.
+- Visual evidence is public course evidence only; it is not planning,
+  feedback, scoring, mastery, review, or queue-completion state.

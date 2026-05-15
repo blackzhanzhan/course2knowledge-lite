@@ -30,11 +30,13 @@ python apps/web/server.py --port 3014
 It exposes:
 
 - `/api/courses`
+- `/api/import`
 - `/api/lectures`
 - `/api/coverage`
 - `/api/reader`
 - `/api/cards`
 - `/api/cards/generate`
+- `/api/visual-evidence`
 - `/api/search`
 - `/api/qa`
 - `/api/notes`
@@ -43,6 +45,16 @@ It exposes:
 
 The page reads the same child local JSON store as Hermes Lite and does not call
 private parent-runtime routes.
+
+The import panel owns these stable demo selectors:
+
+- `#import-url`
+- `#import-button`
+- `#import-receipt`
+
+Visual evidence is read from public child-local records only. Web Lite may show
+the same evidence that Feishu/Hermes Lite can explain and send, but it must not
+load private Obsidian, production Feishu, or mother-project runtime files.
 
 ## Explicitly Out Of Scope
 

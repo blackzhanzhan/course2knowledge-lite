@@ -66,6 +66,29 @@ Fields:
 - `source_segment_ids`
 - `tags`
 
+### VISUAL_EVIDENCE
+
+Represents a public image that can be shown in Web Lite or sent by
+Feishu/Hermes Lite with an explanation.
+
+Fields:
+
+- `visual_id`
+- `course_id`
+- `lecture_id`
+- `segment_id`
+- `card_id`
+- `title`
+- `explanation`
+- `image_path`
+- `source_url`
+- `provenance`
+- `created_at`
+
+`image_path` must be a repo-local public asset path. Visual evidence cannot be
+created from a naked user-supplied local path and cannot point outside this
+repository.
+
 ### NOTE
 
 Represents learner-authored notes.
@@ -131,4 +154,5 @@ Initial collection expansion uses `status=accepted` and
 ## Excluded Entities
 
 The public data model does not include private learning-coach state, assessment
-state, feedback state, or scheduling state.
+state, feedback state, scheduling state, mastery state, review stage, queue
+completion, or diagnosis/writeback state.

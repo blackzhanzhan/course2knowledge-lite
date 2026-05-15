@@ -15,6 +15,7 @@ course status, and ask questions about course content from Feishu.
 - transcript coverage summary
 - source-linked knowledge cards
 - course-content answer with citations
+- visual evidence explanation plus one `MEDIA:<path>` directive
 - missing-evidence clarification
 - lightweight progress acknowledgement
 
@@ -69,10 +70,17 @@ Tools:
 - `bookmark_delete`
 - `reading_progress_set`
 - `reading_progress_get`
+- `course_visual_evidence_send`
 
 The tools call public package APIs and write to a local JSON course store. They
 must not shell out to ad hoc scripts, read unrelated private profiles, or
 mutate protected learning-state loops.
+
+`course_visual_evidence_send` must select an existing public `VISUAL_EVIDENCE`
+record. It cannot accept a naked local image path. The selected image must be
+repo-local, public, present on disk, and tied to a course and lecture with an
+explanation. The tool returns text plus exactly one `MEDIA:<path>` line for the
+existing Hermes gateway media protocol.
 
 Live Feishu/Lark gateway validation belongs to the public Lite profile
 acceptance contract.
