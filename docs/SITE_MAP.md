@@ -2,7 +2,7 @@
 
 Course2Knowledge Lite uses `docs/` as the GitHub Pages source. The site is a
 public product showcase and a technical dossier entry, not the Web Lite runtime
-itself.
+itself. The page defaults to Chinese and provides a same-page English toggle.
 
 ## Homepage Responsibility
 
@@ -32,7 +32,7 @@ the conversational workspace. Both consume the same public course store.
      knowledge base.
    - First-viewport structure: Bilibili collection, transcript evidence, course
      store, Web Lite, and Feishu/Hermes Lite.
-   - Primary evidence slots: Web overview and Feishu/Hermes Q&A.
+   - Primary evidence slots: Web overview and dual-frontdesk boundary proof.
 
 2. **Walkthrough**
    - Six-step flow: import collection, expand lectures, capture evidence, build
@@ -45,10 +45,10 @@ the conversational workspace. Both consume the same public course store.
    - The section must not present Feishu as a footnote or optional afterthought.
 
 4. **Module Evidence Plan**
-   - At least 15 real screenshots or evidence captures are required before the
-     case is visually convincing.
-   - The current page defines 16 shot slots, each with a stable `SHOT-*` ID.
-   - Pending slots must remain visibly pending until real evidence is captured.
+   - The current page includes 15 real screenshots or evidence captures.
+   - The shot set keeps stable `SHOT-*` IDs.
+   - `SHOT-02` remains a future safe Feishu chat capture; it is not shown with a
+     private production substitute.
    - Detailed capture contract: [`SHOWCASE_SHOT_LIST.md`](SHOWCASE_SHOT_LIST.md).
 
 5. **Product Thought**
@@ -81,12 +81,29 @@ the conversational workspace. Both consume the same public course store.
 
 ## Current Showcase Assets
 
-- `docs/assets/showcase/web-lite-real-course-desktop.png`
-- `docs/assets/showcase/web-lite-real-course-mobile.png`
+The real demo gallery lives under `docs/assets/demos/`:
+
+- `shot-01-web-overview.png`
+- `shot-03-dual-frontdesk.png`
+- `shot-04-import-receipt.png`
+- `shot-05-lecture-expansion.png`
+- `shot-06-course-store-files.png`
+- `shot-07-transcript-segments.png`
+- `shot-08-reader-detail.png`
+- `shot-09-search-result.png`
+- `shot-10-qa-answer.png`
+- `shot-11-knowledge-cards.png`
+- `shot-12-notes.png`
+- `shot-13-bookmarks.png`
+- `shot-14-reading-progress.png`
+- `shot-15-hermes-smoke.png`
+- `shot-16-mobile-web.png`
 
 These images were captured from the local public Lite Web workspace at
-`http://127.0.0.1:3027/` against the public demo course store. They count as
-available evidence for `SHOT-01` and `SHOT-16`.
+`http://127.0.0.1:3027/`, local API/store evidence, and public Hermes Lite
+profile smoke against the public demo course store. They satisfy the 15-shot
+visual-evidence requirement while keeping real Feishu production chat out of the
+public repo.
 
 ## GitHub Pages Setup
 

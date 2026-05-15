@@ -15,7 +15,9 @@ a full learning coach.
 
 The public static site lives in [`docs/index.html`](docs/index.html). It is
 designed for GitHub Pages as both a project showcase and a technical dossier
-entry. The first screen explains the system slice:
+entry. The site defaults to Chinese, includes an English toggle, and uses real
+case screenshots from the public Lite runtime. The first screen explains the
+system slice:
 
 ```text
 Bilibili Collection
@@ -30,9 +32,10 @@ workspace over the same public course store.
 
 Use [`docs/SITE_MAP.md`](docs/SITE_MAP.md) for the page structure and
 [`docs/SHOWCASE_SHOT_LIST.md`](docs/SHOWCASE_SHOT_LIST.md) for the real evidence
-capture contract. The showcase is expected to carry at least 15 real shots before
-it is treated as visually complete; pending slots remain marked as pending until
-real public Lite runs are captured.
+capture contract. The current showcase carries 15 real shots from the Web Lite,
+API/store, and Hermes Lite profile-smoke surfaces. Real Feishu production chat is
+not used as public evidence; that gap remains explicitly labelled until a safe
+Lite chat capture exists.
 
 ## Quick Start
 

@@ -62,9 +62,9 @@ The entry page is:
 docs/index.html
 ```
 
-The showcase screenshots in `docs/assets/showcase/` were captured from a real
-local Web Lite run against the public demo course store. They are static
-documentation assets, not runtime data.
+The showcase screenshots in `docs/assets/demos/` were captured from real Web
+Lite, API/store, and Hermes profile-smoke runs against the public demo course
+store. They are static documentation assets, not runtime data.
 
 ## What Deployment Does Not Require
 

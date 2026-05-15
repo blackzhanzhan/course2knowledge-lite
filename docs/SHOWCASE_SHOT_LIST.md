@@ -1,9 +1,10 @@
 # Showcase Shot List
 
 This document is the capture contract for the public showcase site. The page
-should eventually contain at least 15 real screenshots or evidence captures.
-Pending slots in `docs/index.html` are not product proof until the corresponding
-real run is captured and checked in.
+must contain at least 15 real screenshots or evidence captures. The current
+public page meets that visual threshold with safe Web/API/store/Hermes evidence.
+Real Feishu chat remains a separate safe-capture gap and must not be faked with
+mother-project production screenshots.
 
 ## Demo Case
 
@@ -17,20 +18,20 @@ real run is captured and checked in.
 | Shot ID | Surface | What It Must Show | Capture Source | Status |
 | --- | --- | --- | --- | --- |
 | SHOT-01 | Web Lite | Full Web workspace with course list, reader, search, Q&A, notes, bookmarks | Browser at local Web Lite | Available |
-| SHOT-02 | Feishu/Hermes Lite | Safe course Q&A reply through the Lite chat surface | Feishu/Hermes Lite smoke or safe chat | Pending |
-| SHOT-03 | Dual frontdesk | Web and Feishu both using the same public demo course | Composite from two real captures | Pending |
-| SHOT-04 | Import boundary | Bilibili collection URL accepted as an import source | CLI/API/import JSON evidence | Pending |
-| SHOT-05 | Lecture expansion | Ordered lecture list with source identifiers and titles | Web/API/store capture | Pending |
-| SHOT-06 | Course store | Local course files: course, lectures, segments, cards, notes, bookmarks, progress | File tree or store view | Pending |
-| SHOT-07 | Transcript segments | Timestamped transcript segments with stable segment IDs | Web reader or JSON evidence | Pending |
-| SHOT-08 | Reader detail | One transcript-backed lecture opened in the Web reader | Browser at Web Lite | Pending |
-| SHOT-09 | Search result | Query to cited transcript hits | Browser at Web Lite | Pending |
-| SHOT-10 | Q&A answer | Answer body with visible source citations | Browser at Web Lite | Pending |
-| SHOT-11 | Knowledge cards | Cards generated from transcript evidence with source segment IDs | Browser at Web Lite | Pending |
-| SHOT-12 | Notes | A saved note tied to the course and lecture | Browser at Web Lite | Pending |
-| SHOT-13 | Bookmarks | A bookmark over a segment or card target | Browser at Web Lite | Pending |
-| SHOT-14 | Reading progress | Status change persisted and reflected in the workspace | Browser at Web Lite | Pending |
-| SHOT-15 | Hermes profile smoke | Public profile/plugin smoke proving the Lite tool boundary | CLI/profile smoke output | Pending |
+| SHOT-02 | Feishu/Hermes Lite | Safe course Q&A reply through the Lite chat surface | Safe Lite chat capture | Pending |
+| SHOT-03 | Dual frontdesk | Web and Hermes evidence both using the same public demo course | Composite from real Web and Hermes smoke captures | Available |
+| SHOT-04 | Import boundary | Bilibili collection URL accepted as an import source | CLI/API/import JSON evidence | Available |
+| SHOT-05 | Lecture expansion | Ordered lecture list with source identifiers and titles | Web/API/store capture | Available |
+| SHOT-06 | Course store | Local course files: course, lectures, segments, cards, notes, bookmarks, progress | File tree or store view | Available |
+| SHOT-07 | Transcript segments | Timestamped transcript segments with stable segment IDs | Web reader or JSON evidence | Available |
+| SHOT-08 | Reader detail | One transcript-backed lecture opened in the Web reader | Browser at Web Lite | Available |
+| SHOT-09 | Search result | Query to cited transcript hits | Browser at Web Lite | Available |
+| SHOT-10 | Q&A answer | Answer body with visible source citations | Browser at Web Lite | Available |
+| SHOT-11 | Knowledge cards | Cards generated from transcript evidence with source segment IDs | Browser at Web Lite | Available |
+| SHOT-12 | Notes | A saved note tied to the course and lecture | Browser at Web Lite | Available |
+| SHOT-13 | Bookmarks | A bookmark over a segment or card target | Browser at Web Lite | Available |
+| SHOT-14 | Reading progress | Status change persisted and reflected in the workspace | Browser at Web Lite | Available |
+| SHOT-15 | Hermes profile smoke | Public profile/plugin smoke proving the Lite tool boundary | CLI/profile smoke output | Available |
 | SHOT-16 | Mobile Web | Responsive mobile view of the same public store | Browser mobile viewport | Available |
 
 ## Capture Rules
@@ -47,6 +48,7 @@ real run is captured and checked in.
 
 ## Acceptance
 
-The showcase is considered visually convincing only after at least 15 shot slots
-are backed by real evidence captures. Until then, the site is a designed
-technical dossier with explicit pending evidence targets.
+The showcase is visually ready when at least 15 shot slots are backed by real
+evidence captures. The current gallery has 15 available shots: `SHOT-01`,
+`SHOT-03` through `SHOT-16`. `SHOT-02` remains pending because a real Feishu chat
+capture needs a safe public Lite conversation, not a private production export.
