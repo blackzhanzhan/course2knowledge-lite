@@ -13,6 +13,7 @@ from http.client import HTTPConnection
 ROOT = Path(__file__).resolve().parents[1]
 WEB_SERVER = ROOT / "apps" / "web" / "server.py"
 sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
+sys.path.insert(0, str(ROOT / "packages" / "guidance" / "src"))
 
 from course2knowledge_lite_store import JsonCourseStore, TranscriptSegmentRecord, build_course_skeleton  # noqa: E402
 
@@ -243,6 +244,44 @@ class WebLiteTests(unittest.TestCase):
 
         self.assertEqual(payload["status"], "failed")
         self.assertEqual(payload["error_type"], "ValueError")
+
+    def test_web_guide_api_returns_read_only_guidance(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store, course_id = _store_with_transcript(temp_dir)
+            lecture = store.read_lectures(course_id)[0]
+            store.generate_knowledge_cards(course_id)
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                guide = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    f"/api/guide?course_id={course_id}&mode=self_check&lecture_id={lecture['lecture_id']}",
+                )
+                progress = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    f"/api/progress?course_id={course_id}&lecture_id={lecture['lecture_id']}",
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertEqual(guide["status"], "completed")
+        self.assertEqual(guide["mode"], "self_check")
+        self.assertEqual(guide["question_count"], 1)
+        self.assertFalse(guide["limits"]["writes_progress"])
+        self.assertFalse(guide["limits"]["creates_study_plan"])
+        self.assertFalse(guide["limits"]["scores_learner"])
+        self.assertEqual(progress["progress"][0]["status"], "not_started")
 
 
 def _store_with_transcript(temp_dir: str) -> tuple[JsonCourseStore, str]:

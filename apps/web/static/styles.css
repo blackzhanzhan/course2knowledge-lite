@@ -131,7 +131,8 @@ textarea {
 .reader,
 .import-panel,
 .tool-panel,
-.cards-panel {
+.cards-panel,
+.guide-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -168,6 +169,7 @@ textarea {
 .list,
 .segments,
 .cards-list,
+.guide-output,
 .result-list,
 .answer {
   padding: 14px;
@@ -177,7 +179,8 @@ textarea {
 .segment,
 .knowledge-card,
 .result,
-.answer-card {
+.answer-card,
+.guide-block {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
@@ -187,7 +190,8 @@ textarea {
 .course-item + .course-item,
 .segment + .segment,
 .knowledge-card + .knowledge-card,
-.result + .result {
+.result + .result,
+.guide-block + .guide-block {
   margin-top: 10px;
 }
 
@@ -270,6 +274,24 @@ textarea {
 .cards-panel {
   border-width: 1px 0 0;
   border-radius: 0 0 8px 8px;
+}
+
+.guide-panel {
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+
+.guide-controls {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 8px;
+  min-width: min(280px, 100%);
+}
+
+.guide-evidence {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 10px;
 }
 
 .tags {

@@ -58,6 +58,21 @@
               </select>
             </label>
           </div>
+          <section class="guide-panel" aria-label="Guided learning">
+            <div class="panel-head">
+              <h2>Guided Learning</h2>
+              <div class="guide-controls">
+                <select id="guide-mode" aria-label="Guide mode">
+                  <option value="continue">Continue</option>
+                  <option value="walkthrough">Walkthrough</option>
+                  <option value="self_check">Self-check</option>
+                  <option value="recap">Recap</option>
+                </select>
+                <button id="guide-button" type="button" title="Run guide">Run</button>
+              </div>
+            </div>
+            <div id="guide-output" class="guide-output"></div>
+          </section>
           <div id="segments" class="segments"></div>
           <section class="cards-panel" aria-label="Knowledge cards">
             <div class="panel-head">

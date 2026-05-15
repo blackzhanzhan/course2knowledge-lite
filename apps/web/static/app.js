@@ -5,6 +5,7 @@ const state = {
   lectureSequence: 1,
   lectureId: "",
   coverage: null,
+  guideMode: "continue",
 };
 
 const els = {
@@ -17,6 +18,9 @@ const els = {
   lectureTitle: document.querySelector("#lecture-title"),
   lectureSelect: document.querySelector("#lecture-select"),
   progressSelect: document.querySelector("#progress-select"),
+  guideMode: document.querySelector("#guide-mode"),
+  guideButton: document.querySelector("#guide-button"),
+  guideOutput: document.querySelector("#guide-output"),
   segments: document.querySelector("#segments"),
   cardsList: document.querySelector("#cards-list"),
   searchInput: document.querySelector("#search-input"),
@@ -88,6 +92,7 @@ async function loadCourses() {
     els.segments.innerHTML = '<div class="empty">No local courses found.</div>';
     els.coveragePanel.innerHTML = "";
     els.cardsList.innerHTML = "";
+    els.guideOutput.innerHTML = "";
     setStatus("No courses");
   }
 }
@@ -156,6 +161,7 @@ async function selectCourse(courseId) {
   renderLectureSelect();
   await loadReader();
   await loadLearningState();
+  await loadGuide("continue");
   await runSearch();
   await runQa();
 }
@@ -239,6 +245,208 @@ async function loadReader() {
   }
   await loadCards();
   setStatus(`Reader ready / ${payload.segment_count} segments`);
+}
+
+async function loadGuide(mode = state.guideMode) {
+  if (!state.courseId) {
+    return;
+  }
+  state.guideMode = mode || "continue";
+  els.guideMode.value = state.guideMode;
+  const params = new URLSearchParams({
+    course_id: state.courseId,
+    mode: state.guideMode,
+    limit: "4",
+  });
+  if (state.guideMode !== "continue" && state.lectureId) {
+    params.set("lecture_id", state.lectureId);
+  }
+  setStatus("Building guide");
+  const payload = await getJson(`/api/guide?${params.toString()}`);
+  renderGuide(payload);
+  setStatus(`Guide ready / ${state.guideMode}`);
+}
+
+function renderGuide(payload) {
+  if (!payload || payload.status === "blocked") {
+    els.guideOutput.innerHTML = `
+      <div class="empty">
+        <p class="blocked">${escapeHtml(payload?.message || "Guide unavailable.")}</p>
+        <p class="citation">${escapeHtml(payload?.reason || "blocked")}</p>
+      </div>
+    `;
+    return;
+  }
+  if (payload.mode === "continue") {
+    renderContinueGuide(payload);
+  } else if (payload.mode === "walkthrough") {
+    renderWalkthroughGuide(payload);
+  } else if (payload.mode === "self_check") {
+    renderSelfCheckGuide(payload);
+  } else {
+    renderRecapGuide(payload);
+  }
+}
+
+function renderContinueGuide(payload) {
+  const lecture = payload.lecture || {};
+  const recommendation = payload.recommendation || {};
+  const preview = payload.preview || {};
+  els.guideOutput.innerHTML = `
+    <article class="guide-block">
+      <div class="segment-head">
+        <div>
+          <p class="item-title">Next useful lecture: ${escapeHtml(lecture.sequence)} / ${escapeHtml(lecture.title)}</p>
+          <p class="item-meta">${escapeHtml(recommendation.reason || "")}</p>
+        </div>
+        <button class="ghost-button" type="button" id="open-guide-lecture" data-sequence="${escapeHtml(
+          lecture.sequence,
+        )}">Open</button>
+      </div>
+      ${renderCitations(preview.segments || [])}
+      ${renderGuideCards(preview.cards || [])}
+      ${renderVisualEvidence(preview.visual_evidence || [])}
+      ${renderGuideLimits(payload)}
+    </article>
+  `;
+  const openButton = document.querySelector("#open-guide-lecture");
+  openButton?.addEventListener("click", async () => {
+    state.lectureSequence = Number(openButton.dataset.sequence || 1);
+    renderLectureSelect();
+    await loadReader();
+    await loadLearningState();
+    await loadGuide("walkthrough");
+  });
+}
+
+function renderWalkthroughGuide(payload) {
+  els.guideOutput.innerHTML = `
+    ${(payload.walkthrough || [])
+      .map(
+        (step) => `
+          <article class="guide-block">
+            <p class="item-title">${escapeHtml(step.title || step.step_id)}</p>
+            <p>${escapeHtml(step.body || "")}</p>
+            ${renderCitations(step.citations || [])}
+            ${renderGuideCards(step.cards || [])}
+            ${renderVisualEvidence(step.visual_evidence || [])}
+          </article>
+        `,
+      )
+      .join("")}
+    ${renderGuideLimits(payload)}
+  `;
+}
+
+function renderSelfCheckGuide(payload) {
+  els.guideOutput.innerHTML = `
+    ${(payload.questions || [])
+      .map(
+        (question) => `
+          <article class="guide-block">
+            <p class="item-title">${escapeHtml(question.prompt || question.question_id)}</p>
+            <p class="item-meta">${escapeHtml(question.answer_policy || "")}</p>
+            ${renderCitations(question.citations || [])}
+          </article>
+        `,
+      )
+      .join("")}
+    ${renderGuideLimits(payload)}
+  `;
+}
+
+function renderRecapGuide(payload) {
+  const recap = payload.recap || {};
+  els.guideOutput.innerHTML = `
+    ${(recap.key_points || [])
+      .map(
+        (point) => `
+          <article class="guide-block">
+            <p class="item-title">${escapeHtml(point.title || "Key point")}</p>
+            <p>${escapeHtml(point.body || "")}</p>
+            <p class="citation">${escapeHtml((point.source_segment_ids || []).join(", "))}</p>
+          </article>
+        `,
+      )
+      .join("")}
+    ${
+      recap.next_reading_target?.lecture_id
+        ? `<article class="guide-block">
+            <p class="item-title">Next reading target: ${escapeHtml(recap.next_reading_target.sequence)} / ${escapeHtml(
+              recap.next_reading_target.title,
+            )}</p>
+            <p class="item-meta">A suggestion from transcript-backed lecture order, not a schedule.</p>
+          </article>`
+        : ""
+    }
+    ${renderVisualEvidence(recap.visual_evidence || [])}
+    ${renderGuideLimits(payload)}
+  `;
+}
+
+function renderCitations(citations) {
+  if (!citations.length) {
+    return "";
+  }
+  return `
+    <div class="guide-evidence">
+      ${citations
+        .map(
+          (citation) => `
+            <p class="citation">Lecture ${escapeHtml(citation.lecture_sequence)} / ${escapeHtml(
+              citation.segment_id,
+            )} / ${secondsLabel(citation.start_seconds)}</p>
+            <p>${escapeHtml(citation.text || "")}</p>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderGuideCards(cards) {
+  if (!cards.length) {
+    return "";
+  }
+  return `
+    <div class="guide-evidence">
+      ${cards
+        .map(
+          (card) => `
+            <p class="citation">Card / ${escapeHtml(card.card_id)}</p>
+            <p>${escapeHtml(card.title || "")}</p>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderVisualEvidence(visuals) {
+  if (!visuals.length) {
+    return "";
+  }
+  return `
+    <div class="guide-evidence">
+      ${visuals
+        .map(
+          (visual) => `
+            <p class="citation">Visual / ${escapeHtml(visual.visual_id)} / ${escapeHtml(visual.image_path)}</p>
+            <p>${escapeHtml(visual.title || "")}: ${escapeHtml(visual.explanation || "")}</p>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderGuideLimits(payload) {
+  const limits = payload.limits || {};
+  return `
+    <p class="citation">Read-only / no plan: ${String(!limits.creates_study_plan)} / no scoring: ${String(
+      !limits.scores_learner,
+    )} / no review queue: ${String(!limits.spaced_review_queue)}</p>
+  `;
 }
 
 async function loadLearningState() {
@@ -455,11 +663,13 @@ els.searchButton.addEventListener("click", runSearch);
 els.qaButton.addEventListener("click", runQa);
 els.noteButton.addEventListener("click", saveNote);
 els.cardsButton.addEventListener("click", generateCards);
+els.guideButton.addEventListener("click", () => loadGuide(els.guideMode.value));
 els.progressSelect.addEventListener("change", setProgress);
 els.lectureSelect.addEventListener("change", async () => {
   state.lectureSequence = Number(els.lectureSelect.value || 1);
   await loadReader();
   await loadLearningState();
+  await loadGuide(state.guideMode === "continue" ? "walkthrough" : state.guideMode);
 });
 
 loadCourses().catch((error) => {

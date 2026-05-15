@@ -255,18 +255,19 @@ def _self_check_payload(
                 "answer_policy": "Use the cited course evidence; no automatic grading is performed.",
             }
         )
-    for citation in evidence["segment_citations"]:
-        if len(questions) >= max(limit, 0):
-            break
-        questions.append(
-            {
-                "question_id": f"self_check_{len(questions) + 1}",
-                "prompt": f"What is the main idea of this segment: {_truncate(str(citation.get('text') or ''), 96)}",
-                "source_card": {},
-                "citations": [citation],
-                "answer_policy": "Use the cited course evidence; no automatic grading is performed.",
-            }
-        )
+    if not questions:
+        for citation in evidence["segment_citations"]:
+            if len(questions) >= max(limit, 0):
+                break
+            questions.append(
+                {
+                    "question_id": f"self_check_{len(questions) + 1}",
+                    "prompt": f"What is the main idea of this segment: {_truncate(str(citation.get('text') or ''), 96)}",
+                    "source_card": {},
+                    "citations": [citation],
+                    "answer_policy": "Use the cited course evidence; no automatic grading is performed.",
+                }
+            )
     return _base_payload(
         course=course,
         course_id=course_id,

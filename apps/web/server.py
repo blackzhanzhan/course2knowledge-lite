@@ -17,8 +17,10 @@ DEFAULT_STORE_ROOT = REPO_ROOT / "data" / "course-store"
 sys.path.insert(0, str(REPO_ROOT / "packages" / "course-store" / "src"))
 sys.path.insert(0, str(REPO_ROOT / "packages" / "qa" / "src"))
 sys.path.insert(0, str(REPO_ROOT / "packages" / "bilibili-import" / "src"))
+sys.path.insert(0, str(REPO_ROOT / "packages" / "guidance" / "src"))
 
 from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
+from course2knowledge_lite_guidance import get_learning_guide  # noqa: E402
 from course2knowledge_lite_qa import answer_course_question  # noqa: E402
 from course2knowledge_lite_store import JsonCourseStore  # noqa: E402
 
@@ -78,6 +80,18 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     course_id=course_id,
                     question=question,
                     limit=_limit(params, default=5),
+                )
+                self._send_json(payload)
+            elif parsed.path == "/api/guide":
+                params = parse_qs(parsed.query)
+                course_id = _required_param(params, "course_id")
+                payload = get_learning_guide(
+                    store=JsonCourseStore(self.store_root),
+                    course_id=course_id,
+                    mode=_optional_param(params, "mode") or "continue",
+                    lecture_id=_optional_param(params, "lecture_id"),
+                    lecture_sequence=_optional_param(params, "lecture_sequence") or None,
+                    limit=_limit(params, default=3),
                 )
                 self._send_json(payload)
             elif parsed.path == "/api/notes":
