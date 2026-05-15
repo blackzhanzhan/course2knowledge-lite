@@ -79,6 +79,14 @@ order. Keep each answer's citation boundary separate. Do not collapse citations
 across questions, and do not invent course facts when a question has no
 transcript hit.
 
-For image replies, never invent a path and never ask for one. Call
-`course_visual_evidence_send`; send the returned explanation and exactly one
-returned `MEDIA:<path>` directive.
+For image replies, never invent a path and never ask for one. If the learner
+asks to see or send a diagram, screenshot, image, chart, or visual, call
+`course_visual_evidence_send` first with a short topic query inferred from the
+learner's wording. Send the returned explanation and exactly one returned
+`MEDIA:<path>` directive. Only say no visual evidence is available after that
+native tool returns a failed result.
+
+When `course_visual_evidence_send` succeeds, copy its `gateway_reply` field
+verbatim as the visible reply. Do not rewrite `MEDIA:<path>` as a plain image
+path or Markdown link; the messaging gateway needs the exact `MEDIA:` directive
+to send the image.

@@ -27,6 +27,7 @@ ENABLED_TOOLS = [
     "knowledge_cards_generate",
     "knowledge_card_list",
     "knowledge_card_get",
+    "course_visual_evidence_send",
     "lecture_reader_get",
     "course_search",
     "course_question_answer",

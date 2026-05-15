@@ -67,6 +67,35 @@ class HermesLitePluginTests(unittest.TestCase):
             self.assertIn("handler", payload)
             self.assertEqual(payload["schema"]["name"], tool_name)
 
+    def test_learner_tools_allow_omitting_course_id_when_course_is_current(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+
+        module.register(ctx)
+
+        learner_tools = [
+            "course_transcript_coverage_get",
+            "knowledge_cards_generate",
+            "knowledge_card_list",
+            "knowledge_card_get",
+            "course_visual_evidence_send",
+            "lecture_reader_get",
+            "course_search",
+            "course_question_answer",
+            "note_create",
+            "note_list",
+            "note_update",
+            "note_delete",
+            "bookmark_create",
+            "bookmark_list",
+            "bookmark_delete",
+            "reading_progress_set",
+            "reading_progress_get",
+        ]
+        for tool_name in learner_tools:
+            parameters = ctx.tools[tool_name]["schema"]["parameters"]
+            self.assertNotIn("course_id", parameters.get("required", []), tool_name)
+
     def test_import_status_tool_reads_local_store(self) -> None:
         module = load_plugin_module()
         ctx = FakeHermesContext()
@@ -317,11 +346,17 @@ class HermesLitePluginTests(unittest.TestCase):
             qa_raw = ctx.tools["course_question_answer"]["handler"](
                 {**common_args, "question": "RAG 和 Agent 的区别是什么？"}
             )
+            auto_search_raw = ctx.tools["course_search"]["handler"]({"store_root": temp_dir, "query": "RAG Agent"})
+            auto_qa_raw = ctx.tools["course_question_answer"]["handler"](
+                {"store_root": temp_dir, "question": "What is the difference between RAG and Agent?"}
+            )
 
         coverage_payload = json.loads(coverage_raw)
         reader_payload = json.loads(reader_raw)
         search_payload = json.loads(search_raw)
         qa_payload = json.loads(qa_raw)
+        auto_search_payload = json.loads(auto_search_raw)
+        auto_qa_payload = json.loads(auto_qa_raw)
         self.assertEqual(coverage_payload["status"], "completed")
         self.assertEqual(coverage_payload["coverage"]["covered_lecture_count"], 1)
         self.assertEqual(reader_payload["status"], "completed")
@@ -329,6 +364,45 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(search_payload["result_count"], 1)
         self.assertEqual(qa_payload["answer"]["status"], "answered")
         self.assertEqual(qa_payload["answer"]["citation_count"], 1)
+        self.assertEqual(auto_search_payload["status"], "completed")
+        self.assertEqual(auto_search_payload["result_count"], 1)
+        self.assertEqual(auto_qa_payload["status"], "completed")
+        self.assertEqual(auto_qa_payload["answer"]["status"], "answered")
+
+    def test_auto_course_selection_reports_human_ambiguity_for_multiple_courses(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonCourseStore(temp_dir)
+            for course_id, title in [("course_one", "First course"), ("course_two", "Second course")]:
+                skeleton = build_course_skeleton(
+                    course_id=course_id,
+                    title=title,
+                    source_url=f"https://example.com/{course_id}",
+                    video_refs=[
+                        {
+                            "sequence": 1,
+                            "bvid": f"BV{course_id}",
+                            "title": "Lecture 1",
+                            "source_url": f"https://www.bilibili.com/video/BV{course_id}",
+                        }
+                    ],
+                    now="2026-05-14T00:00:00Z",
+                )
+                store.write_skeleton(skeleton)
+
+            raw = ctx.tools["course_question_answer"]["handler"](
+                {"store_root": temp_dir, "question": "What did I just learn?"}
+            )
+
+        payload = json.loads(raw)
+        self.assertEqual(payload["status"], "failed")
+        self.assertIn("multiple imported courses", payload["error"])
+        self.assertIn("First course", payload["error"])
+        self.assertIn("Second course", payload["error"])
+        self.assertNotIn("course_id", payload["error"])
 
     def test_learning_state_tools_use_local_course_store(self) -> None:
         module = load_plugin_module()
@@ -518,8 +592,7 @@ class HermesLitePluginTests(unittest.TestCase):
             raw = ctx.tools["course_visual_evidence_send"]["handler"](
                 {
                     "store_root": temp_dir,
-                    "course_id": skeleton.course.course_id,
-                    "query": "Agent",
+                    "query": "Agent 怎么和工具、知识库配合",
                 }
             )
 

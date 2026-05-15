@@ -243,17 +243,11 @@ class JsonCourseStore:
             items = [item for item in items if str(item.get("lecture_id") or "") == lecture_id]
         cleaned_query = str(query or "").strip().lower()
         if cleaned_query:
+            query_terms = _query_terms(cleaned_query)
             items = [
                 item
                 for item in items
-                if cleaned_query
-                in " ".join(
-                    [
-                        str(item.get("title") or ""),
-                        str(item.get("explanation") or ""),
-                        str(item.get("provenance") or ""),
-                    ]
-                ).lower()
+                if _visual_search_matches(item, cleaned_query=cleaned_query, query_terms=query_terms)
             ]
         return items
 
@@ -642,3 +636,20 @@ def _card_tags(text: str) -> list[str]:
         if len(tags) >= 8:
             break
     return tags
+
+
+def _visual_search_matches(item: dict[str, Any], *, cleaned_query: str, query_terms: list[str]) -> bool:
+    searchable = " ".join(
+        [
+            str(item.get("title") or ""),
+            str(item.get("explanation") or ""),
+            str(item.get("provenance") or ""),
+        ]
+    ).lower()
+    if cleaned_query in searchable:
+        return True
+    return any(term in searchable for term in query_terms)
+
+
+def _query_terms(query: str) -> list[str]:
+    return [term for term in re.split(r"[^0-9a-zA-Z\u4e00-\u9fff]+", query.lower()) if len(term) >= 2]
