@@ -17,6 +17,7 @@ from .models import (
     NoteRecord,
     ReadingProgressRecord,
     TranscriptSegmentRecord,
+    VisualEvidenceRecord,
 )
 
 _UNSAFE_FILENAME_CHARS = re.compile(r'[\\/:*?"<>|]+')
@@ -218,6 +219,67 @@ class JsonCourseStore:
             if str(card.get("card_id") or "") == cleaned_card_id:
                 return dict(card)
         raise ValueError(f"card not found: {cleaned_card_id}")
+
+    def write_visual_evidence_records(
+        self,
+        course_id: str,
+        records: list[VisualEvidenceRecord | dict[str, Any]],
+    ) -> str:
+        self.read_course(course_id)
+        normalized = [self._normalize_visual_evidence(course_id, record) for record in records]
+        normalized.sort(key=lambda item: (str(item.get("lecture_id") or ""), str(item.get("visual_id") or "")))
+        self._write_json(self._visual_evidence_path(course_id), normalized)
+        return str(self._visual_evidence_path(course_id))
+
+    def list_visual_evidence(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str = "",
+        query: str = "",
+    ) -> list[dict[str, Any]]:
+        items = self._read_json_list_if_exists(self._visual_evidence_path(course_id))
+        if lecture_id:
+            items = [item for item in items if str(item.get("lecture_id") or "") == lecture_id]
+        cleaned_query = str(query or "").strip().lower()
+        if cleaned_query:
+            items = [
+                item
+                for item in items
+                if cleaned_query
+                in " ".join(
+                    [
+                        str(item.get("title") or ""),
+                        str(item.get("explanation") or ""),
+                        str(item.get("provenance") or ""),
+                    ]
+                ).lower()
+            ]
+        return items
+
+    def read_visual_evidence(self, course_id: str, visual_id: str) -> dict[str, Any]:
+        cleaned_visual_id = str(visual_id or "").strip()
+        if not cleaned_visual_id:
+            raise ValueError("visual_id is required")
+        for item in self.list_visual_evidence(course_id=course_id):
+            if str(item.get("visual_id") or "") == cleaned_visual_id:
+                return dict(item)
+        raise ValueError(f"visual evidence not found: {cleaned_visual_id}")
+
+    def select_visual_evidence(
+        self,
+        *,
+        course_id: str,
+        visual_id: str = "",
+        lecture_id: str = "",
+        query: str = "",
+    ) -> dict[str, Any]:
+        if visual_id:
+            return self.read_visual_evidence(course_id, visual_id)
+        candidates = self.list_visual_evidence(course_id=course_id, lecture_id=lecture_id, query=query)
+        if not candidates:
+            raise ValueError("No visual evidence matched the request")
+        return dict(candidates[0])
 
     def create_note(
         self,
@@ -448,6 +510,61 @@ class JsonCourseStore:
 
     def _knowledge_cards_path(self, course_id: str) -> Path:
         return self.root / "courses" / course_id / "knowledge_cards.json"
+
+    def _visual_evidence_path(self, course_id: str) -> Path:
+        return self.root / "courses" / course_id / "visual_evidence.json"
+
+    def _normalize_visual_evidence(
+        self,
+        course_id: str,
+        record: VisualEvidenceRecord | dict[str, Any],
+    ) -> dict[str, Any]:
+        payload = record.to_dict() if isinstance(record, VisualEvidenceRecord) else dict(record)
+        payload["course_id"] = str(payload.get("course_id") or course_id).strip()
+        if payload["course_id"] != course_id:
+            raise ValueError(f"visual evidence course_id mismatch: {payload['course_id']} != {course_id}")
+        visual_id = str(payload.get("visual_id") or "").strip()
+        lecture_id = str(payload.get("lecture_id") or "").strip()
+        title = str(payload.get("title") or "").strip()
+        explanation = str(payload.get("explanation") or "").strip()
+        image_path = str(payload.get("image_path") or "").strip().replace("\\", "/")
+        provenance = str(payload.get("provenance") or "").strip()
+        if not visual_id:
+            raise ValueError("visual_id is required")
+        if not lecture_id:
+            raise ValueError("lecture_id is required")
+        if not title:
+            raise ValueError("visual evidence title is required")
+        if not explanation:
+            raise ValueError("visual evidence explanation is required")
+        if not image_path:
+            raise ValueError("visual evidence image_path is required")
+        if Path(image_path).is_absolute() or ".." in Path(image_path).parts:
+            raise ValueError("visual evidence image_path must be a repo-local relative path")
+        if not provenance:
+            raise ValueError("visual evidence provenance is required")
+        self._ensure_lecture_exists(course_id, lecture_id)
+        segment_id = str(payload.get("segment_id") or "").strip()
+        if segment_id:
+            segments = self.read_transcript_segments_if_exists(course_id, lecture_id)
+            if not any(str(segment.get("segment_id") or "") == segment_id for segment in segments):
+                raise ValueError(f"segment not found for visual evidence: {segment_id}")
+        card_id = str(payload.get("card_id") or "").strip()
+        if card_id:
+            self.read_knowledge_card(course_id, card_id)
+        return {
+            "visual_id": visual_id,
+            "course_id": course_id,
+            "lecture_id": lecture_id,
+            "segment_id": segment_id,
+            "card_id": card_id,
+            "title": title,
+            "explanation": explanation,
+            "image_path": image_path,
+            "source_url": str(payload.get("source_url") or "").strip(),
+            "provenance": provenance,
+            "created_at": str(payload.get("created_at") or self._utc_now()).strip(),
+        }
 
     def _build_knowledge_card(
         self,

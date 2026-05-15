@@ -1,0 +1,28 @@
+[
+  {
+    "card_id": "card_056f0b07d726",
+    "course_id": "course_e4af83f2c407",
+    "created_at": "2026-05-15T00:00:00Z",
+    "explanation": "This diagram explains the lecture 5 distinction: RAG retrieves cited course evidence, while an Agent plans tool-backed actions around that evidence.",
+    "image_path": "docs/assets/visual-evidence/rag-agent-flow.png",
+    "lecture_id": "course_e4af83f2c407::lecture::005",
+    "provenance": "public demo diagram derived from transcript segment course_e4af83f2c407::lecture::005::manual::00001",
+    "segment_id": "course_e4af83f2c407::lecture::005::manual::00001",
+    "source_url": "https://www.bilibili.com/video/BV1TUXKBbEV1",
+    "title": "RAG and Agent flow",
+    "visual_id": "visual_rag_agent_flow"
+  },
+  {
+    "card_id": "card_fae53ca81cc5",
+    "course_id": "course_e4af83f2c407",
+    "created_at": "2026-05-15T00:00:00Z",
+    "explanation": "This diagram summarizes the lecture 2 quality loop: retrieve enough chunks, rerank the strongest evidence, cite segments, and verify final answer support.",
+    "image_path": "docs/assets/visual-evidence/rag-quality-loop.png",
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "provenance": "public demo diagram derived from transcript segment course_e4af83f2c407::lecture::002::manual::00004",
+    "segment_id": "course_e4af83f2c407::lecture::002::manual::00004",
+    "source_url": "https://www.bilibili.com/video/BV1ktAgzRE83",
+    "title": "RAG quality loop",
+    "visual_id": "visual_rag_quality_loop"
+  }
+]

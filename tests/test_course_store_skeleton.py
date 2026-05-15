@@ -12,7 +12,12 @@ sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 
 from course2knowledge_lite_bilibili import BilibiliCollection, BilibiliVideoRef  # noqa: E402
 from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
-from course2knowledge_lite_store import JsonCourseStore, TranscriptSegmentRecord, build_course_skeleton  # noqa: E402
+from course2knowledge_lite_store import (  # noqa: E402
+    JsonCourseStore,
+    TranscriptSegmentRecord,
+    VisualEvidenceRecord,
+    build_course_skeleton,
+)
 
 
 class CourseStoreSkeletonTests(unittest.TestCase):
@@ -357,6 +362,118 @@ class CourseStoreSkeletonTests(unittest.TestCase):
         self.assertEqual(first_only["card_count"], 2)
         self.assertEqual(first_only["generated_card_count"], 1)
         self.assertEqual(regenerated["card_count"], 2)
+
+    def test_visual_evidence_is_course_bound_and_queryable(self) -> None:
+        skeleton = build_course_skeleton(
+            title="AI interview course",
+            source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+            video_refs=[
+                {
+                    "sequence": 1,
+                    "bvid": "BV00000001",
+                    "title": "RAG and Agent",
+                    "source_url": "https://www.bilibili.com/video/BV00000001",
+                }
+            ],
+            now="2026-05-14T00:00:00Z",
+        )
+        lecture = skeleton.lectures[0]
+        segment_id = f"{lecture.lecture_id}::manual::00001"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=segment_id,
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves evidence before an Agent calls tools.",
+                    )
+                ],
+            )
+            card = store.generate_knowledge_cards(skeleton.course.course_id)["cards"][0]
+            path = store.write_visual_evidence_records(
+                skeleton.course.course_id,
+                [
+                    VisualEvidenceRecord(
+                        visual_id="visual_rag_agent_flow",
+                        course_id=skeleton.course.course_id,
+                        lecture_id=lecture.lecture_id,
+                        segment_id=segment_id,
+                        card_id=card["card_id"],
+                        title="RAG and Agent flow",
+                        explanation="RAG grounds answers in retrieved evidence; Agent plans tool use around that evidence.",
+                        image_path="docs/assets/visual-evidence/rag-agent-flow.png",
+                        source_url=lecture.source_url,
+                        provenance="public demo diagram derived from transcript segment",
+                        created_at="2026-05-15T00:00:00Z",
+                    )
+                ],
+            )
+            all_visuals = store.list_visual_evidence(course_id=skeleton.course.course_id)
+            query_visuals = store.list_visual_evidence(course_id=skeleton.course.course_id, query="tool use")
+            selected = store.select_visual_evidence(course_id=skeleton.course.course_id, query="rag")
+
+        self.assertTrue(path.endswith("visual_evidence.json"))
+        self.assertEqual(len(all_visuals), 1)
+        self.assertEqual(query_visuals[0]["visual_id"], "visual_rag_agent_flow")
+        self.assertEqual(selected["segment_id"], segment_id)
+        self.assertEqual(selected["card_id"], card["card_id"])
+        self.assertFalse(Path(selected["image_path"]).is_absolute())
+
+    def test_visual_evidence_rejects_naked_absolute_image_paths(self) -> None:
+        skeleton = build_course_skeleton(
+            title="AI interview course",
+            source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+            video_refs=[
+                {
+                    "sequence": 1,
+                    "bvid": "BV00000001",
+                    "title": "RAG and Agent",
+                    "source_url": "https://www.bilibili.com/video/BV00000001",
+                }
+            ],
+            now="2026-05-14T00:00:00Z",
+        )
+        lecture = skeleton.lectures[0]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            with self.assertRaisesRegex(ValueError, "repo-local relative path"):
+                store.write_visual_evidence_records(
+                    skeleton.course.course_id,
+                    [
+                        {
+                            "visual_id": "visual_bad",
+                            "course_id": skeleton.course.course_id,
+                            "lecture_id": lecture.lecture_id,
+                            "title": "Bad image",
+                            "explanation": "This should be blocked.",
+                            "image_path": "C:/private/image.png",
+                            "provenance": "bad path",
+                            "created_at": "2026-05-15T00:00:00Z",
+                        }
+                    ],
+                )
+
+    def test_public_visual_evidence_fixture_paths_exist(self) -> None:
+        store = JsonCourseStore(ROOT / "data" / "course-store")
+        visuals = store.list_visual_evidence(course_id="course_e4af83f2c407")
+        selected = store.select_visual_evidence(course_id="course_e4af83f2c407", query="Agent")
+
+        self.assertGreaterEqual(len(visuals), 2)
+        self.assertEqual(selected["visual_id"], "visual_rag_agent_flow")
+        for item in visuals:
+            image_path = str(item["image_path"])
+            self.assertFalse(Path(image_path).is_absolute())
+            self.assertNotIn("..", Path(image_path).parts)
+            self.assertTrue((ROOT / image_path).exists(), image_path)
 
     def test_reading_progress_rejects_unknown_status(self) -> None:
         skeleton = build_course_skeleton(

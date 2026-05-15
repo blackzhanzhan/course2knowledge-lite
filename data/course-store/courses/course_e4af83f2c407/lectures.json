@@ -1,0 +1,302 @@
+[
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::001",
+    "read_status": "read",
+    "sequence": 1,
+    "source_id": "BV1beAnzhEB7",
+    "source_url": "https://www.bilibili.com/video/BV1beAnzhEB7",
+    "title": "AI大模型面试必问---大模型微调的六个核心问题"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "read_status": "not_started",
+    "sequence": 2,
+    "source_id": "BV1ktAgzRE83",
+    "source_url": "https://www.bilibili.com/video/BV1ktAgzRE83",
+    "title": "面试官问：RAG准确率怎么从60%提到85%？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::003",
+    "read_status": "not_started",
+    "sequence": 3,
+    "source_id": "BV11HQ7BXEzq",
+    "source_url": "https://www.bilibili.com/video/BV11HQ7BXEzq",
+    "title": "正确打开大模型学习路线"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::004",
+    "read_status": "not_started",
+    "sequence": 4,
+    "source_id": "BV1sXXKBdEWz",
+    "source_url": "https://www.bilibili.com/video/BV1sXXKBdEWz",
+    "title": "面试官：agent调用了一个Python代码解释器工具但运行时报错了，你要怎么处理？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::005",
+    "read_status": "not_started",
+    "sequence": 5,
+    "source_id": "BV1TUXKBbEV1",
+    "source_url": "https://www.bilibili.com/video/BV1TUXKBbEV1",
+    "title": "面试官问：RAG，MCP和agent分别解决什么核心问题？工程上怎么协同配合？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::006",
+    "read_status": "not_started",
+    "sequence": 6,
+    "source_id": "BV14JAgzcEHd",
+    "source_url": "https://www.bilibili.com/video/BV14JAgzcEHd",
+    "title": "面试官：Agent运行久了记忆撑爆了怎么办？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::007",
+    "read_status": "not_started",
+    "sequence": 7,
+    "source_id": "BV1xnAgz8EYS",
+    "source_url": "https://www.bilibili.com/video/BV1xnAgz8EYS",
+    "title": "面试官：为什么要做query改写有哪些常用策略？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::008",
+    "read_status": "not_started",
+    "sequence": 8,
+    "source_id": "BV1UBDYBAEpv",
+    "source_url": "https://www.bilibili.com/video/BV1UBDYBAEpv",
+    "title": "面试官问:在复杂的 Agent 开发中， 如何让大模型 稳定且确定地 输出结构化结果（如 JSON）？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::009",
+    "read_status": "not_started",
+    "sequence": 9,
+    "source_id": "BV1KkDYBhEYQ",
+    "source_url": "https://www.bilibili.com/video/BV1KkDYBhEYQ",
+    "title": "面试官问： 在RAG系统中， 结构化数据 (SQL或表格) 查询的难题怎么解决？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::010",
+    "read_status": "not_started",
+    "sequence": 10,
+    "source_id": "BV12rDYBcErz",
+    "source_url": "https://www.bilibili.com/video/BV12rDYBcErz",
+    "title": "面试官：如何保证 Agent 调用工具 (Function Calling) 的 可靠性？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::011",
+    "read_status": "not_started",
+    "sequence": 11,
+    "source_id": "BV12rDYBcE5B",
+    "source_url": "https://www.bilibili.com/video/BV12rDYBcE5B",
+    "title": "面试官：在 Multi-Agent系统中， 主 Agent 如何动态派生 Subagent 协同工作？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::012",
+    "read_status": "not_started",
+    "sequence": 12,
+    "source_id": "BV1DYDYBiEgU",
+    "source_url": "https://www.bilibili.com/video/BV1DYDYBiEgU",
+    "title": "面试官：RAG各模块的优化策略有哪些？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::013",
+    "read_status": "not_started",
+    "sequence": 13,
+    "source_id": "BV1DYDYBiEPr",
+    "source_url": "https://www.bilibili.com/video/BV1DYDYBiEPr",
+    "title": "面试官：如何设计具有工程级别的分层prompt模板？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::014",
+    "read_status": "not_started",
+    "sequence": 14,
+    "source_id": "BV1DaDYBTEek",
+    "source_url": "https://www.bilibili.com/video/BV1DaDYBTEek",
+    "title": "面试官：大模型究竟是如何获取优质参数的？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::015",
+    "read_status": "not_started",
+    "sequence": 15,
+    "source_id": "BV1UiDYBeEr2",
+    "source_url": "https://www.bilibili.com/video/BV1UiDYBeEr2",
+    "title": "面试官：你觉得RAG为什么会出现幻觉？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::016",
+    "read_status": "not_started",
+    "sequence": 16,
+    "source_id": "BV18ZXqBXECV",
+    "source_url": "https://www.bilibili.com/video/BV18ZXqBXECV",
+    "title": "面试官：如果我有100多个工具API把它们的描述全部塞进prompt里，会发生什么？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::017",
+    "read_status": "not_started",
+    "sequence": 17,
+    "source_id": "BV1xTXBB2EAC",
+    "source_url": "https://www.bilibili.com/video/BV1xTXBB2EAC",
+    "title": "面试官问：线性注意力为什么没人用，你能答到第几层？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::018",
+    "read_status": "not_started",
+    "sequence": 18,
+    "source_id": "BV1KTXBBmEy2",
+    "source_url": "https://www.bilibili.com/video/BV1KTXBBmEy2",
+    "title": "面试官：Prompt Engineering能真正操控大模型的内在认知吗？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::019",
+    "read_status": "not_started",
+    "sequence": 19,
+    "source_id": "BV14PXBBUEpu",
+    "source_url": "https://www.bilibili.com/video/BV14PXBBUEpu",
+    "title": "假如你从4月开始学习AI Agent，需要多久学会？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::020",
+    "read_status": "not_started",
+    "sequence": 20,
+    "source_id": "BV1rJdmBgELm",
+    "source_url": "https://www.bilibili.com/video/BV1rJdmBgELm",
+    "title": "面试官：在多agent协同场景下你怎么保证跨agent结构化数据传递的稳定性？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::021",
+    "read_status": "not_started",
+    "sequence": 21,
+    "source_id": "BV11QdmBEEBp",
+    "source_url": "https://www.bilibili.com/video/BV11QdmBEEBp",
+    "title": "面试官：ReAct agent解决复杂问题的核心抓手是什么？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::022",
+    "read_status": "not_started",
+    "sequence": 22,
+    "source_id": "BV1NXdmBUEuH",
+    "source_url": "https://www.bilibili.com/video/BV1NXdmBUEuH",
+    "title": "面试官：如何设计一套agent的上下文取舍方案？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::023",
+    "read_status": "not_started",
+    "sequence": 23,
+    "source_id": "BV1yXdmBmEek",
+    "source_url": "https://www.bilibili.com/video/BV1yXdmBmEek",
+    "title": "面试官：如何设计一个企业级的知识库？关键步骤是什么？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::024",
+    "read_status": "not_started",
+    "sequence": 24,
+    "source_id": "BV14UdmBnE28",
+    "source_url": "https://www.bilibili.com/video/BV14UdmBnE28",
+    "title": "面试官：如果单纯用向量检索(RAG)来做长期记忆，会遇到什么问题你会如何优化检索质量？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::025",
+    "read_status": "not_started",
+    "sequence": 25,
+    "source_id": "BV1SDoZBXE78",
+    "source_url": "https://www.bilibili.com/video/BV1SDoZBXE78",
+    "title": "在油管学Agent，也太清晰了吧"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::026",
+    "read_status": "not_started",
+    "sequence": 26,
+    "source_id": "BV1YCoZBtEcq",
+    "source_url": "https://www.bilibili.com/video/BV1YCoZBtEcq",
+    "title": "面试官：说说 LambdaMART 究竟是什么? 在真正的RAG系统中， 它通常用在哪个环节?"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::027",
+    "read_status": "not_started",
+    "sequence": 27,
+    "source_id": "BV1ayoZBoE58",
+    "source_url": "https://www.bilibili.com/video/BV1ayoZBoE58",
+    "title": "学AI大模型搞懂这些你就出师了！"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::028",
+    "read_status": "not_started",
+    "sequence": 28,
+    "source_id": "BV1qH9YBREfD",
+    "source_url": "https://www.bilibili.com/video/BV1qH9YBREfD",
+    "title": "面试官：大模型的function calling是怎么实现的？"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::029",
+    "read_status": "not_started",
+    "sequence": 29,
+    "source_id": "BV1zn9YBxEPw",
+    "source_url": "https://www.bilibili.com/video/BV1zn9YBxEPw",
+    "title": "面试官：当 上百个 Skill 塞爆 System Prompt 时: 你该如何进行 架构重构与优化?"
+  },
+  {
+    "course_id": "course_e4af83f2c407",
+    "duration_seconds": null,
+    "lecture_id": "course_e4af83f2c407::lecture::030",
+    "read_status": "not_started",
+    "sequence": 30,
+    "source_id": "BV1En9YB4EvD",
+    "source_url": "https://www.bilibili.com/video/BV1En9YB4EvD",
+    "title": "评论区留言问题：JSON+LaTeX转义地狱"
+  }
+]

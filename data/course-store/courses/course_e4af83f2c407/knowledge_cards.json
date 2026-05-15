@@ -1,0 +1,168 @@
+[
+  {
+    "body": "第一段介绍课程目标。第二段说明 RAG 和 Agent 的区别。第三段总结如何把视频课程变成可问答知识库。",
+    "card_id": "card_2b8266f1680b",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::001",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::001::manual::00001"
+    ],
+    "tags": [
+      "RAG",
+      "Agent"
+    ],
+    "title": "第一段介绍课程目标。第二段说明 RAG 和 Agent 的区别。第三段总结如何把视频课程变成可问答知识库。"
+  },
+  {
+    "body": "This lecture focuses on RAG accuracy optimization.",
+    "card_id": "card_382f7a1246d7",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::002::manual::00001"
+    ],
+    "tags": [
+      "This",
+      "lecture",
+      "focuses",
+      "on",
+      "RAG",
+      "accuracy",
+      "optimization"
+    ],
+    "title": "This lecture focuses on RAG accuracy optimization."
+  },
+  {
+    "body": "Step one is checking retrieval recall.",
+    "card_id": "card_a403d07095ea",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::002::manual::00002"
+    ],
+    "tags": [
+      "Step",
+      "one",
+      "is",
+      "checking",
+      "retrieval",
+      "recall"
+    ],
+    "title": "Step one is checking retrieval recall."
+  },
+  {
+    "body": "Step two is improving chunking and reranking.",
+    "card_id": "card_d6cb9ded7401",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::002::manual::00003"
+    ],
+    "tags": [
+      "Step",
+      "two",
+      "is",
+      "improving",
+      "chunking",
+      "and",
+      "reranking"
+    ],
+    "title": "Step two is improving chunking and reranking."
+  },
+  {
+    "body": "Step three is verifying whether the final answer is supported by cited course evidence.",
+    "card_id": "card_fae53ca81cc5",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::002::manual::00004"
+    ],
+    "tags": [
+      "Step",
+      "three",
+      "is",
+      "verifying",
+      "whether",
+      "the",
+      "final",
+      "answer"
+    ],
+    "title": "Step three is verifying whether the final answer is supported by cite..."
+  },
+  {
+    "body": "This lecture compares RAG, MCP, and Agent responsibilities.",
+    "card_id": "card_056f0b07d726",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::005",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::005::manual::00001"
+    ],
+    "tags": [
+      "This",
+      "lecture",
+      "compares",
+      "RAG",
+      "MCP",
+      "and",
+      "Agent",
+      "responsibilities"
+    ],
+    "title": "This lecture compares RAG, MCP, and Agent responsibilities."
+  },
+  {
+    "body": "MCP standardizes access to external tools and resources.",
+    "card_id": "card_2190f82fc03c",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::005",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::005::manual::00003"
+    ],
+    "tags": [
+      "MCP",
+      "standardizes",
+      "access",
+      "to",
+      "external",
+      "tools",
+      "and",
+      "resources"
+    ],
+    "title": "MCP standardizes access to external tools and resources."
+  },
+  {
+    "body": "Agent plans tasks, calls tools, and coordinates multi step work.",
+    "card_id": "card_6089e3bb1464",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::005",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::005::manual::00004"
+    ],
+    "tags": [
+      "Agent",
+      "plans",
+      "tasks",
+      "calls",
+      "tools",
+      "and",
+      "coordinates",
+      "multi"
+    ],
+    "title": "Agent plans tasks, calls tools, and coordinates multi step work."
+  },
+  {
+    "body": "RAG retrieves course evidence.",
+    "card_id": "card_ac666ecc36d0",
+    "course_id": "course_e4af83f2c407",
+    "lecture_id": "course_e4af83f2c407::lecture::005",
+    "source_segment_ids": [
+      "course_e4af83f2c407::lecture::005::manual::00002"
+    ],
+    "tags": [
+      "RAG",
+      "retrieves",
+      "course",
+      "evidence"
+    ],
+    "title": "RAG retrieves course evidence."
+  }
+]

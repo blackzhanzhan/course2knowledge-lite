@@ -123,6 +123,36 @@ class KnowledgeCardRecord:
 
 
 @dataclass(frozen=True)
+class VisualEvidenceRecord:
+    visual_id: str
+    course_id: str
+    lecture_id: str
+    segment_id: str
+    card_id: str
+    title: str
+    explanation: str
+    image_path: str
+    source_url: str
+    provenance: str
+    created_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "visual_id": self.visual_id,
+            "course_id": self.course_id,
+            "lecture_id": self.lecture_id,
+            "segment_id": self.segment_id,
+            "card_id": self.card_id,
+            "title": self.title,
+            "explanation": self.explanation,
+            "image_path": self.image_path,
+            "source_url": self.source_url,
+            "provenance": self.provenance,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass(frozen=True)
 class NoteRecord:
     note_id: str
     course_id: str

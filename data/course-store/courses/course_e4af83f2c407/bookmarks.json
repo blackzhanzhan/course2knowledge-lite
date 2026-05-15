@@ -1,0 +1,14 @@
+[
+  {
+    "bookmark_id": "bookmark_ec033682ff30",
+    "created_at": "2026-05-14T06:27:50Z",
+    "target_id": "course_e4af83f2c407::lecture::001::manual::00001",
+    "target_type": "segment"
+  },
+  {
+    "bookmark_id": "bookmark_150e973aadf3",
+    "created_at": "2026-05-14T06:33:32Z",
+    "target_id": "course_e4af83f2c407::lecture::001::manual::00001",
+    "target_type": "segment"
+  }
+]

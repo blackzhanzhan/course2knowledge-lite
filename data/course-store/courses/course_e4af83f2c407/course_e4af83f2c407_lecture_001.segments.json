@@ -1,0 +1,9 @@
+[
+  {
+    "end_seconds": 6.0,
+    "lecture_id": "course_e4af83f2c407::lecture::001",
+    "segment_id": "course_e4af83f2c407::lecture::001::manual::00001",
+    "start_seconds": 0.0,
+    "text": "第一段介绍课程目标。第二段说明 RAG 和 Agent 的区别。第三段总结如何把视频课程变成可问答知识库。"
+  }
+]

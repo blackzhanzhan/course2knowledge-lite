@@ -1,0 +1,30 @@
+[
+  {
+    "end_seconds": 6.0,
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "segment_id": "course_e4af83f2c407::lecture::002::manual::00001",
+    "start_seconds": 0.0,
+    "text": "This lecture focuses on RAG accuracy optimization."
+  },
+  {
+    "end_seconds": 12.0,
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "segment_id": "course_e4af83f2c407::lecture::002::manual::00002",
+    "start_seconds": 6.0,
+    "text": "Step one is checking retrieval recall."
+  },
+  {
+    "end_seconds": 18.0,
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "segment_id": "course_e4af83f2c407::lecture::002::manual::00003",
+    "start_seconds": 12.0,
+    "text": "Step two is improving chunking and reranking."
+  },
+  {
+    "end_seconds": 24.0,
+    "lecture_id": "course_e4af83f2c407::lecture::002",
+    "segment_id": "course_e4af83f2c407::lecture::002::manual::00004",
+    "start_seconds": 18.0,
+    "text": "Step three is verifying whether the final answer is supported by cited course evidence."
+  }
+]
