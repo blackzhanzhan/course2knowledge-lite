@@ -19,5 +19,5 @@ course2knowledge-lite = "course2knowledge_lite.cli:main"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["src", "packages/bilibili-import/src", "packages/course-store/src", "packages/qa/src", "hermes/plugins"]
-include = ["course2knowledge_lite*", "course2knowledge_lite_bilibili*", "course2knowledge_lite_store*", "course2knowledge_lite_qa*", "course2knowledge_lite_hermes*", "public_release*"]
+where = ["src", "packages/bilibili-import/src", "packages/course-store/src", "packages/qa/src", "packages/guidance/src", "hermes/plugins"]
+include = ["course2knowledge_lite*", "course2knowledge_lite_bilibili*", "course2knowledge_lite_store*", "course2knowledge_lite_qa*", "course2knowledge_lite_guidance*", "course2knowledge_lite_hermes*", "public_release*"]
