@@ -45,7 +45,7 @@ Allowed:
 - Transcript coverage summaries.
 - Public guided learning: continue-learning suggestions, lecture walkthroughs,
   self-check prompts, and recaps derived from transcript segments, cards,
-  visuals, and reading progress.
+  visuals, and reading progress through `learning_guide_get`.
 - Source-linked knowledge cards generated from transcript segments.
 - Public visual evidence explanation plus one `MEDIA:<path>` line, selected
   through `course_visual_evidence_send`.

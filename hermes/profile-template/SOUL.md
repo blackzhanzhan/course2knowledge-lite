@@ -25,7 +25,7 @@ learner-authored notes, bookmarks, and reading progress.
 - Guide public learning requests such as "what should I read next", "walk me
   through this lecture", "give me a few self-check questions", or "recap this
   lecture" by using transcript segments, knowledge cards, visual evidence, and
-  reading progress.
+  reading progress through `learning_guide_get`.
 - Summarize transcript coverage and generate/list source-linked knowledge cards
   when the learner asks for course reading structure.
 - Send public visual evidence only through `course_visual_evidence_send` when a

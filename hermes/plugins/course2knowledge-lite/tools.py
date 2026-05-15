@@ -13,6 +13,7 @@ from course2knowledge_lite_bilibili import (
     import_manual_transcript_by_reference_to_store,
     probe_lecture_transcript_source_by_reference,
 )
+from course2knowledge_lite_guidance import get_learning_guide
 from course2knowledge_lite_qa import answer_course_question
 from course2knowledge_lite_store import JsonCourseStore
 
@@ -31,6 +32,7 @@ TOOL_NAMES = [
     "knowledge_card_get",
     "course_visual_evidence_send",
     "lecture_reader_get",
+    "learning_guide_get",
     "course_search",
     "course_question_answer",
     "note_create",
@@ -297,6 +299,23 @@ def _lecture_reader_get_handler(arguments: dict[str, Any], **_registry_kwargs: A
         return _tool_error("lecture_reader_get", exc)
 
 
+def _learning_guide_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        store = JsonCourseStore(_store_root(arguments))
+        course_id = _resolve_course_id(arguments, store)
+        guide = get_learning_guide(
+            store=store,
+            course_id=course_id,
+            mode=str(arguments.get("mode", "") or "continue"),
+            lecture_id=str(arguments.get("lecture_id", "") or "").strip(),
+            lecture_sequence=arguments.get("lecture_sequence"),
+            limit=_positive_limit(arguments.get("limit"), default=3),
+        )
+        return _json_response({"status": "completed", "tool": "learning_guide_get", "guide": guide})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error("learning_guide_get", exc)
+
+
 def _course_search_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
         store = JsonCourseStore(_store_root(arguments))
@@ -549,6 +568,28 @@ def _lecture_reader_get_schema() -> dict[str, Any]:
                 "description": "1-based lecture sequence number in the course.",
             },
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+        },
+        "additionalProperties": False,
+    }
+
+
+def _learning_guide_get_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
+            "mode": {
+                "type": ["string", "null"],
+                "enum": ["continue", "walkthrough", "self_check", "recap", None],
+                "description": "Guidance mode. Continue suggests the next useful lecture; the others focus one lecture.",
+            },
+            "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
+            "lecture_sequence": {
+                "type": ["integer", "string", "null"],
+                "description": "Optional 1-based lecture sequence number.",
+            },
+            "limit": {"type": ["integer", "string", "null"], "description": "Maximum evidence item count."},
             "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
         },
         "additionalProperties": False,
@@ -951,6 +992,17 @@ def register_course2knowledge_lite_tools(ctx: Any) -> None:
         ),
         handler=_lecture_reader_get_handler,
         description="Read a public Lite lecture transcript payload.",
+    )
+    ctx.register_tool(
+        name="learning_guide_get",
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            "learning_guide_get",
+            "Build a read-only public guided-learning payload from course evidence.",
+            _learning_guide_get_schema(),
+        ),
+        handler=_learning_guide_get_handler,
+        description="Guide public Lite learning without plans, scoring, diagnosis, or review queues.",
     )
     ctx.register_tool(
         name="course_transcript_coverage_get",

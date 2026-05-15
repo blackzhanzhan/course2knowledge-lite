@@ -22,6 +22,7 @@ EXPECTED_TOOLS = [
     "knowledge_cards_generate",
     "course_visual_evidence_send",
     "lecture_reader_get",
+    "learning_guide_get",
     "lecture_transcript_import",
     "lecture_transcript_import_by_ref",
     "lecture_transcript_source_probe",
@@ -122,6 +123,15 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
         )
         cards_payload = json.loads(cards_raw)
         card_id = cards_payload["cards"][0]["card_id"]
+        guide_raw = ctx.tools["learning_guide_get"]["handler"](
+            {
+                "store_root": temp_dir,
+                "course_id": skeleton.course.course_id,
+                "mode": "self_check",
+                "lecture_sequence": 1,
+            }
+        )
+        guide_payload = json.loads(guide_raw)
         store.write_visual_evidence_records(
             skeleton.course.course_id,
             [
@@ -170,6 +180,9 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
         "sample_qa_citation_count": (qa_payload.get("answer") or {}).get("citation_count"),
         "sample_card_count": cards_payload.get("card_count"),
         "sample_generated_card_count": cards_payload.get("generated_card_count"),
+        "sample_guide_status": (guide_payload.get("guide") or {}).get("status"),
+        "sample_guide_mode": (guide_payload.get("guide") or {}).get("mode"),
+        "sample_guide_question_count": (guide_payload.get("guide") or {}).get("question_count"),
         "sample_visual_status": visual_payload.get("status"),
         "sample_visual_media_count": str(visual_payload.get("gateway_reply") or "").count("MEDIA:"),
         "sample_note_status": note_payload.get("status"),

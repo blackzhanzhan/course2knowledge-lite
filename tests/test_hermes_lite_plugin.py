@@ -12,6 +12,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_ROOT = ROOT / "hermes" / "plugins" / "course2knowledge-lite"
 sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
+sys.path.insert(0, str(ROOT / "packages" / "guidance" / "src"))
 
 from course2knowledge_lite_store import (  # noqa: E402
     JsonCourseStore,
@@ -79,6 +80,7 @@ class HermesLitePluginTests(unittest.TestCase):
             "knowledge_card_list",
             "knowledge_card_get",
             "course_visual_evidence_send",
+            "learning_guide_get",
             "lecture_reader_get",
             "course_search",
             "course_question_answer",
@@ -472,6 +474,65 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(progress_payload["progress"]["status"], "read")
         self.assertEqual(invalid_progress_payload["status"], "failed")
         self.assertEqual(invalid_progress_payload["tool"], "reading_progress_set")
+
+    def test_learning_guide_tool_returns_read_only_guidance(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = build_course_skeleton(
+                title="AI interview course",
+                source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BV00000001",
+                        "title": "RAG and Agent",
+                        "source_url": "https://www.bilibili.com/video/BV00000001",
+                    }
+                ],
+                now="2026-05-14T00:00:00Z",
+            )
+            store = JsonCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            lecture = skeleton.lectures[0]
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=f"{lecture.lecture_id}::manual::00001",
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves course evidence before an Agent plans tool calls.",
+                    )
+                ],
+            )
+            store.generate_knowledge_cards(skeleton.course.course_id)
+            progress_before = store.list_reading_progress(course_id=skeleton.course.course_id)
+            raw = ctx.tools["learning_guide_get"]["handler"](
+                {
+                    "store_root": temp_dir,
+                    "course_id": skeleton.course.course_id,
+                    "mode": "self_check",
+                    "lecture_sequence": 1,
+                }
+            )
+            progress_after = store.list_reading_progress(course_id=skeleton.course.course_id)
+
+        payload = json.loads(raw)
+        guide = payload["guide"]
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["tool"], "learning_guide_get")
+        self.assertEqual(guide["status"], "completed")
+        self.assertEqual(guide["mode"], "self_check")
+        self.assertEqual(guide["question_count"], 1)
+        self.assertFalse(guide["limits"]["writes_progress"])
+        self.assertFalse(guide["limits"]["creates_study_plan"])
+        self.assertFalse(guide["limits"]["scores_learner"])
+        self.assertEqual(progress_after, progress_before)
 
     def test_knowledge_card_tools_use_local_transcript_segments(self) -> None:
         module = load_plugin_module()
