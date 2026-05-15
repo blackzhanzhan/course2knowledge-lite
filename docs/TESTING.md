@@ -32,6 +32,8 @@ Product tests cover:
 - Course store CRUD tests.
 - Citation retrieval tests.
 - Q&A answer and missing-evidence tests.
+- Guided learning derivation tests for continue-learning, lecture walkthrough,
+  self-check, and recap modes.
 - Hermes Lite tool registration, reader, search, Q&A, and visual-evidence
   handler tests.
 - Hermes Lite public profile template and sync tests.
@@ -42,4 +44,11 @@ Product tests cover:
 ## Acceptance Rule
 
 Public tests should prove Course2Knowledge Lite works as an interactive course
-knowledge product, not as a closed-loop learning coach.
+knowledge product with public guided learning, not as a closed-loop learning
+coach.
+
+Guided learning acceptance must prove that the feature is a read-only organizer
+over course evidence. It may recommend what lecture to inspect next, outline one
+lecture, and ask self-check questions with citations. It must not create day
+plans, schedules, mastery scores, diagnoses, spaced-review queues, or exercise
+feedback.

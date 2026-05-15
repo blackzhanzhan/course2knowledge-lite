@@ -43,6 +43,9 @@ Allowed:
 - Course-content answers from available evidence.
 - Missing-evidence clarification.
 - Transcript coverage summaries.
+- Public guided learning: continue-learning suggestions, lecture walkthroughs,
+  self-check prompts, and recaps derived from transcript segments, cards,
+  visuals, and reading progress.
 - Source-linked knowledge cards generated from transcript segments.
 - Public visual evidence explanation plus one `MEDIA:<path>` line, selected
   through `course_visual_evidence_send`.
@@ -54,6 +57,8 @@ Not allowed:
 
 - Study-plan automation.
 - Learner scoring or diagnosis.
+- Mastery judgment or answer-quality grading.
+- Spaced-review queues or calendar-like review scheduling.
 - Exercise-review workflow.
 - Visual exercise interpretation.
 - Spaced-review mutation.

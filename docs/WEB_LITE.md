@@ -7,6 +7,7 @@ Web Lite is the primary visual workspace.
 - Course library
 - Import status
 - Lecture reader
+- Guided learning
 - Knowledge cards
 - Search
 - Course Q&A
@@ -16,8 +17,17 @@ Web Lite is the primary visual workspace.
 
 ## Expected Experience
 
-The learner can import a course, open a lecture, read structured notes, inspect
-source citations, ask course questions, and keep lightweight reading state.
+The learner can import a course, open a lecture, follow evidence-grounded
+guidance, read structured notes, inspect source citations, ask course questions,
+and keep lightweight reading state.
+
+Guided learning in Web Lite means:
+
+- continue from the next useful transcript-backed lecture
+- walk through the current lecture with goals, evidence segments, cards, and
+  visuals
+- answer lightweight self-check questions with source evidence
+- recap what to review without scoring the learner
 
 ## Current Local App
 
@@ -37,6 +47,7 @@ It exposes:
 - `/api/cards`
 - `/api/cards/generate`
 - `/api/visual-evidence`
+- `/api/guide`
 - `/api/search`
 - `/api/qa`
 - `/api/notes`
@@ -83,7 +94,9 @@ Evidence screenshots are stored under ignored `tmp/lite-demo-capability/`.
 - calendar scheduling
 - answer-quality analysis
 - learner scoring
+- learner diagnosis
 - spaced-review state mutation
+- study-plan automation
 - exercise-review workflows
 
 ## Design Direction
