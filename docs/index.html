@@ -6,237 +6,461 @@
     <title>Course2Knowledge Lite</title>
     <meta
       name="description"
-      content="Course2Knowledge Lite turns online course videos into an interactive knowledge base with Web Lite, Feishu/Hermes Lite, Bilibili import, and citation Q&A."
+      content="Course2Knowledge Lite turns online course timelines into transcript evidence, a local course knowledge store, and two public frontdesks: Web Lite and Feishu/Hermes Lite."
     />
     <link rel="stylesheet" href="site.css" />
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="#top" aria-label="Course2Knowledge Lite home">Course2Knowledge Lite</a>
+      <a class="brand" href="#top" aria-label="Course2Knowledge Lite home">
+        <span>Course2Knowledge</span>
+        <strong>Lite</strong>
+      </a>
       <nav class="nav" aria-label="Site sections">
-        <a href="#showcase">Showcase</a>
-        <a href="#case">Real case</a>
-        <a href="#architecture">Architecture</a>
+        <a href="#system">System</a>
+        <a href="#walkthrough">Walkthrough</a>
+        <a href="#frontdesks">Frontdesks</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#dossier">Dossier</a>
         <a href="#deploy">Deploy</a>
       </nav>
     </header>
 
     <main id="top">
-      <section class="hero">
+      <section id="system" class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Public course knowledge workspace</p>
-          <h1>Turn a video course into something you can read, search, and ask.</h1>
+          <p class="kicker">Showcase + Technical Dossier</p>
+          <h1>Turn a course timeline into a readable, searchable, askable knowledge base.</h1>
           <p class="lead">
-            Course2Knowledge Lite imports Bilibili course material, keeps transcript
-            evidence, builds local knowledge cards, and exposes the same course store
-            through Web Lite and Feishu/Hermes Lite.
+            Course2Knowledge Lite starts from a Bilibili collection, keeps transcript
+            evidence as the source of truth, builds a local course store, and exposes
+            that same store through a Web reading frontdesk and a Feishu/Hermes chat
+            frontdesk.
           </p>
-          <div class="hero-actions" aria-label="Primary links">
-            <a class="button" href="#showcase">View real showcase</a>
-            <a class="button secondary" href="DEPLOYMENT.md">Deploy locally</a>
+          <div class="hero-metrics" aria-label="Current real demo metrics">
+            <span><strong>30</strong> lectures expanded</span>
+            <span><strong>9</strong> transcript segments</span>
+            <span><strong>2</strong> frontdesks</span>
+            <span><strong>0</strong> private runtime files required</span>
           </div>
         </div>
-        <figure class="hero-shot">
-          <img
-            src="assets/showcase/web-lite-real-course-desktop.png"
-            alt="Web Lite workspace showing a real Bilibili course, transcript coverage, lecture reader, search, Q&A, notes, and bookmarks"
-          />
-          <figcaption>
-            Real local run: 30 lectures expanded from a Bilibili collection, 3 lectures
-            with transcript evidence, 9 citation segments.
-          </figcaption>
-        </figure>
-      </section>
 
-      <section class="metrics" aria-label="Real case metrics">
-        <article>
-          <strong>30</strong>
-          <span>lectures expanded</span>
-        </article>
-        <article>
-          <strong>9</strong>
-          <span>transcript segments</span>
-        </article>
-        <article>
-          <strong>5</strong>
-          <span>Q&A citations</span>
-        </article>
-        <article>
-          <strong>0</strong>
-          <span>private runtime files needed</span>
-        </article>
-      </section>
-
-      <section id="showcase" class="section">
-        <div class="section-head">
-          <p class="eyebrow">Effect showcase</p>
-          <h2>A course workspace, not another pile of video links.</h2>
-          <p>
-            The showcase below is captured from the public Lite app running locally
-            against the included demo store. It shows the actual reader, search, Q&A,
-            cards, notes, bookmarks, and lightweight progress surfaces.
-          </p>
+        <div class="system-slice" aria-label="Course2Knowledge Lite system slice">
+          <div class="source-node accent-bilibili">
+            <span>Source</span>
+            <strong>Bilibili Collection</strong>
+          </div>
+          <div class="flow-arrow" aria-hidden="true">down</div>
+          <div class="source-node accent-evidence">
+            <span>Evidence Layer</span>
+            <strong>Transcript Segments</strong>
+          </div>
+          <div class="flow-arrow" aria-hidden="true">down</div>
+          <div class="source-node accent-store">
+            <span>Shared Kernel</span>
+            <strong>Course Knowledge Store</strong>
+          </div>
+          <div class="frontdesk-branches">
+            <div class="branch-line" aria-hidden="true"></div>
+            <div class="frontdesk-node">
+              <span>Web Lite</span>
+              <strong>read / search / annotate</strong>
+            </div>
+            <div class="frontdesk-node accent-feishu">
+              <span>Feishu/Hermes Lite</span>
+              <strong>ask / lookup / cite</strong>
+            </div>
+          </div>
         </div>
-        <div class="showcase-grid">
-          <figure class="showcase-card wide">
+
+        <div class="hero-shots" aria-label="Primary screenshot targets">
+          <figure class="shot-frame is-filled">
             <img
               src="assets/showcase/web-lite-real-course-desktop.png"
-              alt="Desktop Web Lite workspace with course list, lecture reader, transcript search, Q&A, notes, and bookmarks"
+              alt="Web Lite workspace showing a real Bilibili course with transcript coverage, reader, search, Q&A, notes, and bookmarks"
             />
-            <figcaption>Desktop: full workspace with reader, evidence search, and citation Q&A.</figcaption>
+            <figcaption>
+              SHOT-01 Web Lite overview. Real local demo store, captured before this
+              redesign.
+            </figcaption>
           </figure>
-          <figure class="showcase-card narrow">
-            <img
-              src="assets/showcase/web-lite-real-course-mobile.png"
-              alt="Mobile Web Lite workspace showing the same real course in a responsive single-column layout"
-            />
-            <figcaption>Mobile: the same real course store in a compact reading flow.</figcaption>
+          <figure class="shot-frame placeholder">
+            <div>
+              <span>SHOT-02</span>
+              <strong>Feishu/Hermes Q&A frontdesk</strong>
+              <p>Capture later from a safe public Lite chat smoke, not from private production logs.</p>
+            </div>
+            <figcaption>Pending real run. Same course store, conversational entry.</figcaption>
           </figure>
         </div>
       </section>
 
-      <section id="case" class="section case">
-        <div class="section-head">
-          <p class="eyebrow">Real case</p>
-          <h2>From one Bilibili collection to an inspectable knowledge base.</h2>
-        </div>
-        <div class="timeline">
-          <article>
-            <span>01</span>
-            <h3>Collection import</h3>
-            <p>
-              A public Bilibili season URL is expanded into ordered lectures with BV
-              identifiers, titles, and source links.
-            </p>
-          </article>
-          <article>
-            <span>02</span>
-            <h3>Evidence layer</h3>
-            <p>
-              Transcript segments become source records. The demo case has 9 segments
-              across 3 transcript-backed lectures.
-            </p>
-          </article>
-          <article>
-            <span>03</span>
-            <h3>Learning surface</h3>
-            <p>
-              Web Lite projects the same local store into reader, cards, search, Q&A,
-              notes, bookmarks, and read status.
-            </p>
-          </article>
-          <article>
-            <span>04</span>
-            <h3>Chat surface</h3>
-            <p>
-              Feishu/Hermes Lite can use the public profile and plugin to answer from
-              course evidence without importing private learning-coach loops.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section id="architecture" class="section architecture">
-        <div class="section-head">
-          <p class="eyebrow">Architecture and idea</p>
-          <h2>The timeline is raw material. Evidence is the product spine.</h2>
+      <section id="walkthrough" class="section walkthrough">
+        <div class="section-title">
+          <p class="kicker">Real case walkthrough</p>
+          <h2>From one collection URL to two usable learning surfaces.</h2>
           <p>
-            Lite keeps the strong idea: make course material queryable and useful. It
-            removes protected closed-loop coaching behavior so the public release stays
-            focused, inspectable, and easy to run.
+            The public demo case uses a Bilibili season URL. The page keeps every
+            step inspectable so a reviewer can see the import boundary, evidence
+            boundary, store boundary, and frontdesk boundary instead of trusting a
+            marketing summary.
           </p>
         </div>
-        <div class="architecture-flow" aria-label="Architecture flow">
-          <div>Bilibili URL</div>
-          <div>Import job</div>
-          <div>Transcript segments</div>
-          <div>Knowledge store</div>
-          <div>Web + Feishu Lite</div>
+        <ol class="process-line" aria-label="Course import to frontdesk process">
+          <li>
+            <span>01</span>
+            <strong>Import collection</strong>
+            <p>Accept the public Bilibili season URL as the source boundary.</p>
+          </li>
+          <li>
+            <span>02</span>
+            <strong>Expand lectures</strong>
+            <p>Resolve ordered lectures, titles, BV/source links, and import receipt.</p>
+          </li>
+          <li>
+            <span>03</span>
+            <strong>Capture evidence</strong>
+            <p>Store timestamped transcript segments as citable learning evidence.</p>
+          </li>
+          <li>
+            <span>04</span>
+            <strong>Build course store</strong>
+            <p>Persist course, lecture, segment, card, note, bookmark, and progress files.</p>
+          </li>
+          <li>
+            <span>05</span>
+            <strong>Read on Web</strong>
+            <p>Project the store into reader, search, Q&A, cards, and learning state.</p>
+          </li>
+          <li>
+            <span>06</span>
+            <strong>Ask from Feishu</strong>
+            <p>Use Hermes Lite to answer from the same public evidence boundary.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="frontdesks" class="section frontdesks">
+        <div class="section-title">
+          <p class="kicker">One store, two frontdesks</p>
+          <h2>The Web surface is for deep inspection. Feishu is for learning in motion.</h2>
         </div>
-        <div class="principles">
+        <div class="frontdesk-comparison">
           <article>
-            <h3>Evidence first</h3>
-            <p>
-              Search, Q&A, and cards are grounded in transcript segments and keep
-              citations visible.
-            </p>
+            <div class="comparison-head">
+              <span>Inspectable workspace</span>
+              <h3>Web Lite</h3>
+            </div>
+            <figure class="shot-frame is-filled">
+              <img
+                src="assets/showcase/web-lite-real-course-desktop.png"
+                alt="Web Lite desktop workspace with lecture reader, transcript search, Q&A, knowledge cards, notes, and bookmarks"
+              />
+              <figcaption>SHOT-03 Web workspace: reading, search, Q&A, and state controls.</figcaption>
+            </figure>
+            <ul class="plain-list">
+              <li>Lecture reader with timestamped transcript evidence.</li>
+              <li>Search and Q&A with source citations visible.</li>
+              <li>Notes, bookmarks, and lightweight progress over the local store.</li>
+            </ul>
           </article>
           <article>
-            <h3>Two frontdesks, one store</h3>
-            <p>
-              Web Lite and Feishu/Hermes Lite read and write the same local public
-              course store.
-            </p>
+            <div class="comparison-head">
+              <span>Conversational workspace</span>
+              <h3>Feishu/Hermes Lite</h3>
+            </div>
+            <figure class="shot-frame placeholder tall">
+              <div>
+                <span>SHOT-04</span>
+                <strong>Feishu course question</strong>
+                <p>Ask a real course question and show the reply using public citations.</p>
+              </div>
+              <figcaption>Pending real run. This must be captured from Lite, not the mother project.</figcaption>
+            </figure>
+            <ul class="plain-list">
+              <li>Ask course questions inside the learner's chat environment.</li>
+              <li>Look up course status without opening the Web workspace.</li>
+              <li>Keep the same evidence boundary instead of a separate chat-only memory.</li>
+            </ul>
           </article>
-          <article>
-            <h3>Deliberately trimmed</h3>
-            <p>
-              No planning automation, learner scoring, exercise review, production
-              identifiers, private logs, or protected orchestration.
-            </p>
+        </div>
+      </section>
+
+      <section id="evidence" class="section evidence">
+        <div class="section-title">
+          <p class="kicker">Module evidence plan</p>
+          <h2>At least 15 real shots before the showcase is considered convincing.</h2>
+          <p>
+            These are not decorative placeholders. Each row is a future acceptance
+            target: run the public Lite chain, capture the real surface, and replace
+            the placeholder only when the evidence exists.
+          </p>
+        </div>
+        <div class="evidence-board" aria-label="Showcase shot list">
+          <article class="evidence-row">
+            <span>SHOT-01</span>
+            <strong>Web overview</strong>
+            <p>Existing real desktop capture of the local Web Lite workspace.</p>
+            <em>available</em>
           </article>
+          <article class="evidence-row">
+            <span>SHOT-02</span>
+            <strong>Feishu/Hermes Q&A</strong>
+            <p>Safe Lite chat question with an answer tied to the course store.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-03</span>
+            <strong>Dual-frontdesk split</strong>
+            <p>Web workspace and Feishu reply shown against the same demo course.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-04</span>
+            <strong>Bilibili import receipt</strong>
+            <p>Collection URL accepted and recorded as the import source.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-05</span>
+            <strong>Lecture expansion</strong>
+            <p>Ordered lecture list with source identifiers and titles.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-06</span>
+            <strong>Course store files</strong>
+            <p>Local course, lecture, segment, card, note, bookmark, and progress records.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-07</span>
+            <strong>Transcript segments</strong>
+            <p>Timestamped segments with stable segment IDs.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-08</span>
+            <strong>Reader detail</strong>
+            <p>Lecture reader focused on one transcript-backed lecture.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-09</span>
+            <strong>Search result</strong>
+            <p>Query to cited transcript hits, ideally on RAG/Agent vocabulary.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-10</span>
+            <strong>Q&A answer</strong>
+            <p>Answer body with visible source citations.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-11</span>
+            <strong>Knowledge cards</strong>
+            <p>Cards generated from transcript evidence with source segment IDs.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-12</span>
+            <strong>Notes</strong>
+            <p>Saved learner note tied to course and lecture.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-13</span>
+            <strong>Bookmarks</strong>
+            <p>Bookmark over a segment or card target.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-14</span>
+            <strong>Reading progress</strong>
+            <p>Status change persisted and reflected in course coverage.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-15</span>
+            <strong>Hermes profile smoke</strong>
+            <p>Public profile/plugin smoke proving the Lite tool boundary.</p>
+            <em>pending</em>
+          </article>
+          <article class="evidence-row">
+            <span>SHOT-16</span>
+            <strong>Mobile Web</strong>
+            <p>Existing or refreshed mobile capture showing the same store is readable.</p>
+            <em>available</em>
+          </article>
+        </div>
+        <div class="shot-gallery" aria-label="Fifteen-plus real screenshot sequence">
+          <figure class="gallery-shot is-filled">
+            <img
+              src="assets/showcase/web-lite-real-course-desktop.png"
+              alt="Web Lite overview screenshot from the current public demo"
+            />
+            <figcaption>SHOT-01 Web overview / available</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-02</span><strong>Feishu Q&A</strong></div>
+            <figcaption>Pending real Lite chat run</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-03</span><strong>Dual frontdesk split</strong></div>
+            <figcaption>Pending combined evidence</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-04</span><strong>Import receipt</strong></div>
+            <figcaption>Pending import evidence</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-05</span><strong>Lecture expansion</strong></div>
+            <figcaption>Pending lecture list capture</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-06</span><strong>Course store files</strong></div>
+            <figcaption>Pending local store capture</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-07</span><strong>Transcript segments</strong></div>
+            <figcaption>Pending segment evidence</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-08</span><strong>Reader detail</strong></div>
+            <figcaption>Pending lecture reader capture</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-09</span><strong>Search result</strong></div>
+            <figcaption>Pending citation search</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-10</span><strong>Q&A answer</strong></div>
+            <figcaption>Pending cited answer</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-11</span><strong>Knowledge cards</strong></div>
+            <figcaption>Pending card generation</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-12</span><strong>Notes</strong></div>
+            <figcaption>Pending note state</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-13</span><strong>Bookmarks</strong></div>
+            <figcaption>Pending bookmark state</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-14</span><strong>Reading progress</strong></div>
+            <figcaption>Pending progress state</figcaption>
+          </figure>
+          <figure class="gallery-shot pending">
+            <div><span>SHOT-15</span><strong>Hermes smoke</strong></div>
+            <figcaption>Pending profile/tool smoke</figcaption>
+          </figure>
+          <figure class="gallery-shot is-filled">
+            <img
+              src="assets/showcase/web-lite-real-course-mobile.png"
+              alt="Mobile Web Lite screenshot from the current public demo"
+            />
+            <figcaption>SHOT-16 Mobile Web / available</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="thought" class="section thought">
+        <div class="section-title">
+          <p class="kicker">Product thought</p>
+          <h2>The problem is not that courses lack content. The content is trapped in a timeline.</h2>
+        </div>
+        <div class="thought-grid">
+          <p>
+            Course2Knowledge Lite treats a video course as raw material. It cuts the
+            timeline into citable evidence, organizes that evidence into a local course
+            knowledge store, and lets learners enter the same knowledge space through
+            two different frontdesks: an inspectable Web workspace and a conversational
+            Feishu workspace.
+          </p>
+          <div class="thought-stack" aria-label="Product thought stack">
+            <span>Timeline</span>
+            <span>Evidence</span>
+            <span>Knowledge Store</span>
+            <span>Inspectable Web</span>
+            <span>Conversational Feishu</span>
+          </div>
         </div>
       </section>
 
       <section id="boundary" class="section boundary">
-        <div class="section-head">
-          <p class="eyebrow">Product boundary</p>
-          <h2>Open enough to be useful. Trimmed enough to stay clean.</h2>
+        <div class="section-title">
+          <p class="kicker">Public boundary</p>
+          <h2>Trimmed loop, not a thin demo.</h2>
+          <p>
+            The public version keeps the course-to-knowledge product line substantial
+            while removing private closed-loop coaching machinery.
+          </p>
         </div>
-        <div class="split">
-          <article>
-            <h3>Included</h3>
+        <div class="boundary-table">
+          <div>
+            <h3>Included in Lite</h3>
             <ul>
               <li>Bilibili course import boundary</li>
-              <li>Local JSON course knowledge store</li>
-              <li>Lecture reader and transcript search</li>
-              <li>Source-linked knowledge cards</li>
-              <li>Citation-based course Q&A</li>
+              <li>Transcript evidence and local course store</li>
+              <li>Lecture reader, search, citation Q&A</li>
+              <li>Knowledge cards from source segments</li>
               <li>Notes, bookmarks, and reading progress</li>
-              <li>Public Hermes Lite profile skeleton</li>
+              <li>Web Lite and Feishu/Hermes Lite frontdesks</li>
             </ul>
-          </article>
-          <article>
-            <h3>Excluded</h3>
+          </div>
+          <div>
+            <h3>Removed from public release</h3>
             <ul>
-              <li>Automatic study-plan automation</li>
-              <li>Learner scoring and mastery loops</li>
-              <li>Exercise-review workflow</li>
-              <li>Visual exercise interpretation</li>
-              <li>Spaced-review state mutation</li>
-              <li>Production chat exports or identifiers</li>
-              <li>Private Learning OS runtime files</li>
+              <li>Private planning layer</li>
+              <li>Exercise feedback and visual exercise interpretation</li>
+              <li>Learner scoring and mastery mutation loops</li>
+              <li>Private orchestration and production identifiers</li>
+              <li>Production chat exports and personal study logs</li>
+              <li>Protected closed-loop automation</li>
             </ul>
-          </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="dossier" class="section dossier">
+        <div class="section-title">
+          <p class="kicker">Technical dossier</p>
+          <h2>The showcase is also the entrance to the engineering documents.</h2>
+        </div>
+        <div class="doc-index" aria-label="Technical document index">
+          <a href="PRODUCT_BOUNDARY.md"><span>Boundary</span><strong>What is public, what is removed</strong></a>
+          <a href="ARCHITECTURE.md"><span>Architecture</span><strong>Module boundaries and runtime flow</strong></a>
+          <a href="DATA_MODEL.md"><span>Data model</span><strong>Course, lecture, segment, card, state</strong></a>
+          <a href="BILIBILI_IMPORT.md"><span>Bilibili import</span><strong>Collection expansion and handoff</strong></a>
+          <a href="WEB_LITE.md"><span>Web Lite</span><strong>Inspectable reading workspace</strong></a>
+          <a href="FEISHU_LITE.md"><span>Feishu Lite</span><strong>Conversational frontdesk and Hermes profile</strong></a>
+          <a href="TESTING.md"><span>Testing</span><strong>Boundary tests, smoke tests, demo proof</strong></a>
+          <a href="DEPLOYMENT.md"><span>Deployment</span><strong>Local install and public profile sync</strong></a>
         </div>
       </section>
 
       <section id="deploy" class="section deploy">
-        <div class="section-head">
-          <p class="eyebrow">Deploy in minutes</p>
-          <h2>A local-first install path with no infrastructure theater.</h2>
-          <p>
-            The recommended deployment is intentionally small: install the Python
-            package, run Web Lite, and sync the public Hermes profile if chat is needed.
-          </p>
+        <div class="section-title">
+          <p class="kicker">Deploy locally</p>
+          <h2>A small install path, because the product should be easy to inspect.</h2>
         </div>
-        <div class="commands" aria-label="Deployment commands">
+        <div class="terminal" aria-label="Deployment commands">
           <code>pip install -e .</code>
           <code>course2knowledge-lite web</code>
           <code>course2knowledge-lite sync-profile --apply --create-profile</code>
           <code>course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profiles\\course2knowledge-lite</code>
         </div>
-        <p class="link-row">
-          <a href="DEPLOYMENT.md">Read deployment guide</a>
-          <a href="ARCHITECTURE.md">Read architecture</a>
-          <a href="PRODUCT_BOUNDARY.md">Read product boundary</a>
-        </p>
       </section>
     </main>
 
     <footer class="footer">
       <span>Course2Knowledge Lite</span>
       <a href="SITE_MAP.md">Site map</a>
+      <a href="SHOWCASE_SHOT_LIST.md">Shot list</a>
       <a href="DEPLOYMENT.md">Deployment</a>
       <a href="TESTING.md">Testing</a>
     </footer>

@@ -1,63 +1,92 @@
 # Static Site Map
 
 Course2Knowledge Lite uses `docs/` as the GitHub Pages source. The site is a
-public product showcase, not the Web Lite runtime itself.
+public product showcase and a technical dossier entry, not the Web Lite runtime
+itself.
+
+## Homepage Responsibility
+
+The homepage must satisfy two audiences:
+
+- Reviewers and interviewers should understand the project in three minutes.
+- Developers should know where to inspect architecture, data, tests, and
+  deployment in ten minutes.
+
+The main product idea is:
+
+```text
+Bilibili Collection
+  -> Transcript Evidence
+  -> Course Knowledge Store
+  -> Web Lite + Feishu/Hermes Lite
+```
+
+The Web frontdesk is the inspectable workspace. The Feishu/Hermes frontdesk is
+the conversational workspace. Both consume the same public course store.
 
 ## Homepage Sections
 
-1. **Hero**
+1. **System**
    - Product name: Course2Knowledge Lite.
-   - One-line promise: turn online course videos into an interactive knowledge
-     base.
-   - First visual signal: a real Web Lite workspace screenshot from a local
-     Bilibili collection import.
+   - Promise: turn a course timeline into a readable, searchable, askable
+     knowledge base.
+   - First-viewport structure: Bilibili collection, transcript evidence, course
+     store, Web Lite, and Feishu/Hermes Lite.
+   - Primary evidence slots: Web overview and Feishu/Hermes Q&A.
 
-2. **Effect Showcase**
-   - Real screenshots from the public Lite app.
-   - Desktop workspace view.
-   - Mobile responsive view.
-   - Case metrics: 30 lectures, 3 transcript-backed lectures, 9 transcript
-     segments, citation Q&A, cards, notes, bookmarks, and reading progress.
+2. **Walkthrough**
+   - Six-step flow: import collection, expand lectures, capture evidence, build
+     course store, read on Web, ask from Feishu.
+   - This section explains the runtime sequence before individual screenshots.
 
-3. **Real Case Walkthrough**
-   - Source: a Bilibili collection URL.
-   - Result: course skeleton, lecture list, transcript segments, knowledge
-     cards, search, Q&A, and local reading state.
-   - Evidence posture: screenshots and facts come from the public local store.
+3. **Frontdesks**
+   - Web Lite: deep reading, search, annotation, citation inspection.
+   - Feishu/Hermes Lite: ask, lookup, status, citation-based Q&A in chat.
+   - The section must not present Feishu as a footnote or optional afterthought.
 
-4. **Architecture And Ideas**
-   - The course timeline becomes a local knowledge store.
-   - Transcript segments are the evidence layer.
-   - Cards, search, Q&A, notes, bookmarks, and progress are projections over
-     that evidence.
-   - Web Lite and Feishu/Hermes Lite are user surfaces over the same store.
+4. **Module Evidence Plan**
+   - At least 15 real screenshots or evidence captures are required before the
+     case is visually convincing.
+   - The current page defines 16 shot slots, each with a stable `SHOT-*` ID.
+   - Pending slots must remain visibly pending until real evidence is captured.
+   - Detailed capture contract: [`SHOWCASE_SHOT_LIST.md`](SHOWCASE_SHOT_LIST.md).
 
-5. **Product Boundary**
-   - Public capabilities are listed honestly.
-   - Removed private loops are listed plainly.
-   - The Lite project is positioned as a course knowledge workspace, not a
-     closed-loop learning coach.
+5. **Product Thought**
+   - Express the core idea: course videos are not lacking content; the content is
+     trapped in the timeline.
+   - Lite turns the timeline into evidence, evidence into a course store, and the
+     store into two user-facing entry points.
 
-6. **Deploy In Minutes**
-   - Install locally with Python packaging.
-   - Start Web Lite from the CLI.
-   - Sync the public Hermes profile when Feishu/Hermes Lite is needed.
+6. **Public Boundary**
+   - Included: Bilibili import, transcript evidence, course store, Web Lite,
+     Feishu/Hermes Lite, citation Q&A, notes, bookmarks, progress.
+   - Removed: planning layer, feedback layer, exercise review, learner scoring,
+     private orchestration, production identifiers, private logs.
+   - The public version is a deliberately trimmed loop, not a thin demo.
 
-7. **Repository Links**
-   - README.
-   - Architecture.
-   - Product boundary.
-   - Deployment.
-   - Web Lite.
-   - Feishu Lite.
+7. **Technical Dossier**
+   - Product boundary: [`PRODUCT_BOUNDARY.md`](PRODUCT_BOUNDARY.md)
+   - Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md)
+   - Data model: [`DATA_MODEL.md`](DATA_MODEL.md)
+   - Bilibili import: [`BILIBILI_IMPORT.md`](BILIBILI_IMPORT.md)
+   - Web Lite: [`WEB_LITE.md`](WEB_LITE.md)
+   - Feishu Lite: [`FEISHU_LITE.md`](FEISHU_LITE.md)
+   - Testing: [`TESTING.md`](TESTING.md)
+   - Deployment: [`DEPLOYMENT.md`](DEPLOYMENT.md)
 
-## Showcase Assets
+8. **Deploy**
+   - Minimal local install path.
+   - Web Lite command.
+   - Optional public Hermes profile sync and smoke command.
+
+## Current Showcase Assets
 
 - `docs/assets/showcase/web-lite-real-course-desktop.png`
 - `docs/assets/showcase/web-lite-real-course-mobile.png`
 
 These images were captured from the local public Lite Web workspace at
-`http://127.0.0.1:3027/` against the public demo course store.
+`http://127.0.0.1:3027/` against the public demo course store. They count as
+available evidence for `SHOT-01` and `SHOT-16`.
 
 ## GitHub Pages Setup
 

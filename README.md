@@ -11,14 +11,28 @@ progress.
 This repository is intentionally focused. It is a course knowledge product, not
 a full learning coach.
 
-## Showcase Site
+## Showcase And Technical Dossier
 
 The public static site lives in [`docs/index.html`](docs/index.html). It is
-designed for GitHub Pages and includes a real Web Lite showcase captured from a
-local Bilibili collection import.
+designed for GitHub Pages as both a project showcase and a technical dossier
+entry. The first screen explains the system slice:
 
-Use [`docs/SITE_MAP.md`](docs/SITE_MAP.md) for the page structure and content
-contract.
+```text
+Bilibili Collection
+  -> Transcript Evidence
+  -> Course Knowledge Store
+  -> Web Lite + Feishu/Hermes Lite
+```
+
+The site intentionally foregrounds the dual-frontdesk design: Web Lite is the
+inspectable reading workspace, while Feishu/Hermes Lite is the conversational
+workspace over the same public course store.
+
+Use [`docs/SITE_MAP.md`](docs/SITE_MAP.md) for the page structure and
+[`docs/SHOWCASE_SHOT_LIST.md`](docs/SHOWCASE_SHOT_LIST.md) for the real evidence
+capture contract. The showcase is expected to carry at least 15 real shots before
+it is treated as visually complete; pending slots remain marked as pending until
+real public Lite runs are captured.
 
 ## Quick Start
 
@@ -60,8 +74,7 @@ Bilibili URL
   -> transcript segments
   -> lecture notes and knowledge cards
   -> course knowledge store
-  -> Web Lite workspace
-  -> Feishu/Hermes Lite assistant
+  -> Web Lite workspace + Feishu/Hermes Lite assistant
 ```
 
 ## Repository Layout
