@@ -21,3 +21,57 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src", "packages/bilibili-import/src", "packages/course-store/src", "packages/qa/src", "packages/guidance/src", "hermes/plugins"]
 include = ["course2knowledge_lite*", "course2knowledge_lite_bilibili*", "course2knowledge_lite_store*", "course2knowledge_lite_qa*", "course2knowledge_lite_guidance*", "course2knowledge_lite_hermes*", "public_release*"]
+
+[tool.setuptools.data-files]
+"course2knowledge_lite_runtime/apps/web" = [
+  "apps/web/server.py",
+  "apps/web/README.md",
+]
+"course2knowledge_lite_runtime/apps/web/static" = [
+  "apps/web/static/app.js",
+  "apps/web/static/index.html",
+  "apps/web/static/styles.css",
+]
+"course2knowledge_lite_runtime/scripts" = [
+  "scripts/sync_hermes_lite_profile.py",
+  "scripts/smoke_hermes_lite_profile.py",
+]
+"course2knowledge_lite_runtime/hermes/plugins/course2knowledge-lite" = [
+  "hermes/plugins/course2knowledge-lite/__init__.py",
+  "hermes/plugins/course2knowledge-lite/plugin.yaml",
+  "hermes/plugins/course2knowledge-lite/runtime.py",
+  "hermes/plugins/course2knowledge-lite/tools.py",
+]
+"course2knowledge_lite_runtime/hermes/profile-template" = [
+  "hermes/profile-template/SOUL.md",
+  "hermes/profile-template/config.overlay.yaml",
+]
+"course2knowledge_lite_runtime/hermes/profile-template/workspace" = [
+  "hermes/profile-template/workspace/AGENTS.md",
+]
+"course2knowledge_lite_runtime/packages/bilibili-import/src/course2knowledge_lite_bilibili" = [
+  "packages/bilibili-import/src/course2knowledge_lite_bilibili/__init__.py",
+  "packages/bilibili-import/src/course2knowledge_lite_bilibili/collection.py",
+  "packages/bilibili-import/src/course2knowledge_lite_bilibili/handoff.py",
+  "packages/bilibili-import/src/course2knowledge_lite_bilibili/subtitles.py",
+]
+"course2knowledge_lite_runtime/packages/course-store/src/course2knowledge_lite_store" = [
+  "packages/course-store/src/course2knowledge_lite_store/__init__.py",
+  "packages/course-store/src/course2knowledge_lite_store/content.py",
+  "packages/course-store/src/course2knowledge_lite_store/models.py",
+  "packages/course-store/src/course2knowledge_lite_store/skeleton.py",
+  "packages/course-store/src/course2knowledge_lite_store/store.py",
+  "packages/course-store/src/course2knowledge_lite_store/transcripts.py",
+]
+"course2knowledge_lite_runtime/packages/guidance/src/course2knowledge_lite_guidance" = [
+  "packages/guidance/src/course2knowledge_lite_guidance/__init__.py",
+  "packages/guidance/src/course2knowledge_lite_guidance/guidance.py",
+]
+"course2knowledge_lite_runtime/packages/qa/src/course2knowledge_lite_qa" = [
+  "packages/qa/src/course2knowledge_lite_qa/__init__.py",
+  "packages/qa/src/course2knowledge_lite_qa/answers.py",
+]
+"course2knowledge_lite_runtime/docs/assets/visual-evidence" = [
+  "docs/assets/visual-evidence/rag-agent-flow.png",
+  "docs/assets/visual-evidence/rag-quality-loop.png",
+]

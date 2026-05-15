@@ -67,7 +67,7 @@ def _run_installed_command(repo_root: Path, args: list[str]) -> subprocess.Compl
         python_exe = _venv_python(venv_root)
         subprocess.run([sys.executable, "-m", "venv", str(venv_root)], cwd=repo_root, check=True, capture_output=True, text=True)
         subprocess.run([str(python_exe), "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"], cwd=repo_root, check=True, capture_output=True, text=True)
-        subprocess.run([str(python_exe), "-m", "pip", "install", "-e", str(repo_root)], cwd=repo_root, check=True, capture_output=True, text=True)
+        subprocess.run([str(python_exe), "-m", "pip", "install", str(repo_root)], cwd=repo_root, check=True, capture_output=True, text=True)
         return subprocess.run(
             [str(_venv_script(venv_root)), *args],
             cwd=repo_root,

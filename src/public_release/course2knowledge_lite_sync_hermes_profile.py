@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 
+from .runtime_paths import resolve_runtime_root
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = resolve_runtime_root("scripts/sync_hermes_lite_profile.py")
 SCRIPT_PATH = ROOT / "scripts" / "sync_hermes_lite_profile.py"
 
 
