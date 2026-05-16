@@ -13,6 +13,7 @@ from .models import (
     VisualEvidenceRecord,
 )
 from .skeleton import build_course_skeleton
+from .sqlite_store import DEFAULT_SQLITE_FILENAME, SQLiteCourseStore
 from .store import JsonCourseStore
 from .transcripts import build_manual_transcript_segments, build_transcript_segments
 
@@ -20,6 +21,7 @@ __all__ = [
     "BookmarkRecord",
     "CourseRecord",
     "CourseSkeleton",
+    "DEFAULT_SQLITE_FILENAME",
     "ImportStatusRecord",
     "JsonCourseStore",
     "KnowledgeCardRecord",
@@ -27,6 +29,7 @@ __all__ = [
     "NoteRecord",
     "READING_PROGRESS_STATUSES",
     "ReadingProgressRecord",
+    "SQLiteCourseStore",
     "TranscriptCitation",
     "TranscriptSegmentRecord",
     "VisualEvidenceRecord",

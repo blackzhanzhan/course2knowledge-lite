@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from course2knowledge_lite_bilibili import BilibiliCollection, BilibiliVideoRef 
 from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
 from course2knowledge_lite_store import (  # noqa: E402
     JsonCourseStore,
+    SQLiteCourseStore,
     TranscriptSegmentRecord,
     VisualEvidenceRecord,
     build_course_skeleton,
@@ -93,6 +95,119 @@ class CourseStoreSkeletonTests(unittest.TestCase):
         self.assertEqual(len(result["lectures"]), 2)
         self.assertEqual(len(lectures), 2)
         self.assertEqual(lectures[1]["source_id"], "BV00000002")
+
+    def test_sqlite_store_round_trips_public_course_records(self) -> None:
+        skeleton = build_course_skeleton(
+            title="AI interview course",
+            source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+            video_refs=[
+                {
+                    "sequence": 1,
+                    "bvid": "BV00000001",
+                    "title": "RAG and Agent",
+                    "source_url": "https://www.bilibili.com/video/BV00000001",
+                }
+            ],
+            now="2026-05-14T00:00:00Z",
+        )
+        lecture = skeleton.lectures[0]
+        segment_id = f"{lecture.lecture_id}::manual::00001"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = SQLiteCourseStore(temp_dir)
+            paths = store.write_skeleton(skeleton)
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=segment_id,
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves evidence before an Agent calls tools.",
+                    )
+                ],
+            )
+            card = store.generate_knowledge_cards(skeleton.course.course_id)["cards"][0]
+            store.write_visual_evidence_records(
+                skeleton.course.course_id,
+                [
+                    VisualEvidenceRecord(
+                        visual_id="visual_rag_agent_flow",
+                        course_id=skeleton.course.course_id,
+                        lecture_id=lecture.lecture_id,
+                        segment_id=segment_id,
+                        card_id=card["card_id"],
+                        title="RAG and Agent flow",
+                        explanation="RAG grounds answers in retrieved evidence.",
+                        image_path="docs/assets/visual-evidence/rag-agent-flow.png",
+                        source_url=lecture.source_url,
+                        provenance="public demo diagram derived from transcript segment",
+                        created_at="2026-05-15T00:00:00Z",
+                    )
+                ],
+            )
+            note = store.create_note(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                "RAG uses retrieved evidence.",
+                note_id="note_sqlite",
+                now="2026-05-14T01:00:00Z",
+            )
+            bookmark = store.create_bookmark(
+                skeleton.course.course_id,
+                "card",
+                card["card_id"],
+                bookmark_id="bookmark_sqlite",
+                now="2026-05-14T01:10:00Z",
+            )
+            progress = store.set_reading_progress(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                "read",
+                now="2026-05-14T01:15:00Z",
+            )
+
+            persisted = SQLiteCourseStore(temp_dir)
+            course = persisted.read_course(skeleton.course.course_id)
+            lectures = persisted.read_lectures(skeleton.course.course_id)
+            search_hits = persisted.search_transcripts(skeleton.course.course_id, "RAG Agent")
+            visuals = persisted.list_visual_evidence(course_id=skeleton.course.course_id, query="evidence")
+            notes = persisted.list_notes(course_id=skeleton.course.course_id)
+            bookmarks = persisted.list_bookmarks(course_id=skeleton.course.course_id)
+            conn = sqlite3.connect(paths["database"])
+            try:
+                tables = {
+                    row[0]
+                    for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                }
+            finally:
+                conn.close()
+
+        self.assertTrue(paths["database"].endswith("course2knowledge-lite.sqlite3"))
+        self.assertEqual(course["title"], "AI interview course")
+        self.assertEqual(lectures[0]["read_status"], "read")
+        self.assertEqual(search_hits[0]["citation"]["segment_id"], segment_id)
+        self.assertEqual(visuals[0]["visual_id"], "visual_rag_agent_flow")
+        self.assertEqual(note["note_id"], "note_sqlite")
+        self.assertEqual(bookmark["target_id"], card["card_id"])
+        self.assertEqual(progress["status"], "read")
+        self.assertEqual(notes[0]["note_id"], "note_sqlite")
+        self.assertEqual(bookmarks[0]["bookmark_id"], "bookmark_sqlite")
+        self.assertTrue(
+            {
+                "courses",
+                "lectures",
+                "transcript_segments",
+                "knowledge_cards",
+                "visual_evidence",
+                "notes",
+                "bookmarks",
+                "reading_progress",
+                "import_statuses",
+            }.issubset(tables)
+        )
 
     def test_lecture_reader_and_search_consume_transcript_segments(self) -> None:
         skeleton = build_course_skeleton(
