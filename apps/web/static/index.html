@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,117 +7,277 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Course2Knowledge Lite</p>
-          <h1>Course Knowledge Workspace</h1>
+    <main class="app-shell">
+      <aside class="app-sider" aria-label="Course2Knowledge Lite navigation">
+        <div class="brand-block">
+          <span class="brand-mark">C2K</span>
+          <div>
+            <strong>Course2Knowledge</strong>
+            <small>Lite cockpit</small>
+          </div>
         </div>
-        <div class="status" id="status">Loading local store</div>
-      </header>
+        <nav class="nav-list" aria-label="Workspace views">
+          <button class="nav-item is-active" type="button" data-view="courses">
+            <span>课程管理</span>
+            <small>导入 / 课时 / 转写</small>
+          </button>
+          <button class="nav-item" type="button" data-view="study">
+            <span>学习交互</span>
+            <small>导学 / 阅读 / 问答</small>
+          </button>
+          <button class="nav-item" type="button" data-view="cards">
+            <span>知识管理</span>
+            <small>卡片 / 笔记 / 书签</small>
+          </button>
+          <button class="nav-item" type="button" data-view="frontdesk">
+            <span>飞书前台</span>
+            <small>Hermes Lite</small>
+          </button>
+        </nav>
+        <div class="sider-foot">
+          <span>Public Lite</span>
+          <strong>Web + Feishu</strong>
+        </div>
+      </aside>
 
-      <section class="workspace" aria-label="Course workspace">
-        <aside class="sidebar">
+      <section class="main-shell">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="view-eyebrow">Web Lite</p>
+            <h1 id="view-title">课程管理</h1>
+            <p id="view-subtitle">导入合集，检查课时和转写覆盖，再进入学习交互。</p>
+          </div>
+          <div class="status" id="status">Loading local store</div>
+        </header>
+
+        <section class="context-bar" aria-label="Current course context">
+          <div class="context-title">
+            <p class="eyebrow" id="course-meta">No course selected</p>
+            <h2 id="lecture-title">Lecture Reader</h2>
+          </div>
+          <label class="select-label">
+            Lecture
+            <select id="lecture-select"></select>
+          </label>
+          <label class="select-label">
+            Status
+            <select id="progress-select">
+              <option value="not_started">Not started</option>
+              <option value="reading">Reading</option>
+              <option value="read">Read</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="view is-active" id="view-courses" data-view-panel="courses">
           <section class="import-panel" aria-label="Import Bilibili collection">
             <div class="panel-head">
-              <h2>Import</h2>
+              <div>
+                <h2>导入合集</h2>
+                <p class="panel-note">Bilibili collection URL</p>
+              </div>
               <button id="import-button" type="button" title="Import collection">Import</button>
             </div>
-            <input
-              id="import-url"
-              type="url"
-              value="https://space.bilibili.com/1112988584/lists/7726472?type=season"
-              autocomplete="off"
-            />
+            <div class="import-row">
+              <input
+                id="import-url"
+                type="url"
+                value="https://space.bilibili.com/1112988584/lists/7726472?type=season"
+                autocomplete="off"
+              />
+            </div>
             <div id="import-receipt" class="import-receipt" aria-live="polite"></div>
           </section>
-          <div class="panel-head">
-            <h2>Courses</h2>
-            <button id="refresh-button" type="button" title="Refresh courses">Refresh</button>
-          </div>
-          <div id="course-list" class="list"></div>
-          <div id="coverage-panel" class="coverage-panel"></div>
-        </aside>
 
-        <section class="reader">
-          <div class="panel-head reader-head">
-            <div>
-              <p class="eyebrow" id="course-meta">No course selected</p>
-              <h2 id="lecture-title">Lecture Reader</h2>
+          <section class="metric-grid" aria-label="Course metrics">
+            <div class="metric">
+              <span>课程</span>
+              <strong id="metric-course-count">0</strong>
             </div>
-            <label class="select-label">
-              Lecture
-              <select id="lecture-select"></select>
-            </label>
-            <label class="select-label">
-              Status
-              <select id="progress-select">
-                <option value="not_started">Not started</option>
-                <option value="reading">Reading</option>
-                <option value="read">Read</option>
-              </select>
-            </label>
-          </div>
-          <section class="guide-panel" aria-label="Guided learning">
-            <div class="panel-head">
-              <h2>Guided Learning</h2>
-              <div class="guide-controls">
-                <select id="guide-mode" aria-label="Guide mode">
-                  <option value="continue">Continue</option>
-                  <option value="walkthrough">Walkthrough</option>
-                  <option value="self_check">Self-check</option>
-                  <option value="recap">Recap</option>
-                </select>
-                <button id="guide-button" type="button" title="Run guide">Run</button>
-              </div>
+            <div class="metric">
+              <span>课时</span>
+              <strong id="metric-lecture-count">0</strong>
             </div>
-            <div id="guide-output" class="guide-output"></div>
+            <div class="metric">
+              <span>转写覆盖</span>
+              <strong id="metric-coverage">0%</strong>
+            </div>
+            <div class="metric">
+              <span>证据片段</span>
+              <strong id="metric-segments">0</strong>
+            </div>
           </section>
-          <div id="segments" class="segments"></div>
-          <section class="cards-panel" aria-label="Knowledge cards">
-            <div class="panel-head">
-              <h2>Knowledge Cards</h2>
-              <button id="cards-button" type="button" title="Generate cards from transcript">Generate</button>
-            </div>
-            <div id="cards-list" class="cards-list"></div>
+
+          <section class="management-grid">
+            <section class="panel course-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>课程列表</h2>
+                  <p class="panel-note">Local course store</p>
+                </div>
+                <button id="refresh-button" type="button" title="Refresh courses">Refresh</button>
+              </div>
+              <div id="course-list" class="list"></div>
+            </section>
+
+            <section class="panel course-inspector">
+              <div class="panel-head">
+                <div>
+                  <h2>课程状态</h2>
+                  <p class="panel-note">Transcript and lecture health</p>
+                </div>
+                <button class="ghost-button" type="button" data-view-jump="study">Open reader</button>
+              </div>
+              <div id="selected-course-summary" class="summary-panel"></div>
+              <div id="coverage-panel" class="coverage-panel"></div>
+              <div id="lecture-admin-list" class="lecture-admin-list"></div>
+            </section>
           </section>
         </section>
 
-        <aside class="tools">
-          <section class="tool-panel">
-            <div class="panel-head">
-              <h2>Search</h2>
-              <button id="search-button" type="button" title="Search transcript">Search</button>
-            </div>
-            <input id="search-input" type="search" value="RAG Agent" />
-            <div id="search-results" class="result-list"></div>
-          </section>
+        <section class="view" id="view-study" data-view-panel="study">
+          <section class="reader-grid">
+            <section class="reader">
+              <div class="panel-head reader-head">
+                <div>
+                  <h2>课时阅读</h2>
+                  <p class="panel-note">Transcript evidence</p>
+                </div>
+              </div>
+              <div id="segments" class="segments"></div>
+            </section>
 
-          <section class="tool-panel">
-            <div class="panel-head">
-              <h2>Q&A</h2>
-              <button id="qa-button" type="button" title="Ask from transcript">Ask</button>
-            </div>
-            <textarea id="qa-input" rows="4">RAG 和 Agent 的区别是什么？</textarea>
-            <div id="qa-answer" class="answer"></div>
-          </section>
+            <aside class="study-tools">
+              <section class="guide-panel" aria-label="Guided learning">
+                <div class="panel-head">
+                  <div>
+                    <h2>导学</h2>
+                    <p class="panel-note">Read-only guidance</p>
+                  </div>
+                  <div class="guide-controls">
+                    <select id="guide-mode" aria-label="Guide mode">
+                      <option value="continue">Continue</option>
+                      <option value="walkthrough">Walkthrough</option>
+                      <option value="self_check">Self-check</option>
+                      <option value="recap">Recap</option>
+                    </select>
+                    <button id="guide-button" type="button" title="Run guide">Run</button>
+                  </div>
+                </div>
+                <div id="guide-output" class="guide-output"></div>
+              </section>
 
-          <section class="tool-panel">
-            <div class="panel-head">
-              <h2>Notes</h2>
-              <button id="note-button" type="button" title="Save note">Save</button>
-            </div>
-            <textarea id="note-input" rows="4" placeholder="Write a note for this lecture"></textarea>
-            <div id="notes-list" class="result-list"></div>
-          </section>
+              <section class="tool-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>检索</h2>
+                    <p class="panel-note">Transcript search</p>
+                  </div>
+                  <button id="search-button" type="button" title="Search transcript">Search</button>
+                </div>
+                <input id="search-input" type="search" value="RAG Agent" />
+                <div id="search-results" class="result-list"></div>
+              </section>
 
-          <section class="tool-panel">
-            <div class="panel-head">
-              <h2>Bookmarks</h2>
-            </div>
-            <div id="bookmarks-list" class="result-list"></div>
+              <section class="tool-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>课程问答</h2>
+                    <p class="panel-note">Citation Q&A</p>
+                  </div>
+                  <button id="qa-button" type="button" title="Ask from transcript">Ask</button>
+                </div>
+                <textarea id="qa-input" rows="4">RAG 和 Agent 的区别是什么？</textarea>
+                <div id="qa-answer" class="answer"></div>
+              </section>
+            </aside>
           </section>
-        </aside>
+        </section>
+
+        <section class="view" id="view-cards" data-view-panel="cards">
+          <section class="knowledge-grid">
+            <section class="cards-panel" aria-label="Knowledge cards">
+              <div class="panel-head">
+                <div>
+                  <h2>知识卡片</h2>
+                  <p class="panel-note">Generated from transcript evidence</p>
+                </div>
+                <button id="cards-button" type="button" title="Generate cards from transcript">Generate</button>
+              </div>
+              <div id="cards-list" class="cards-list"></div>
+            </section>
+
+            <section class="notes-grid">
+              <section class="tool-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>笔记</h2>
+                    <p class="panel-note">Lecture note</p>
+                  </div>
+                  <button id="note-button" type="button" title="Save note">Save</button>
+                </div>
+                <textarea id="note-input" rows="4" placeholder="Write a note for this lecture"></textarea>
+                <div id="notes-list" class="result-list"></div>
+              </section>
+
+              <section class="tool-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>书签</h2>
+                    <p class="panel-note">Segments and cards</p>
+                  </div>
+                </div>
+                <div id="bookmarks-list" class="result-list"></div>
+              </section>
+            </section>
+          </section>
+        </section>
+
+        <section class="view" id="view-frontdesk" data-view-panel="frontdesk">
+          <section class="frontdesk-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>飞书 / Hermes Lite</h2>
+                  <p class="panel-note">Same store, chat frontdesk</p>
+                </div>
+              </div>
+              <div class="frontdesk-copy">
+                <p>Feishu/Hermes Lite 连接同一份本地课程 store，用于导入回执、课程查询、引用问答和公开视觉证据发送。</p>
+                <dl>
+                  <div>
+                    <dt>Profile</dt>
+                    <dd>course2knowledge-lite</dd>
+                  </div>
+                  <div>
+                    <dt>Toolset</dt>
+                    <dd>course2knowledge-lite</dd>
+                  </div>
+                  <div>
+                    <dt>Media</dt>
+                    <dd>MEDIA:&lt;path&gt;</dd>
+                  </div>
+                </dl>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>可对话能力</h2>
+                  <p class="panel-note">Public Lite boundary</p>
+                </div>
+              </div>
+              <div class="frontdesk-copy">
+                <ul>
+                  <li>导入 Bilibili 合集并查看状态</li>
+                  <li>查询课程、课时、转写覆盖</li>
+                  <li>基于课程证据回答问题</li>
+                  <li>发送已登记的公开视觉证据</li>
+                </ul>
+              </div>
+            </section>
+          </section>
+        </section>
       </section>
     </main>
     <script src="/static/app.js"></script>

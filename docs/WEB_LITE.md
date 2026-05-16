@@ -1,11 +1,14 @@
 # Web Lite
 
-Web Lite is the primary visual workspace.
+Web Lite is the primary visual workspace. Its first screen is a public Lite
+course-management cockpit, following the parent project's web-cockpit
+information architecture without copying private runtime loops.
 
 ## Screens
 
 - Course library
 - Import status
+- Course-management cockpit
 - Lecture reader
 - Guided learning
 - Knowledge cards
@@ -17,9 +20,14 @@ Web Lite is the primary visual workspace.
 
 ## Expected Experience
 
-The learner can import a course, open a lecture, follow evidence-grounded
-guidance, read structured notes, inspect source citations, ask course questions,
-and keep lightweight reading state.
+The learner can import a course, inspect lectures and transcript coverage, open
+a lecture, follow evidence-grounded guidance, read structured notes, inspect
+source citations, ask course questions, and keep lightweight reading state.
+
+Course management is intentionally not a Q&A surface. The default page focuses
+on import, course list, transcript coverage, lecture health, and reading
+progress. Search and citation Q&A remain available in the learning-interaction
+view.
 
 Guided learning in Web Lite means:
 
@@ -54,7 +62,9 @@ It exposes:
 - `/api/progress`
 
 The page reads the same child local JSON store as Hermes Lite and does not call
-external private-runtime routes.
+external private-runtime routes. It may borrow the parent project's cockpit
+layout pattern, but it must not call mother-project web, Feishu Base, planning,
+feedback, scoring, diagnosis, or queue-completion paths.
 
 The import panel owns these stable demo selectors:
 
@@ -80,8 +90,10 @@ The current public demo case uses:
 The in-app browser acceptance run on `http://127.0.0.1:3014/` verified:
 
 - `#import-url`, `#import-button`, and `#import-receipt` render after reload.
-- the course library opens one public demo course with 30 lecture options.
-- the reader opens a transcript-backed lecture.
+- the course-management cockpit opens one public demo course with 30 lecture
+  options.
+- the reader opens a transcript-backed lecture from the learning-interaction
+  view.
 - the `RAG Agent` search returns 5 transcript hits.
 - Q&A returns an answered state with 5 citations from the same local store.
 - Guided Learning renders continue, self-check, and recap modes from

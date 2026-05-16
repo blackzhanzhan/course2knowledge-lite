@@ -6,12 +6,24 @@ const state = {
   lectureId: "",
   coverage: null,
   guideMode: "continue",
+  activeView: "courses",
 };
 
 const els = {
   status: document.querySelector("#status"),
+  viewTitle: document.querySelector("#view-title"),
+  viewSubtitle: document.querySelector("#view-subtitle"),
+  viewEyebrow: document.querySelector("#view-eyebrow"),
+  navItems: document.querySelectorAll(".nav-item"),
+  viewPanels: document.querySelectorAll("[data-view-panel]"),
   courseList: document.querySelector("#course-list"),
   coveragePanel: document.querySelector("#coverage-panel"),
+  selectedCourseSummary: document.querySelector("#selected-course-summary"),
+  lectureAdminList: document.querySelector("#lecture-admin-list"),
+  metricCourseCount: document.querySelector("#metric-course-count"),
+  metricLectureCount: document.querySelector("#metric-lecture-count"),
+  metricCoverage: document.querySelector("#metric-coverage"),
+  metricSegments: document.querySelector("#metric-segments"),
   importUrl: document.querySelector("#import-url"),
   importReceipt: document.querySelector("#import-receipt"),
   courseMeta: document.querySelector("#course-meta"),
@@ -36,6 +48,30 @@ const els = {
   qaButton: document.querySelector("#qa-button"),
   noteButton: document.querySelector("#note-button"),
   cardsButton: document.querySelector("#cards-button"),
+  viewJumpButtons: document.querySelectorAll("[data-view-jump]"),
+};
+
+const viewCopy = {
+  courses: {
+    eyebrow: "Web Lite",
+    title: "课程管理",
+    subtitle: "导入合集，检查课时和转写覆盖，再进入学习交互。",
+  },
+  study: {
+    eyebrow: "Evidence workspace",
+    title: "学习交互",
+    subtitle: "阅读转写、运行导学、检索片段，并基于引用进行课程问答。",
+  },
+  cards: {
+    eyebrow: "Knowledge workspace",
+    title: "知识管理",
+    subtitle: "把转写证据整理成卡片、笔记和书签。",
+  },
+  frontdesk: {
+    eyebrow: "Dual frontdesk",
+    title: "飞书前台",
+    subtitle: "Hermes Lite 读取同一个公开课程 store，不另起私有门户。",
+  },
 };
 
 function escapeHtml(value) {
@@ -80,10 +116,26 @@ function setStatus(text) {
   els.status.textContent = text;
 }
 
+function setView(view) {
+  const nextView = viewCopy[view] ? view : "courses";
+  state.activeView = nextView;
+  for (const item of els.navItems) {
+    item.classList.toggle("is-active", item.dataset.view === nextView);
+  }
+  for (const panel of els.viewPanels) {
+    panel.classList.toggle("is-active", panel.dataset.viewPanel === nextView);
+  }
+  const copy = viewCopy[nextView];
+  els.viewEyebrow.textContent = copy.eyebrow;
+  els.viewTitle.textContent = copy.title;
+  els.viewSubtitle.textContent = copy.subtitle;
+}
+
 async function loadCourses() {
   setStatus("Reading local course store");
   const payload = await getJson("/api/courses");
   state.courses = payload.courses || [];
+  renderCourseMetrics();
   renderCourses();
   if (state.courses.length) {
     const nextCourseId = state.courseId || state.courses[0].course_id;
@@ -132,6 +184,11 @@ async function importCollection() {
 }
 
 function renderCourses() {
+  if (!state.courses.length) {
+    els.courseList.innerHTML = '<div class="empty">No local courses found.</div>';
+    renderCourseMetrics();
+    return;
+  }
   els.courseList.innerHTML = state.courses
     .map(
       (course) => `
@@ -142,6 +199,7 @@ function renderCourses() {
           <p class="item-meta">${Number(course.lecture_count || 0)} lectures / ${Number(
             course.lecture_transcript_count || 0,
           )} with transcripts</p>
+          <p class="citation">${escapeHtml(course.course_id)}</p>
         </article>
       `,
     )
@@ -154,16 +212,18 @@ function renderCourses() {
 async function selectCourse(courseId) {
   state.courseId = courseId;
   renderCourses();
+  renderCourseMetrics();
   const payload = await getJson(`/api/lectures?course_id=${encodeURIComponent(courseId)}`);
   state.lectures = payload.lectures || [];
   await loadCoverage();
+  renderCourseMetrics();
+  renderSelectedCourseSummary();
+  renderLectureAdminList();
   state.lectureSequence = Number(state.lectures[0]?.sequence || 1);
   renderLectureSelect();
   await loadReader();
   await loadLearningState();
   await loadGuide("continue");
-  await runSearch();
-  await runQa();
 }
 
 function renderLectureSelect() {
@@ -202,6 +262,79 @@ function renderCoverage() {
       coverage.total_segment_count || 0,
     )} segments</p>
   `;
+  renderCourseMetrics();
+}
+
+function selectedCourse() {
+  return state.courses.find((course) => course.course_id === state.courseId) || null;
+}
+
+function renderCourseMetrics() {
+  const courseCount = state.courses.length;
+  const lectureCount = state.lectures.length || Number(selectedCourse()?.lecture_count || 0);
+  const coverage = state.coverage || {};
+  const percent = Math.round(Number(coverage.coverage_ratio || 0) * 100);
+  els.metricCourseCount.textContent = String(courseCount);
+  els.metricLectureCount.textContent = String(lectureCount);
+  els.metricCoverage.textContent = `${Math.max(0, Math.min(percent, 100))}%`;
+  els.metricSegments.textContent = String(Number(coverage.total_segment_count || 0));
+}
+
+function renderSelectedCourseSummary() {
+  const course = selectedCourse();
+  if (!course) {
+    els.selectedCourseSummary.innerHTML = '<div class="empty">Select a course to inspect.</div>';
+    return;
+  }
+  const coverage = state.coverage || {};
+  els.selectedCourseSummary.innerHTML = `
+    <div class="summary-line">
+      <span>课程名称</span>
+      <strong>${escapeHtml(course.title || course.course_id)}</strong>
+    </div>
+    <div class="summary-line">
+      <span>来源</span>
+      <strong>${escapeHtml(course.source_url || "local store")}</strong>
+    </div>
+    <div class="summary-line">
+      <span>课时状态</span>
+      <strong>${Number(course.lecture_transcript_count || 0)} / ${Number(course.lecture_count || 0)} with transcripts</strong>
+    </div>
+    <div class="summary-line">
+      <span>证据片段</span>
+      <strong>${Number(coverage.total_segment_count || 0)}</strong>
+    </div>
+  `;
+}
+
+function renderLectureAdminList() {
+  if (!state.lectures.length) {
+    els.lectureAdminList.innerHTML = '<div class="empty">No lectures loaded.</div>';
+    return;
+  }
+  els.lectureAdminList.innerHTML = state.lectures
+    .map(
+      (lecture) => `
+        <button class="lecture-row ${Number(lecture.sequence) === Number(state.lectureSequence) ? "is-active" : ""}"
+          type="button"
+          data-sequence="${escapeHtml(lecture.sequence)}">
+          <span>${escapeHtml(lecture.sequence)}. ${escapeHtml(lecture.title || lecture.lecture_id)}</span>
+          <small>${escapeHtml(lecture.bvid || lecture.source_url || lecture.lecture_id)}</small>
+        </button>
+      `,
+    )
+    .join("");
+  for (const button of els.lectureAdminList.querySelectorAll(".lecture-row")) {
+    button.addEventListener("click", async () => {
+      state.lectureSequence = Number(button.dataset.sequence || 1);
+      renderLectureSelect();
+      renderLectureAdminList();
+      await loadReader();
+      await loadLearningState();
+      await loadGuide(state.guideMode === "continue" ? "walkthrough" : state.guideMode);
+      setView("study");
+    });
+  }
 }
 
 async function loadReader() {
@@ -218,6 +351,7 @@ async function loadReader() {
   state.lectureId = lecture.lecture_id || "";
   els.courseMeta.textContent = `${payload.course?.title || state.courseId} / lecture ${lecture.sequence || ""}`;
   els.lectureTitle.textContent = lecture.title || "Lecture Reader";
+  renderLectureAdminList();
   if (!payload.has_transcript) {
     els.segments.innerHTML = '<div class="empty">This lecture has no transcript segments yet.</div>';
     await loadCards();
@@ -664,13 +798,22 @@ els.qaButton.addEventListener("click", runQa);
 els.noteButton.addEventListener("click", saveNote);
 els.cardsButton.addEventListener("click", generateCards);
 els.guideButton.addEventListener("click", () => loadGuide(els.guideMode.value));
+for (const item of els.navItems) {
+  item.addEventListener("click", () => setView(item.dataset.view));
+}
+for (const button of els.viewJumpButtons) {
+  button.addEventListener("click", () => setView(button.dataset.viewJump));
+}
 els.progressSelect.addEventListener("change", setProgress);
 els.lectureSelect.addEventListener("change", async () => {
   state.lectureSequence = Number(els.lectureSelect.value || 1);
+  renderLectureAdminList();
   await loadReader();
   await loadLearningState();
   await loadGuide(state.guideMode === "continue" ? "walkthrough" : state.guideMode);
 });
+
+setView("courses");
 
 loadCourses().catch((error) => {
   els.segments.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
