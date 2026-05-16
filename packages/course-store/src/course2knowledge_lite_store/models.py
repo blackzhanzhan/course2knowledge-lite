@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Any
 
 READING_PROGRESS_STATUSES = {"not_started", "reading", "read"}
+CHAT_MESSAGE_ROLES = {"user", "assistant", "system", "tool"}
+CHAT_EVENT_TYPES = {"message_delta", "tool_start", "tool_result", "media", "done", "error"}
 
 
 @dataclass(frozen=True)
@@ -201,6 +203,66 @@ class ReadingProgressRecord:
             "lecture_id": self.lecture_id,
             "status": self.status,
             "last_opened_at": self.last_opened_at,
+        }
+
+
+@dataclass(frozen=True)
+class ChatThreadRecord:
+    thread_id: str
+    course_id: str
+    title: str
+    channel: str
+    created_at: str
+    updated_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "thread_id": self.thread_id,
+            "course_id": self.course_id,
+            "title": self.title,
+            "channel": self.channel,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+
+@dataclass(frozen=True)
+class ChatMessageRecord:
+    message_id: str
+    thread_id: str
+    role: str
+    content: str
+    created_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "message_id": self.message_id,
+            "thread_id": self.thread_id,
+            "role": self.role,
+            "content": self.content,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass(frozen=True)
+class ChatEventRecord:
+    event_id: str
+    thread_id: str
+    message_id: str
+    event_type: str
+    tool_name: str
+    payload: dict[str, Any]
+    created_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "event_id": self.event_id,
+            "thread_id": self.thread_id,
+            "message_id": self.message_id,
+            "event_type": self.event_type,
+            "tool_name": self.tool_name,
+            "payload": dict(self.payload),
+            "created_at": self.created_at,
         }
 
 

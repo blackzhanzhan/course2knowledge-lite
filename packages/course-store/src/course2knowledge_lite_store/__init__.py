@@ -1,7 +1,13 @@
+from .chat import LiteChatCore
 from .content import TranscriptCitation, build_lecture_reader_payload, search_transcript_segments
 from .models import (
+    CHAT_EVENT_TYPES,
+    CHAT_MESSAGE_ROLES,
     READING_PROGRESS_STATUSES,
     BookmarkRecord,
+    ChatEventRecord,
+    ChatMessageRecord,
+    ChatThreadRecord,
     CourseRecord,
     CourseSkeleton,
     ImportStatusRecord,
@@ -19,6 +25,11 @@ from .transcripts import build_manual_transcript_segments, build_transcript_segm
 
 __all__ = [
     "BookmarkRecord",
+    "CHAT_EVENT_TYPES",
+    "CHAT_MESSAGE_ROLES",
+    "ChatEventRecord",
+    "ChatMessageRecord",
+    "ChatThreadRecord",
     "CourseRecord",
     "CourseSkeleton",
     "DEFAULT_SQLITE_FILENAME",
@@ -26,6 +37,7 @@ __all__ = [
     "JsonCourseStore",
     "KnowledgeCardRecord",
     "LectureRecord",
+    "LiteChatCore",
     "NoteRecord",
     "READING_PROGRESS_STATUSES",
     "ReadingProgressRecord",

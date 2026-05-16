@@ -11,8 +11,13 @@ from uuid import uuid4
 
 from .content import build_lecture_reader_payload, search_transcript_segments
 from .models import (
+    CHAT_EVENT_TYPES,
+    CHAT_MESSAGE_ROLES,
     READING_PROGRESS_STATUSES,
     BookmarkRecord,
+    ChatEventRecord,
+    ChatMessageRecord,
+    ChatThreadRecord,
     CourseSkeleton,
     KnowledgeCardRecord,
     NoteRecord,
@@ -580,6 +585,183 @@ class SQLiteCourseStore:
             ).fetchall()
         return [_dict(row) for row in rows]
 
+    def create_chat_thread(
+        self,
+        course_id: str,
+        *,
+        title: str = "",
+        channel: str = "web",
+        thread_id: str = "",
+        now: str = "",
+    ) -> dict[str, Any]:
+        self.read_course(course_id)
+        created_at = now or self._utc_now()
+        cleaned_title = str(title or "").strip() or "New chat"
+        cleaned_channel = str(channel or "web").strip() or "web"
+        thread = ChatThreadRecord(
+            thread_id=thread_id or f"chat_thread_{uuid4().hex[:12]}",
+            course_id=course_id,
+            title=cleaned_title,
+            channel=cleaned_channel,
+            created_at=created_at,
+            updated_at=created_at,
+        ).to_dict()
+        with self._connect() as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO chat_threads
+                    (thread_id, course_id, title, channel, created_at, updated_at)
+                    VALUES (:thread_id, :course_id, :title, :channel, :created_at, :updated_at)
+                    """,
+                    thread,
+                )
+            except sqlite3.IntegrityError as exc:
+                raise ValueError(f"chat thread already exists: {thread['thread_id']}") from exc
+        return thread
+
+    def read_chat_thread(self, thread_id: str) -> dict[str, Any]:
+        cleaned_thread_id = str(thread_id or "").strip()
+        if not cleaned_thread_id:
+            raise ValueError("thread_id is required")
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM chat_threads WHERE thread_id = ?", (cleaned_thread_id,)).fetchone()
+        if row is None:
+            raise ValueError(f"chat thread not found: {cleaned_thread_id}")
+        return _dict(row)
+
+    def list_chat_threads(self, *, course_id: str = "", channel: str = "") -> list[dict[str, Any]]:
+        sql = "SELECT * FROM chat_threads"
+        params: list[Any] = []
+        filters: list[str] = []
+        if course_id:
+            filters.append("course_id = ?")
+            params.append(course_id)
+        if channel:
+            filters.append("channel = ?")
+            params.append(channel)
+        if filters:
+            sql += " WHERE " + " AND ".join(filters)
+        sql += " ORDER BY updated_at DESC, created_at DESC, thread_id"
+        with self._connect() as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [_dict(row) for row in rows]
+
+    def append_chat_message(
+        self,
+        thread_id: str,
+        role: str,
+        content: str,
+        *,
+        message_id: str = "",
+        now: str = "",
+    ) -> dict[str, Any]:
+        thread = self.read_chat_thread(thread_id)
+        cleaned_role = str(role or "").strip()
+        if cleaned_role not in CHAT_MESSAGE_ROLES:
+            allowed = ", ".join(sorted(CHAT_MESSAGE_ROLES))
+            raise ValueError(f"chat message role must be one of: {allowed}")
+        created_at = now or self._utc_now()
+        message = ChatMessageRecord(
+            message_id=message_id or f"chat_msg_{uuid4().hex[:12]}",
+            thread_id=str(thread["thread_id"]),
+            role=cleaned_role,
+            content=str(content or ""),
+            created_at=created_at,
+        ).to_dict()
+        with self._connect() as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO chat_messages
+                    (message_id, thread_id, role, content, created_at)
+                    VALUES (:message_id, :thread_id, :role, :content, :created_at)
+                    """,
+                    message,
+                )
+            except sqlite3.IntegrityError as exc:
+                raise ValueError(f"chat message already exists: {message['message_id']}") from exc
+            conn.execute(
+                "UPDATE chat_threads SET updated_at = ? WHERE thread_id = ?",
+                (created_at, str(thread["thread_id"])),
+            )
+        return message
+
+    def list_chat_messages(self, thread_id: str) -> list[dict[str, Any]]:
+        cleaned_thread_id = str(thread_id or "").strip()
+        if not cleaned_thread_id:
+            raise ValueError("thread_id is required")
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM chat_messages WHERE thread_id = ? ORDER BY created_at, message_id",
+                (cleaned_thread_id,),
+            ).fetchall()
+        return [_dict(row) for row in rows]
+
+    def append_chat_event(
+        self,
+        thread_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        *,
+        message_id: str = "",
+        tool_name: str = "",
+        event_id: str = "",
+        now: str = "",
+    ) -> dict[str, Any]:
+        thread = self.read_chat_thread(thread_id)
+        cleaned_event_type = str(event_type or "").strip()
+        if cleaned_event_type not in CHAT_EVENT_TYPES:
+            allowed = ", ".join(sorted(CHAT_EVENT_TYPES))
+            raise ValueError(f"chat event type must be one of: {allowed}")
+        cleaned_message_id = str(message_id or "").strip()
+        if cleaned_message_id and not any(
+            str(message.get("message_id") or "") == cleaned_message_id
+            for message in self.list_chat_messages(str(thread["thread_id"]))
+        ):
+            raise ValueError(f"chat message not found for event: {cleaned_message_id}")
+        created_at = now or self._utc_now()
+        event = ChatEventRecord(
+            event_id=event_id or f"chat_evt_{uuid4().hex[:12]}",
+            thread_id=str(thread["thread_id"]),
+            message_id=cleaned_message_id,
+            event_type=cleaned_event_type,
+            tool_name=str(tool_name or "").strip(),
+            payload=dict(payload or {}),
+            created_at=created_at,
+        ).to_dict()
+        row = dict(event)
+        row["payload_json"] = json.dumps(row.pop("payload"), ensure_ascii=False, sort_keys=True)
+        row["message_id"] = row["message_id"] or None
+        with self._connect() as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO chat_events
+                    (event_id, thread_id, message_id, event_type, tool_name, payload_json, created_at)
+                    VALUES (:event_id, :thread_id, :message_id, :event_type, :tool_name, :payload_json, :created_at)
+                    """,
+                    row,
+                )
+            except sqlite3.IntegrityError as exc:
+                raise ValueError(f"chat event already exists: {event['event_id']}") from exc
+            conn.execute(
+                "UPDATE chat_threads SET updated_at = ? WHERE thread_id = ?",
+                (created_at, str(thread["thread_id"])),
+            )
+        return event
+
+    def list_chat_events(self, thread_id: str) -> list[dict[str, Any]]:
+        cleaned_thread_id = str(thread_id or "").strip()
+        if not cleaned_thread_id:
+            raise ValueError("thread_id is required")
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM chat_events WHERE thread_id = ? ORDER BY created_at, event_id",
+                (cleaned_thread_id,),
+            ).fetchall()
+        return [_decode_chat_event(row) for row in rows]
+
     def import_from_json_store(self, json_store: Any) -> dict[str, Any]:
         migrated_courses = 0
         migrated_lectures = 0
@@ -945,6 +1127,37 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             FOREIGN KEY(course_id) REFERENCES courses(course_id) ON DELETE CASCADE,
             FOREIGN KEY(lecture_id) REFERENCES lectures(lecture_id) ON DELETE CASCADE
         );
+        CREATE TABLE IF NOT EXISTS chat_threads (
+            thread_id TEXT PRIMARY KEY,
+            course_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            channel TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(course_id) REFERENCES courses(course_id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_chat_threads_course_channel ON chat_threads(course_id, channel, updated_at);
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            message_id TEXT PRIMARY KEY,
+            thread_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(thread_id) REFERENCES chat_threads(thread_id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_created ON chat_messages(thread_id, created_at);
+        CREATE TABLE IF NOT EXISTS chat_events (
+            event_id TEXT PRIMARY KEY,
+            thread_id TEXT NOT NULL,
+            message_id TEXT,
+            event_type TEXT NOT NULL,
+            tool_name TEXT NOT NULL DEFAULT '',
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(thread_id) REFERENCES chat_threads(thread_id) ON DELETE CASCADE,
+            FOREIGN KEY(message_id) REFERENCES chat_messages(message_id) ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_chat_events_thread_created ON chat_events(thread_id, created_at);
         """
     )
 
@@ -959,6 +1172,13 @@ def _decode_card(row: sqlite3.Row) -> dict[str, Any]:
     payload = _dict(row)
     payload["source_segment_ids"] = json.loads(str(payload.pop("source_segment_ids_json") or "[]"))
     payload["tags"] = json.loads(str(payload.pop("tags_json") or "[]"))
+    return payload
+
+
+def _decode_chat_event(row: sqlite3.Row) -> dict[str, Any]:
+    payload = _dict(row)
+    payload["message_id"] = str(payload.get("message_id") or "")
+    payload["payload"] = json.loads(str(payload.pop("payload_json") or "{}"))
     return payload
 
 
