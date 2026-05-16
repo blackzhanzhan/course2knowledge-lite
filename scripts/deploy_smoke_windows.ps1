@@ -1,7 +1,8 @@
 param(
   [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
   [string]$RunRoot = (Join-Path $env:TEMP ("course2knowledge-lite-win-" + (Get-Date -Format "yyyyMMdd-HHmmss"))),
-  [string]$Python = "python"
+  [string]$Python = "python",
+  [string]$PythonInstallerUrl = "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,6 +12,20 @@ $LogPath = Join-Path $RunRoot "windows-deploy.log"
 Start-Transcript -Path $LogPath -Force | Out-Null
 
 try {
+  $BootstrapPython = $false
+  try {
+    & $Python --version | Out-Null
+  } catch {
+    $BootstrapPython = $true
+  }
+  if ($BootstrapPython) {
+    $InstallRoot = Join-Path $RunRoot "python312"
+    $Installer = Join-Path $RunRoot "python-installer.exe"
+    Invoke-WebRequest -Uri $PythonInstallerUrl -OutFile $Installer -UseBasicParsing
+    Start-Process -FilePath $Installer -ArgumentList @("/quiet", "InstallAllUsers=0", "TargetDir=$InstallRoot", "Include_pip=1", "Include_test=0", "PrependPath=0") -Wait -NoNewWindow
+    $Python = Join-Path $InstallRoot "python.exe"
+  }
+
   $WorkRepo = Join-Path $RunRoot "course2knowledge-lite"
   Copy-Item -Path $RepoRoot -Destination $WorkRepo -Recurse -Force
   foreach ($name in @(".git", "tmp", ".pytest_cache", "course2knowledge_lite.egg-info")) {
@@ -59,6 +74,7 @@ try {
     status = "passed"
     environment = "Pure Windows PowerShell"
     run_root = $RunRoot
+    python_bootstrapped = $BootstrapPython
     version = (Get-Content (Join-Path $RunRoot "version.txt") -Raw).Trim()
     sync = $Sync.status
     smoke = $Smoke.status
