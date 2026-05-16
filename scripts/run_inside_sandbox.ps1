@@ -1,5 +1,5 @@
 param(
-  [switch]$KeepOpen
+  [switch]$AutoShutdown
 )
 
 $ErrorActionPreference = "Continue"
@@ -8,6 +8,7 @@ $RepoRoot = "C:\Users\WDAGUtilityAccount\Desktop\course2knowledge-lite"
 $DeployScript = Join-Path $RepoRoot "scripts\deploy_smoke_windows.ps1"
 $OutputRoot = "C:\Users\WDAGUtilityAccount\Desktop\sandbox-output\latest"
 $RunnerLog = Join-Path $OutputRoot "sandbox-runner.log"
+$DoneMarker = Join-Path $OutputRoot "SANDBOX_SMOKE_DONE.txt"
 
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 
@@ -35,11 +36,12 @@ try {
   $ExitCode = 1
   Write-RunnerLog "deploy-exception: $($_.Exception.Message)"
 } finally {
-  if ($KeepOpen) {
-    Write-RunnerLog "keep-open"
-  } else {
+  if ($AutoShutdown) {
     Write-RunnerLog "guest-shutdown-scheduled"
     shutdown.exe /s /t 10 /c "Course2Knowledge Lite sandbox smoke finished. Artifacts are in the mapped sandbox-output folder."
+  } else {
+    "Course2Knowledge Lite sandbox smoke finished at $(Get-Date -Format o). You can close this Sandbox window normally." | Set-Content -Encoding UTF8 -Path $DoneMarker
+    Write-RunnerLog "keep-open-close-manually"
   }
 }
 

@@ -43,13 +43,17 @@ powershell.exe -ExecutionPolicy Bypass -File .\scripts\run_sandbox_smoke.ps1
 The runner opens `scripts/Course2KnowledgeLiteSandbox.wsb`, maps this public
 child repo read-only into the sandbox, and polls
 `tmp/deploy-smoke-windows/sandbox-output/latest/windows-summary.json`.
+When the summary is detected, the Sandbox window is intentionally left open.
+Close it manually with the window close button after the runner reports success.
 
 Do not force-kill `WindowsSandbox.exe` or `vmwp.exe` while a smoke run is active.
 That closes the host-to-sandbox remote session abruptly and Windows shows
 `0x80072746` disconnect dialogs even when the project smoke itself has already
-written a passing summary. If a Sandbox window is still open, close it normally
-before starting another run. The runner refuses to start when an existing
-Sandbox session is detected.
+written a passing summary. Guest-side automatic shutdown can produce the same
+disconnect dialog in Windows Sandbox, so the default smoke flow keeps the window
+open and requires a normal manual close. If a Sandbox window is still open, close
+it normally before starting another run. The runner refuses to start when an
+existing Sandbox session is detected.
 
 ## Current Windows Evidence
 
