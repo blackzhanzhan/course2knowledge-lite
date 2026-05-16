@@ -36,20 +36,25 @@ The script performs:
 
 If Windows Sandbox is enabled, open:
 
-```text
-scripts/Course2KnowledgeLiteSandbox.wsb
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\run_sandbox_smoke.ps1
 ```
 
-The WSB file maps this public child repo read-only into the sandbox and runs the
-same PowerShell smoke script.
+The runner opens `scripts/Course2KnowledgeLiteSandbox.wsb`, maps this public
+child repo read-only into the sandbox, and polls
+`tmp/deploy-smoke-windows/sandbox-output/latest/windows-summary.json`.
 
-## Current Windows Carrier Status
+Do not force-kill `WindowsSandbox.exe` or `vmwp.exe` while a smoke run is active.
+That closes the host-to-sandbox remote session abruptly and Windows shows
+`0x80072746` disconnect dialogs even when the project smoke itself has already
+written a passing summary. If a Sandbox window is still open, close it normally
+before starting another run. The runner refuses to start when an existing
+Sandbox session is detected.
 
-On the current machine, pure Windows execution is not yet proven because the
-available carriers are disabled or absent:
+## Current Windows Evidence
 
-- Windows Sandbox feature: disabled
-- Hyper-V feature: disabled
-- VirtualBox/VMware/QEMU commands: absent
-- Docker Desktop: present, but running Linux containers, which does not satisfy
-  pure Windows deployment proof
+The current verified Windows Sandbox evidence is stored under ignored runtime
+artifacts:
+
+- `tmp/deploy-smoke-windows/sandbox-output/latest/windows-summary.json`
+- `tmp/deploy-smoke-windows/sandbox-output/latest/interaction-report.json`

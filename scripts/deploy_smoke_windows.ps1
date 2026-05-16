@@ -3,24 +3,35 @@ param(
   [string]$RunRoot = (Join-Path $env:TEMP ("course2knowledge-lite-win-" + (Get-Date -Format "yyyyMMdd-HHmmss"))),
   [string]$ArtifactRoot = "",
   [string]$Python = "python",
-  [string]$PythonInstallerUrl = "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
+  [string]$PythonInstallerUrl = "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe",
+  [string]$Wheelhouse = ""
 )
 
 $ErrorActionPreference = "Stop"
 
+$RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 New-Item -ItemType Directory -Force -Path $RunRoot | Out-Null
+$RunRoot = (Resolve-Path -LiteralPath $RunRoot).Path
 $ResolvedArtifactRoot = if ($ArtifactRoot) { $ArtifactRoot } else { $RunRoot }
 New-Item -ItemType Directory -Force -Path $ResolvedArtifactRoot | Out-Null
+$ResolvedArtifactRoot = (Resolve-Path -LiteralPath $ResolvedArtifactRoot).Path
+if ($Wheelhouse -and (Test-Path -LiteralPath $Wheelhouse)) {
+  $Wheelhouse = (Resolve-Path -LiteralPath $Wheelhouse).Path
+}
+if (Test-Path -LiteralPath $PythonInstallerUrl) {
+  $PythonInstallerUrl = (Resolve-Path -LiteralPath $PythonInstallerUrl).Path
+}
 $LogPath = Join-Path $ResolvedArtifactRoot "windows-deploy.log"
 $StageLog = Join-Path $ResolvedArtifactRoot "windows-stages.log"
+"$(Get-Date -Format o) deploy-start" | Set-Content -Encoding UTF8 -Path $StageLog
 Start-Transcript -Path $LogPath -Force | Out-Null
 
 try {
   function Write-Stage {
     param([string]$Name)
     $line = "$(Get-Date -Format o) $Name"
-    Write-Host $line
-    Add-Content -Path $StageLog -Value $line
+    Write-Output $line
+    Add-Content -Encoding UTF8 -Path $StageLog -Value $line
   }
 
   function Invoke-NativeStep {
@@ -43,6 +54,7 @@ try {
     if ($exitCode -ne 0) {
       throw "$Name failed with exit code $exitCode"
     }
+    Write-Stage "$Name-complete"
   }
 
   $BootstrapPython = $false
@@ -68,22 +80,49 @@ try {
       (Join-Path $InstallRoot "Lib\ensurepip\__init__.py")
     )
     Write-Stage "python-bootstrap-start"
-    $InstallProcess = Start-Process -FilePath $Installer -ArgumentList @("/quiet", "InstallAllUsers=0", "TargetDir=$InstallRoot", "Include_pip=1", "Include_test=0", "PrependPath=0", "Include_launcher=0", "InstallLauncherAllUsers=0", "/log", $InstallLog) -PassThru -NoNewWindow
-    $Deadline = (Get-Date).AddMinutes(5)
-    while (($RequiredPythonPaths | Where-Object { !(Test-Path $_) }) -and (Get-Date) -lt $Deadline) {
-      Start-Sleep -Seconds 2
+    $InstallProcess = Start-Process -FilePath $Installer -ArgumentList @("/quiet", "InstallAllUsers=0", "TargetDir=$InstallRoot", "Include_pip=1", "Include_test=0", "Include_doc=0", "Include_tcltk=0", "Include_dev=0", "PrependPath=0", "Include_launcher=0", "InstallLauncherAllUsers=0", "/log", $InstallLog) -PassThru -NoNewWindow
+    $Deadline = (Get-Date).AddMinutes(15)
+    $LastProgressLog = Get-Date
+    while (!$InstallProcess.HasExited -and (Get-Date) -lt $Deadline) {
+      Start-Sleep -Seconds 5
+      $InstallProcess.Refresh()
+      if (((Get-Date) - $LastProgressLog).TotalSeconds -ge 30) {
+        Write-Stage "python-bootstrap-waiting"
+        $LastProgressLog = Get-Date
+      }
+    }
+    if (!$InstallProcess.HasExited) {
+      Stop-Process -Id $InstallProcess.Id -Force -ErrorAction SilentlyContinue
+      throw "Python bootstrap did not finish before timeout"
+    }
+    $InstallProcess.WaitForExit()
+    $InstallProcess.Refresh()
+    $InstallExitCode = $InstallProcess.ExitCode
+    $InstallerLogText = if (Test-Path $InstallLog) { Get-Content -Path $InstallLog -Raw -ErrorAction SilentlyContinue } else { "" }
+    $InstallerLogSucceeded = $InstallerLogText.Contains("Apply complete, result: 0x0") -or $InstallerLogText.Contains("Exit code: 0x0")
+    if ($null -eq $InstallExitCode) {
+      if (!$InstallerLogSucceeded) {
+        throw "Python installer did not expose an exit code and log did not confirm success"
+      }
+      Write-Stage "python-bootstrap-exitcode-missing-log-success"
+    } elseif (($InstallExitCode -ne 0) -and ($InstallExitCode -ne 3010)) {
+      if (!$InstallerLogSucceeded) {
+        throw "Python installer failed with exit code $InstallExitCode"
+      }
+      Write-Stage "python-bootstrap-exitcode-$InstallExitCode-log-success"
     }
     $MissingPythonPaths = @($RequiredPythonPaths | Where-Object { !(Test-Path $_) })
     if ($MissingPythonPaths.Count -gt 0) {
-      Stop-Process -Id $InstallProcess.Id -Force -ErrorAction SilentlyContinue
-      throw "Python bootstrap did not finish required paths: $($MissingPythonPaths -join ', ')"
+      throw "Python bootstrap did not create required paths: $($MissingPythonPaths -join ', ')"
     }
-    Stop-Process -Id $InstallProcess.Id -Force -ErrorAction SilentlyContinue
     Write-Stage "python-bootstrap-ready"
+    Invoke-NativeStep "python-bootstrap-version" $Python @("--version") (Join-Path $ResolvedArtifactRoot "python-bootstrap-version.txt")
+    Invoke-NativeStep "python-bootstrap-pip" $Python @("-m", "pip", "--version") (Join-Path $ResolvedArtifactRoot "python-bootstrap-pip.txt")
+    Invoke-NativeStep "python-bootstrap-venv" $Python @("-m", "venv", "--help") (Join-Path $ResolvedArtifactRoot "python-bootstrap-venv.txt")
   }
 
   Write-Stage "copy-repo-start"
-  $WorkRepo = Join-Path $RunRoot "course2knowledge-lite"
+  $WorkRepo = Join-Path $RunRoot "src"
   New-Item -ItemType Directory -Force -Path $WorkRepo | Out-Null
   $ExcludedRootNames = @(".git", "tmp", ".pytest_cache", "course2knowledge_lite.egg-info")
   Get-ChildItem -LiteralPath $RepoRoot -Force | Where-Object {
@@ -99,7 +138,16 @@ try {
   $VenvPython = Join-Path $RunRoot "venv\Scripts\python.exe"
   $Cli = Join-Path $RunRoot "venv\Scripts\course2knowledge-lite.exe"
   Invoke-NativeStep "pip-version" $VenvPython @("-m", "pip", "--version") (Join-Path $ResolvedArtifactRoot "pip-version.txt")
-  Invoke-NativeStep "pip-install" $VenvPython @("-m", "pip", "install", ".") (Join-Path $ResolvedArtifactRoot "pip-install.log")
+  $ResolvedWheelhouse = $Wheelhouse
+  if (!$ResolvedWheelhouse -and (Test-Path $PythonInstallerUrl)) {
+    $ResolvedWheelhouse = Join-Path (Split-Path -Parent $PythonInstallerUrl) "wheelhouse"
+  }
+  if ($ResolvedWheelhouse -and (Test-Path $ResolvedWheelhouse)) {
+    Invoke-NativeStep "pip-install-build-tools" $VenvPython @("-m", "pip", "install", "--no-index", "--find-links", $ResolvedWheelhouse, "setuptools>=68", "wheel") (Join-Path $ResolvedArtifactRoot "pip-install-build-tools.log")
+    Invoke-NativeStep "pip-install" $VenvPython @("-m", "pip", "install", "--no-index", "--no-build-isolation", ".") (Join-Path $ResolvedArtifactRoot "pip-install.log")
+  } else {
+    Invoke-NativeStep "pip-install" $VenvPython @("-m", "pip", "install", ".") (Join-Path $ResolvedArtifactRoot "pip-install.log")
+  }
   Invoke-NativeStep "cli-version" $Cli @("--version") (Join-Path $ResolvedArtifactRoot "version.txt")
 
   $Profile = Join-Path $RunRoot "profile"
@@ -144,6 +192,17 @@ try {
     home_has_title = [bool]$Web.home_has_title
   }
   $Summary | ConvertTo-Json -Depth 10 | Tee-Object -FilePath (Join-Path $ResolvedArtifactRoot "windows-summary.json")
+} catch {
+  Write-Stage "failed"
+  $Failure = [ordered]@{
+    status = "failed"
+    environment = "Pure Windows PowerShell"
+    run_root = $RunRoot
+    artifact_root = $ResolvedArtifactRoot
+    error = $_.Exception.Message
+  }
+  $Failure | ConvertTo-Json -Depth 10 | Tee-Object -FilePath (Join-Path $ResolvedArtifactRoot "windows-summary.json")
+  throw
 } finally {
   Pop-Location -ErrorAction SilentlyContinue
   Stop-Transcript | Out-Null
