@@ -40,10 +40,10 @@ try {
   Start-Sleep -Seconds 3
   try {
     $Courses = Invoke-RestMethod -Uri "http://127.0.0.1:3190/api/courses" -TimeoutSec 10
-    $Home = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:3190/" -TimeoutSec 10
+    $HomeResponse = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:3190/" -TimeoutSec 10
     $WebReport = [ordered]@{
       courses = $Courses
-      home_has_title = $Home.Content.Contains("Course2Knowledge Lite")
+      home_has_title = $HomeResponse.Content.Contains("Course2Knowledge Lite")
     }
     $WebReport | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 -Path (Join-Path $RunRoot "web-report.json")
   } finally {
