@@ -47,7 +47,14 @@
             <h1 id="view-title">课程管理</h1>
             <p id="view-subtitle">导入合集，检查课时和转写覆盖，再进入学习交互。</p>
           </div>
-          <div class="status" id="status">读取本地课程库</div>
+          <div class="topbar-status">
+            <div class="status" id="status">读取本地课程库</div>
+            <div class="boundary-tags" aria-label="Public Lite boundaries">
+              <span>Local JSON</span>
+              <span>Public Lite</span>
+              <span>No scoring</span>
+            </div>
+          </div>
         </header>
 
         <section class="context-bar" aria-label="Current course context">
@@ -67,6 +74,25 @@
               <option value="read">已读</option>
             </select>
           </label>
+        </section>
+
+        <section class="workspace-strip" aria-label="Workspace status">
+          <div>
+            <span>Store</span>
+            <strong id="strip-store">Local course store</strong>
+          </div>
+          <div>
+            <span>Authority</span>
+            <strong id="strip-authority">Public child repo</strong>
+          </div>
+          <div>
+            <span>Guide</span>
+            <strong id="strip-guide">Read-only</strong>
+          </div>
+          <div>
+            <span>Frontdesk</span>
+            <strong id="strip-frontdesk">Web + Hermes Lite</strong>
+          </div>
         </section>
 
         <section class="view is-active" id="view-courses" data-view-panel="courses">

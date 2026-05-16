@@ -24,6 +24,10 @@ const els = {
   metricLectureCount: document.querySelector("#metric-lecture-count"),
   metricCoverage: document.querySelector("#metric-coverage"),
   metricSegments: document.querySelector("#metric-segments"),
+  stripStore: document.querySelector("#strip-store"),
+  stripAuthority: document.querySelector("#strip-authority"),
+  stripGuide: document.querySelector("#strip-guide"),
+  stripFrontdesk: document.querySelector("#strip-frontdesk"),
   importUrl: document.querySelector("#import-url"),
   importReceipt: document.querySelector("#import-receipt"),
   courseMeta: document.querySelector("#course-meta"),
@@ -156,6 +160,7 @@ function setView(view) {
   els.viewEyebrow.textContent = copy.eyebrow;
   els.viewTitle.textContent = copy.title;
   els.viewSubtitle.textContent = copy.subtitle;
+  renderWorkspaceStrip();
 }
 
 function guideModeLabel(mode) {
@@ -167,10 +172,24 @@ function guideModeLabel(mode) {
   }[mode] || mode;
 }
 
+function renderWorkspaceStrip() {
+  const course = selectedCourse();
+  const courseCount = state.courses.length;
+  const lectureCount = state.lectures.length || Number(course?.lecture_count || 0);
+  const courseLabel = course ? course.title || course.course_id : "Public child repo";
+  els.stripStore.textContent = courseCount
+    ? `${courseCount} courses / ${lectureCount} lectures`
+    : "Local course store";
+  els.stripAuthority.textContent = courseLabel;
+  els.stripGuide.textContent = `${guideModeLabel(state.guideMode)} / read-only`;
+  els.stripFrontdesk.textContent = state.activeView === "frontdesk" ? "Hermes Lite active" : "Web + Hermes Lite";
+}
+
 async function loadCourses() {
   setStatus("Reading local course store");
   const payload = await getJson("/api/courses");
   state.courses = payload.courses || [];
+  renderWorkspaceStrip();
   renderCourseMetrics();
   renderCourses();
   if (state.courses.length) {
@@ -182,6 +201,7 @@ async function loadCourses() {
     els.cardsList.innerHTML = "";
     els.guideOutput.innerHTML = "";
     setStatus("No courses");
+    renderWorkspaceStrip();
   }
 }
 
@@ -223,6 +243,7 @@ function renderCourses() {
   if (!state.courses.length) {
     els.courseList.innerHTML = '<div class="empty">本地课程库暂无课程。</div>';
     renderCourseMetrics();
+    renderWorkspaceStrip();
     return;
   }
   els.courseList.innerHTML = state.courses
@@ -249,10 +270,12 @@ async function selectCourse(courseId) {
   state.courseId = courseId;
   renderCourses();
   renderCourseMetrics();
+  renderWorkspaceStrip();
   const payload = await getJson(`/api/lectures?course_id=${encodeURIComponent(courseId)}`);
   state.lectures = payload.lectures || [];
   await loadCoverage();
   renderCourseMetrics();
+  renderWorkspaceStrip();
   renderSelectedCourseSummary();
   renderLectureAdminList();
   state.lectureSequence = Number(state.lectures[0]?.sequence || 1);
@@ -314,6 +337,7 @@ function renderCourseMetrics() {
   els.metricLectureCount.textContent = String(lectureCount);
   els.metricCoverage.textContent = `${Math.max(0, Math.min(percent, 100))}%`;
   els.metricSegments.textContent = String(Number(coverage.total_segment_count || 0));
+  renderWorkspaceStrip();
 }
 
 function renderSelectedCourseSummary() {
@@ -423,6 +447,7 @@ async function loadGuide(mode = state.guideMode) {
   }
   state.guideMode = mode || "continue";
   els.guideMode.value = state.guideMode;
+  renderWorkspaceStrip();
   const params = new URLSearchParams({
     course_id: state.courseId,
     mode: state.guideMode,
@@ -434,6 +459,7 @@ async function loadGuide(mode = state.guideMode) {
   setStatus("Building guide");
   const payload = await getJson(`/api/guide?${params.toString()}`);
   renderGuide(payload);
+  renderWorkspaceStrip();
   setStatus(`导学就绪 / ${guideModeLabel(state.guideMode)}`);
 }
 
