@@ -32,6 +32,7 @@ try {
   $Profile = Join-Path $RunRoot "profile"
   & $Cli sync-profile --profile-root $Profile --apply --create-profile --provider local-provider --model local-model --base-url https://example.invalid/v1 --key-env COURSE2KNOWLEDGE_TEST_KEY --output (Join-Path $RunRoot "sync-report.json")
   & $Cli smoke-profile --profile-root $Profile --output (Join-Path $RunRoot "smoke-report.json")
+  & $Cli interaction-smoke --repo-root $WorkRepo --store-root (Join-Path $RunRoot "interaction-store") --profile-root $Profile --output (Join-Path $RunRoot "interaction-report.json") --port 3191
 
   $Store = Join-Path $RunRoot "web-store"
   $Stdout = Join-Path $RunRoot "web.stdout.log"
@@ -51,6 +52,7 @@ try {
   }
 
   $Smoke = Get-Content (Join-Path $RunRoot "smoke-report.json") -Raw | ConvertFrom-Json
+  $Interaction = Get-Content (Join-Path $RunRoot "interaction-report.json") -Raw | ConvertFrom-Json
   $Sync = Get-Content (Join-Path $RunRoot "sync-report.json") -Raw | ConvertFrom-Json
   $Web = Get-Content (Join-Path $RunRoot "web-report.json") -Raw | ConvertFrom-Json
   $Summary = [ordered]@{
@@ -60,6 +62,9 @@ try {
     version = (Get-Content (Join-Path $RunRoot "version.txt") -Raw).Trim()
     sync = $Sync.status
     smoke = $Smoke.status
+    interaction = $Interaction.status
+    interaction_web = $Interaction.web.status
+    interaction_hermes = $Interaction.hermes.status
     guide = $Smoke.sample_guide_status
     home_has_title = [bool]$Web.home_has_title
   }

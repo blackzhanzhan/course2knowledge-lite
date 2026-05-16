@@ -39,6 +39,13 @@ def _build_parser() -> argparse.ArgumentParser:
     smoke.add_argument("--profile-root", required=True)
     smoke.add_argument("--output", default="")
 
+    interaction = subparsers.add_parser("interaction-smoke", help="Run a Web + Hermes Lite interaction smoke")
+    interaction.add_argument("--repo-root", default="")
+    interaction.add_argument("--store-root", required=True)
+    interaction.add_argument("--profile-root", required=True)
+    interaction.add_argument("--output", default="")
+    interaction.add_argument("--port", type=int, default=3191)
+
     parser.add_argument("--version", action="version", version="course2knowledge-lite 0.1.0")
     return parser
 
@@ -75,6 +82,18 @@ def main(argv: list[str] | None = None) -> int:
         report = smoke_profile(args.profile_root)
         if str(args.output or "").strip():
             Path(args.output).expanduser().resolve().write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        _print_json(report)
+        return 0
+    if args.command == "interaction-smoke":
+        from public_release.course2knowledge_lite_deploy_interaction_smoke import run_interaction_smoke
+
+        report = run_interaction_smoke(
+            repo_root=str(args.repo_root or _repo_root()),
+            store_root=str(args.store_root),
+            profile_root=str(args.profile_root),
+            output=str(args.output),
+            port=int(args.port),
+        )
         _print_json(report)
         return 0
 
