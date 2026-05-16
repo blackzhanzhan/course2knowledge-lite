@@ -53,6 +53,13 @@ course2knowledge-lite sync-profile --apply --create-profile
 course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profiles\\course2knowledge-lite
 ```
 
+If you already have public JSON demo data and want to materialize the SQLite
+store, run:
+
+```bash
+python scripts/migrate_lite_course_store_to_sqlite.py
+```
+
 ## What It Does
 
 - Import Bilibili course videos and transcripts.
