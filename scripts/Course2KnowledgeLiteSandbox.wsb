@@ -17,6 +17,6 @@
     </MappedFolder>
   </MappedFolders>
   <LogonCommand>
-    <Command>powershell.exe -ExecutionPolicy Bypass -File C:\Users\WDAGUtilityAccount\Desktop\course2knowledge-lite\scripts\deploy_smoke_windows.ps1 -RepoRoot C:\Users\WDAGUtilityAccount\Desktop\course2knowledge-lite -RunRoot C:\Users\WDAGUtilityAccount\Desktop\sandbox-output\latest -PythonInstallerUrl C:\Users\WDAGUtilityAccount\Desktop\python-cache\python-3.12.10-amd64.exe</Command>
+    <Command>powershell.exe -ExecutionPolicy Bypass -File C:\Users\WDAGUtilityAccount\Desktop\course2knowledge-lite\scripts\deploy_smoke_windows.ps1 -RepoRoot C:\Users\WDAGUtilityAccount\Desktop\course2knowledge-lite -RunRoot C:\Users\WDAGUtilityAccount\AppData\Local\Temp\course2knowledge-lite-sandbox-run -ArtifactRoot C:\Users\WDAGUtilityAccount\Desktop\sandbox-output\latest -PythonInstallerUrl C:\Users\WDAGUtilityAccount\Desktop\python-cache\python-3.12.10-amd64.exe</Command>
   </LogonCommand>
 </Configuration>
