@@ -40,13 +40,13 @@ def run_interaction_smoke(
     _bootstrap_paths(repo)
 
     from course2knowledge_lite_store import (
-        JsonCourseStore,
+        SQLiteCourseStore,
         TranscriptSegmentRecord,
         VisualEvidenceRecord,
         build_course_skeleton,
     )
 
-    store = JsonCourseStore(store_path)
+    store = SQLiteCourseStore(store_path)
     skeleton = _seed_public_course(store)
     course_id = skeleton.course.course_id
     lectures = skeleton.lectures

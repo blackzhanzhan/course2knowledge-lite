@@ -3,15 +3,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from course2knowledge_lite_store import JsonCourseStore
-
 _ASCII_TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_+-]{1,}")
 _CJK_RUN = re.compile(r"[\u4e00-\u9fff]{2,}")
 
 
 def answer_course_question(
     *,
-    store: JsonCourseStore,
+    store: Any,
     course_id: str,
     question: str,
     limit: int = 5,

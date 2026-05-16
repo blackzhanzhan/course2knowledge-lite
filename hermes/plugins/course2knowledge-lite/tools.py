@@ -15,7 +15,7 @@ from course2knowledge_lite_bilibili import (
 )
 from course2knowledge_lite_guidance import get_learning_guide
 from course2knowledge_lite_qa import answer_course_question
-from course2knowledge_lite_store import JsonCourseStore
+from course2knowledge_lite_store import SQLiteCourseStore
 
 
 TOOLSET = "course2knowledge-lite"
@@ -62,31 +62,18 @@ def _store_root(arguments: dict[str, Any]) -> Path:
     return _repo_root() / "data" / "course-store"
 
 
-def _resolve_course_id(arguments: dict[str, Any], store: JsonCourseStore) -> str:
+def _resolve_course_id(arguments: dict[str, Any], store: SQLiteCourseStore) -> str:
     course_id = str(arguments.get("course_id", "") or "").strip()
     if course_id:
         return course_id
-    courses_root = store.root / "courses"
-    if not courses_root.exists():
-        raise ValueError("No imported course is available yet. Import a Bilibili collection first.")
-    candidates: list[dict[str, str]] = []
-    for course_root in sorted(courses_root.iterdir(), key=lambda item: item.name):
-        if not course_root.is_dir():
-            continue
-        course_path = course_root / "course.json"
-        if not course_path.exists():
-            continue
-        course = json.loads(course_path.read_text(encoding="utf-8"))
-        if not isinstance(course, dict):
-            continue
-        resolved_id = str(course.get("course_id") or course_root.name).strip()
-        if resolved_id:
-            candidates.append(
-                {
-                    "course_id": resolved_id,
-                    "title": str(course.get("title") or resolved_id).strip(),
-                }
-            )
+    candidates = [
+        {
+            "course_id": str(course.get("course_id") or "").strip(),
+            "title": str(course.get("title") or course.get("course_id") or "").strip(),
+        }
+        for course in store.list_courses()
+        if str(course.get("course_id") or "").strip()
+    ]
     if len(candidates) == 1:
         return candidates[0]["course_id"]
     if not candidates:
@@ -122,7 +109,7 @@ def _import_status_get_handler(arguments: dict[str, Any], **_registry_kwargs: An
         import_id = str(arguments.get("import_id", "") or "").strip()
         if not import_id:
             raise ValueError("import_id is required")
-        payload = JsonCourseStore(_store_root(arguments)).read_import_status(import_id)
+        payload = SQLiteCourseStore(_store_root(arguments)).read_import_status(import_id)
         return _json_response({"status": "completed", "tool": "import_status_get", "import_status": payload})
     except Exception as exc:  # noqa: BLE001
         return _tool_error("import_status_get", exc)
@@ -192,7 +179,7 @@ def _manual_transcript_import_handler(arguments: dict[str, Any], **_registry_kwa
 
 def _course_transcript_coverage_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         coverage = store.summarize_transcript_coverage(course_id)
         return _json_response(
@@ -208,7 +195,7 @@ def _course_transcript_coverage_get_handler(arguments: dict[str, Any], **_regist
 
 def _knowledge_cards_generate_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         result = store.generate_knowledge_cards(
             course_id,
@@ -222,7 +209,7 @@ def _knowledge_cards_generate_handler(arguments: dict[str, Any], **_registry_kwa
 
 def _knowledge_card_list_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         lecture_id = str(arguments.get("lecture_id", "") or "").strip()
         cards = store.list_knowledge_cards(course_id=course_id, lecture_id=lecture_id)
@@ -241,7 +228,7 @@ def _knowledge_card_list_handler(arguments: dict[str, Any], **_registry_kwargs: 
 
 def _knowledge_card_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         card = store.read_knowledge_card(
             _resolve_course_id(arguments, store),
             _required_text(arguments, "card_id"),
@@ -255,7 +242,7 @@ def _course_visual_evidence_send_handler(arguments: dict[str, Any], **_registry_
     try:
         if "image_path" in arguments:
             raise ValueError("image_path is not accepted; select an existing visual evidence record")
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         lecture_id = str(arguments.get("lecture_id", "") or "").strip()
         lecture_sequence = arguments.get("lecture_sequence")
@@ -287,7 +274,7 @@ def _course_visual_evidence_send_handler(arguments: dict[str, Any], **_registry_
 
 def _lecture_reader_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         payload = store.read_lecture_reader(
             course_id,
@@ -301,7 +288,7 @@ def _lecture_reader_get_handler(arguments: dict[str, Any], **_registry_kwargs: A
 
 def _learning_guide_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         guide = get_learning_guide(
             store=store,
@@ -318,7 +305,7 @@ def _learning_guide_get_handler(arguments: dict[str, Any], **_registry_kwargs: A
 
 def _course_search_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         query = str(arguments.get("query", "") or "").strip()
         if not query:
@@ -344,7 +331,7 @@ def _course_search_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -
 
 def _course_question_answer_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         payload = answer_course_question(
             store=store,
@@ -359,7 +346,7 @@ def _course_question_answer_handler(arguments: dict[str, Any], **_registry_kwarg
 
 def _note_create_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         lecture_id = _lecture_id_from_arguments(store, course_id, arguments)
         note = store.create_note(
@@ -374,7 +361,7 @@ def _note_create_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> 
 
 def _note_list_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         lecture_id = str(arguments.get("lecture_id", "") or "").strip()
         notes = store.list_notes(course_id=course_id, lecture_id=lecture_id)
@@ -385,7 +372,7 @@ def _note_list_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> st
 
 def _note_update_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         note = store.update_note(
             _resolve_course_id(arguments, store),
             _required_text(arguments, "note_id"),
@@ -398,7 +385,7 @@ def _note_update_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> 
 
 def _note_delete_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         result = store.delete_note(
             _resolve_course_id(arguments, store),
             _required_text(arguments, "note_id"),
@@ -410,7 +397,7 @@ def _note_delete_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> 
 
 def _bookmark_create_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         bookmark = store.create_bookmark(
             _resolve_course_id(arguments, store),
             _required_text(arguments, "target_type"),
@@ -423,7 +410,7 @@ def _bookmark_create_handler(arguments: dict[str, Any], **_registry_kwargs: Any)
 
 def _bookmark_list_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         target_type = str(arguments.get("target_type", "") or "").strip()
         bookmarks = store.list_bookmarks(course_id=course_id, target_type=target_type)
@@ -441,7 +428,7 @@ def _bookmark_list_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -
 
 def _bookmark_delete_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         result = store.delete_bookmark(
             _resolve_course_id(arguments, store),
             _required_text(arguments, "bookmark_id"),
@@ -453,7 +440,7 @@ def _bookmark_delete_handler(arguments: dict[str, Any], **_registry_kwargs: Any)
 
 def _reading_progress_set_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         lecture_id = _lecture_id_from_arguments(store, course_id, arguments)
         progress = store.set_reading_progress(
@@ -468,7 +455,7 @@ def _reading_progress_set_handler(arguments: dict[str, Any], **_registry_kwargs:
 
 def _reading_progress_get_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
     try:
-        store = JsonCourseStore(_store_root(arguments))
+        store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
         lecture_id = str(arguments.get("lecture_id", "") or "").strip()
         if lecture_id:
@@ -492,7 +479,7 @@ def _collection_import_start_schema() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "source_url": {"type": "string", "description": "Bilibili collection URL."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["source_url"],
         "additionalProperties": False,
@@ -504,7 +491,7 @@ def _import_status_get_schema() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "import_id": {"type": "string", "description": "Import status id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["import_id"],
         "additionalProperties": False,
@@ -517,7 +504,7 @@ def _lecture_transcript_import_schema() -> dict[str, Any]:
         "properties": {
             "course_id": {"type": "string", "description": "Local course id."},
             "lecture": {"type": "object", "description": "Lecture record from the local course store."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["course_id", "lecture"],
         "additionalProperties": False,
@@ -539,7 +526,7 @@ def _lecture_transcript_import_by_ref_schema() -> dict[str, Any]:
             },
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
             "source_id": {"type": ["string", "null"], "description": "Optional Bilibili BV id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -568,7 +555,7 @@ def _lecture_reader_get_schema() -> dict[str, Any]:
                 "description": "1-based lecture sequence number in the course.",
             },
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -590,7 +577,7 @@ def _learning_guide_get_schema() -> dict[str, Any]:
                 "description": "Optional 1-based lecture sequence number.",
             },
             "limit": {"type": ["integer", "string", "null"], "description": "Maximum evidence item count."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -601,7 +588,7 @@ def _course_transcript_coverage_get_schema() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -620,7 +607,7 @@ def _knowledge_cards_generate_schema() -> dict[str, Any]:
                 "type": ["boolean", "string", "null"],
                 "description": "Whether to replace previously generated source cards. Defaults to true.",
             },
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -632,7 +619,7 @@ def _knowledge_card_list_schema() -> dict[str, Any]:
         "properties": {
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id filter."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -644,7 +631,7 @@ def _knowledge_card_get_schema() -> dict[str, Any]:
         "properties": {
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "card_id": {"type": "string", "description": "Local knowledge card id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["card_id"],
         "additionalProperties": False,
@@ -669,7 +656,7 @@ def _course_visual_evidence_send_schema() -> dict[str, Any]:
                 "type": ["string", "null"],
                 "description": "Optional topic query used to select a public visual evidence record.",
             },
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -682,7 +669,7 @@ def _course_search_schema() -> dict[str, Any]:
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "query": {"type": "string", "description": "Transcript search query."},
             "limit": {"type": ["integer", "string", "null"], "description": "Maximum result count."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["query"],
         "additionalProperties": False,
@@ -696,7 +683,7 @@ def _course_question_answer_schema() -> dict[str, Any]:
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "question": {"type": "string", "description": "Question to answer from transcript evidence."},
             "limit": {"type": ["integer", "string", "null"], "description": "Maximum citation count."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["question"],
         "additionalProperties": False,
@@ -714,7 +701,7 @@ def _note_create_schema() -> dict[str, Any]:
             },
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
             "body": {"type": "string", "description": "Learner-authored note body."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["body"],
         "additionalProperties": False,
@@ -727,7 +714,7 @@ def _note_list_schema() -> dict[str, Any]:
         "properties": {
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id filter."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -740,7 +727,7 @@ def _note_update_schema() -> dict[str, Any]:
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "note_id": {"type": "string", "description": "Local note id."},
             "body": {"type": "string", "description": "Replacement note body."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["note_id", "body"],
         "additionalProperties": False,
@@ -753,7 +740,7 @@ def _note_delete_schema() -> dict[str, Any]:
         "properties": {
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "note_id": {"type": "string", "description": "Local note id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["note_id"],
         "additionalProperties": False,
@@ -767,7 +754,7 @@ def _bookmark_create_schema() -> dict[str, Any]:
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "target_type": {"type": "string", "enum": ["lecture", "segment", "card"]},
             "target_id": {"type": "string", "description": "Lecture, segment, or card id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["target_type", "target_id"],
         "additionalProperties": False,
@@ -780,7 +767,7 @@ def _bookmark_list_schema() -> dict[str, Any]:
         "properties": {
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "target_type": {"type": ["string", "null"], "description": "Optional bookmark target type filter."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -792,7 +779,7 @@ def _bookmark_delete_schema() -> dict[str, Any]:
         "properties": {
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "bookmark_id": {"type": "string", "description": "Local bookmark id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["bookmark_id"],
         "additionalProperties": False,
@@ -810,7 +797,7 @@ def _reading_progress_set_schema() -> dict[str, Any]:
             },
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
             "status": {"type": "string", "enum": ["not_started", "reading", "read"]},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["status"],
         "additionalProperties": False,
@@ -823,7 +810,7 @@ def _reading_progress_get_schema() -> dict[str, Any]:
         "properties": {
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "lecture_id": {"type": ["string", "null"], "description": "Optional exact local lecture id."},
-            "store_root": {"type": ["string", "null"], "description": "Optional local JSON store root."},
+            "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
     }
@@ -836,7 +823,7 @@ def _required_text(arguments: dict[str, Any], name: str) -> str:
     return value
 
 
-def _lecture_id_from_arguments(store: JsonCourseStore, course_id: str, arguments: dict[str, Any]) -> str:
+def _lecture_id_from_arguments(store: SQLiteCourseStore, course_id: str, arguments: dict[str, Any]) -> str:
     lecture_id = str(arguments.get("lecture_id", "") or "").strip()
     if lecture_id:
         return lecture_id

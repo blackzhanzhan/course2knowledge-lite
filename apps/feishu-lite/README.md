@@ -6,7 +6,7 @@ course-content Q&A.
 Current native tool surface:
 
 - `collection_import_start` starts a Bilibili collection import into the local
-  JSON course store.
+  SQLite course store.
 - `import_status_get` reads a local import status record.
 - `lecture_transcript_import` imports one lecture's available Bilibili subtitles
   as transcript segments.

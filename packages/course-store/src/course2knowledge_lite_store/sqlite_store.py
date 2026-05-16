@@ -98,13 +98,31 @@ class SQLiteCourseStore:
             raise FileNotFoundError(f"import status not found: {import_id}")
         return _dict(row)
 
+    def list_courses(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    courses.*,
+                    COUNT(DISTINCT lectures.lecture_id) AS lecture_count,
+                    COUNT(DISTINCT transcript_segments.lecture_id) AS lecture_transcript_count
+                FROM courses
+                LEFT JOIN lectures ON lectures.course_id = courses.course_id
+                LEFT JOIN transcript_segments ON transcript_segments.course_id = courses.course_id
+                GROUP BY courses.course_id
+                ORDER BY courses.created_at, courses.course_id
+                """
+            ).fetchall()
+        return [_dict(row) for row in rows]
+
     def write_transcript_segments(
         self,
         course_id: str,
         lecture_id: str,
         segments: list[TranscriptSegmentRecord],
     ) -> str:
-        self._ensure_lecture_exists(course_id, lecture_id)
+        self._ensure_course_stub(course_id)
+        self._ensure_lecture_stub(course_id, lecture_id)
         payload = [segment.to_dict() for segment in segments]
         with self._connect() as conn:
             conn.execute(
@@ -681,6 +699,36 @@ class SQLiteCourseStore:
         if not cleaned_lecture_id:
             raise ValueError("lecture_id is required")
         return self._select_lecture(course_id, lecture_id=cleaned_lecture_id)
+
+    def _ensure_course_stub(self, course_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO courses
+                (course_id, title, source_url, source_platform, import_status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    course_id,
+                    course_id,
+                    "",
+                    "",
+                    "accepted",
+                    self._utc_now(),
+                    self._utc_now(),
+                ),
+            )
+
+    def _ensure_lecture_stub(self, course_id: str, lecture_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO lectures
+                (lecture_id, course_id, title, source_url, source_id, sequence, duration_seconds, read_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (lecture_id, course_id, lecture_id, "", "", 0, None, "not_started"),
+            )
 
     def _ensure_bookmark_target_exists(self, course_id: str, target_type: str, target_id: str) -> None:
         if target_type == "lecture":

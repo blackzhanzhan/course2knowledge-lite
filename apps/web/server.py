@@ -22,7 +22,7 @@ sys.path.insert(0, str(REPO_ROOT / "packages" / "guidance" / "src"))
 from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
 from course2knowledge_lite_guidance import get_learning_guide  # noqa: E402
 from course2knowledge_lite_qa import answer_course_question  # noqa: E402
-from course2knowledge_lite_store import JsonCourseStore  # noqa: E402
+from course2knowledge_lite_store import SQLiteCourseStore  # noqa: E402
 
 
 class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
@@ -40,16 +40,16 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
             elif parsed.path == "/api/lectures":
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
-                self._send_json({"lectures": JsonCourseStore(self.store_root).read_lectures(course_id)})
+                self._send_json({"lectures": SQLiteCourseStore(self.store_root).read_lectures(course_id)})
             elif parsed.path == "/api/coverage":
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
-                coverage = JsonCourseStore(self.store_root).summarize_transcript_coverage(course_id)
+                coverage = SQLiteCourseStore(self.store_root).summarize_transcript_coverage(course_id)
                 self._send_json({"status": "completed", "coverage": coverage})
             elif parsed.path == "/api/reader":
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
-                payload = JsonCourseStore(self.store_root).read_lecture_reader(
+                payload = SQLiteCourseStore(self.store_root).read_lecture_reader(
                     course_id,
                     lecture_sequence=_optional_param(params, "lecture_sequence"),
                     lecture_id=_optional_param(params, "lecture_id"),
@@ -59,13 +59,13 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
                 lecture_id = _optional_param(params, "lecture_id")
-                cards = JsonCourseStore(self.store_root).list_knowledge_cards(course_id=course_id, lecture_id=lecture_id)
+                cards = SQLiteCourseStore(self.store_root).list_knowledge_cards(course_id=course_id, lecture_id=lecture_id)
                 self._send_json({"status": "completed", "course_id": course_id, "cards": cards, "card_count": len(cards)})
             elif parsed.path == "/api/search":
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
                 query = _required_param(params, "query")
-                hits = JsonCourseStore(self.store_root).search_transcripts(
+                hits = SQLiteCourseStore(self.store_root).search_transcripts(
                     course_id,
                     query,
                     limit=_limit(params, default=10),
@@ -76,7 +76,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 course_id = _required_param(params, "course_id")
                 question = _required_param(params, "question")
                 payload = answer_course_question(
-                    store=JsonCourseStore(self.store_root),
+                    store=SQLiteCourseStore(self.store_root),
                     course_id=course_id,
                     question=question,
                     limit=_limit(params, default=5),
@@ -86,7 +86,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
                 payload = get_learning_guide(
-                    store=JsonCourseStore(self.store_root),
+                    store=SQLiteCourseStore(self.store_root),
                     course_id=course_id,
                     mode=_optional_param(params, "mode") or "continue",
                     lecture_id=_optional_param(params, "lecture_id"),
@@ -98,13 +98,13 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
                 lecture_id = _optional_param(params, "lecture_id")
-                notes = JsonCourseStore(self.store_root).list_notes(course_id=course_id, lecture_id=lecture_id)
+                notes = SQLiteCourseStore(self.store_root).list_notes(course_id=course_id, lecture_id=lecture_id)
                 self._send_json({"course_id": course_id, "notes": notes, "note_count": len(notes)})
             elif parsed.path == "/api/bookmarks":
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
                 target_type = _optional_param(params, "target_type")
-                bookmarks = JsonCourseStore(self.store_root).list_bookmarks(course_id=course_id, target_type=target_type)
+                bookmarks = SQLiteCourseStore(self.store_root).list_bookmarks(course_id=course_id, target_type=target_type)
                 self._send_json(
                     {"course_id": course_id, "bookmarks": bookmarks, "bookmark_count": len(bookmarks)}
                 )
@@ -112,7 +112,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
                 lecture_id = _optional_param(params, "lecture_id")
-                store = JsonCourseStore(self.store_root)
+                store = SQLiteCourseStore(self.store_root)
                 progress = [store.get_reading_progress(course_id, lecture_id)] if lecture_id else store.list_reading_progress(course_id=course_id)
                 self._send_json({"course_id": course_id, "progress": progress, "progress_count": len(progress)})
             else:
@@ -124,7 +124,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         try:
             payload = self._read_json_body()
-            store = JsonCourseStore(self.store_root)
+            store = SQLiteCourseStore(self.store_root)
             if parsed.path == "/api/notes":
                 course_id = _required_body(payload, "course_id")
                 note = store.create_note(
@@ -179,7 +179,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         try:
             params = parse_qs(parsed.query)
-            store = JsonCourseStore(self.store_root)
+            store = SQLiteCourseStore(self.store_root)
             if parsed.path == "/api/notes":
                 result = store.delete_note(_required_param(params, "course_id"), _required_param(params, "note_id"))
                 self._send_json({"status": "completed", **result})
@@ -230,30 +230,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
 
 
 def _list_courses(store_root: Path) -> list[dict[str, Any]]:
-    courses_root = store_root / "courses"
-    if not courses_root.exists():
-        return []
-    courses: list[dict[str, Any]] = []
-    store = JsonCourseStore(store_root)
-    for course_path in sorted(courses_root.glob("*/course.json")):
-        course = store.read_course(course_path.parent.name)
-        lectures = store.read_lectures(str(course.get("course_id") or course_path.parent.name))
-        transcript_count = sum(
-            1
-            for lecture in lectures
-            if store.read_transcript_segments_if_exists(
-                str(course.get("course_id") or ""),
-                str(lecture.get("lecture_id") or ""),
-            )
-        )
-        courses.append(
-            {
-                **course,
-                "lecture_count": len(lectures),
-                "lecture_transcript_count": transcript_count,
-            }
-        )
-    return courses
+    return SQLiteCourseStore(store_root).list_courses()
 
 
 def _required_param(params: dict[str, list[str]], name: str) -> str:

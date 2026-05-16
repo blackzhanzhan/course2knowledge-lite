@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 sys.path.insert(0, str(ROOT / "packages" / "guidance" / "src"))
 
 from course2knowledge_lite_store import (  # noqa: E402
-    JsonCourseStore,
+    SQLiteCourseStore,
     TranscriptSegmentRecord,
     VisualEvidenceRecord,
     build_course_skeleton,
@@ -117,7 +117,7 @@ class HermesLitePluginTests(unittest.TestCase):
                 ],
                 now="2026-05-14T00:00:00Z",
             )
-            JsonCourseStore(temp_dir).write_skeleton(skeleton)
+            SQLiteCourseStore(temp_dir).write_skeleton(skeleton)
             raw = ctx.tools["import_status_get"]["handler"](
                 {"store_root": temp_dir, "import_id": skeleton.import_status.import_id}
             )
@@ -325,7 +325,7 @@ class HermesLitePluginTests(unittest.TestCase):
                 ],
                 now="2026-05-14T00:00:00Z",
             )
-            store = JsonCourseStore(temp_dir)
+            store = SQLiteCourseStore(temp_dir)
             store.write_skeleton(skeleton)
             lecture = skeleton.lectures[0]
             store.write_transcript_segments(
@@ -377,7 +377,7 @@ class HermesLitePluginTests(unittest.TestCase):
         module.register(ctx)
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = JsonCourseStore(temp_dir)
+            store = SQLiteCourseStore(temp_dir)
             for course_id, title in [("course_one", "First course"), ("course_two", "Second course")]:
                 skeleton = build_course_skeleton(
                     course_id=course_id,
@@ -425,7 +425,7 @@ class HermesLitePluginTests(unittest.TestCase):
                 ],
                 now="2026-05-14T00:00:00Z",
             )
-            store = JsonCourseStore(temp_dir)
+            store = SQLiteCourseStore(temp_dir)
             store.write_skeleton(skeleton)
             lecture = skeleton.lectures[0]
             segment_id = f"{lecture.lecture_id}::manual::00001"
@@ -494,7 +494,7 @@ class HermesLitePluginTests(unittest.TestCase):
                 ],
                 now="2026-05-14T00:00:00Z",
             )
-            store = JsonCourseStore(temp_dir)
+            store = SQLiteCourseStore(temp_dir)
             store.write_skeleton(skeleton)
             lecture = skeleton.lectures[0]
             store.write_transcript_segments(
@@ -553,7 +553,7 @@ class HermesLitePluginTests(unittest.TestCase):
                 ],
                 now="2026-05-14T00:00:00Z",
             )
-            store = JsonCourseStore(temp_dir)
+            store = SQLiteCourseStore(temp_dir)
             store.write_skeleton(skeleton)
             lecture = skeleton.lectures[0]
             segment_id = f"{lecture.lecture_id}::manual::00001"
@@ -614,7 +614,7 @@ class HermesLitePluginTests(unittest.TestCase):
                 ],
                 now="2026-05-14T00:00:00Z",
             )
-            store = JsonCourseStore(temp_dir)
+            store = SQLiteCourseStore(temp_dir)
             store.write_skeleton(skeleton)
             lecture = skeleton.lectures[0]
             segment_id = f"{lecture.lecture_id}::manual::00001"

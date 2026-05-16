@@ -15,7 +15,7 @@ WEB_SERVER = ROOT / "apps" / "web" / "server.py"
 sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 sys.path.insert(0, str(ROOT / "packages" / "guidance" / "src"))
 
-from course2knowledge_lite_store import JsonCourseStore, TranscriptSegmentRecord, build_course_skeleton  # noqa: E402
+from course2knowledge_lite_store import SQLiteCourseStore, TranscriptSegmentRecord, build_course_skeleton  # noqa: E402
 
 
 def load_web_server_module():
@@ -51,7 +51,7 @@ class WebLiteTests(unittest.TestCase):
                 ],
                 now="2026-05-15T00:00:00Z",
             )
-            paths = JsonCourseStore(store_root).write_skeleton(skeleton)
+            paths = SQLiteCourseStore(store_root).write_skeleton(skeleton)
             return {
                 "course": skeleton.course.to_dict(),
                 "lectures": [lecture.to_dict() for lecture in skeleton.lectures],
@@ -284,7 +284,7 @@ class WebLiteTests(unittest.TestCase):
         self.assertEqual(progress["progress"][0]["status"], "not_started")
 
 
-def _store_with_transcript(temp_dir: str) -> tuple[JsonCourseStore, str]:
+def _store_with_transcript(temp_dir: str) -> tuple[SQLiteCourseStore, str]:
     skeleton = build_course_skeleton(
         title="AI interview course",
         source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
@@ -299,7 +299,7 @@ def _store_with_transcript(temp_dir: str) -> tuple[JsonCourseStore, str]:
         now="2026-05-14T00:00:00Z",
     )
     lecture = skeleton.lectures[0]
-    store = JsonCourseStore(temp_dir)
+    store = SQLiteCourseStore(temp_dir)
     store.write_skeleton(skeleton)
     store.write_transcript_segments(
         skeleton.course.course_id,

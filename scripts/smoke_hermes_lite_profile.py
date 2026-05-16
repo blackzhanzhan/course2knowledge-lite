@@ -71,7 +71,7 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
         raise RuntimeError(f"Unexpected registered tools: {registered_tools}")
 
     from course2knowledge_lite_store import (
-        JsonCourseStore,
+        SQLiteCourseStore,
         TranscriptSegmentRecord,
         VisualEvidenceRecord,
         build_course_skeleton,
@@ -91,7 +91,7 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
             ],
             now="2026-05-14T00:00:00Z",
         )
-        store = JsonCourseStore(temp_dir)
+        store = SQLiteCourseStore(temp_dir)
         store.write_skeleton(skeleton)
         store.write_transcript_segments(
             skeleton.course.course_id,

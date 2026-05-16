@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from course2knowledge_lite_store import (
-    JsonCourseStore,
+    SQLiteCourseStore,
     build_course_skeleton,
     build_manual_transcript_segments,
     build_transcript_segments,
@@ -28,7 +28,7 @@ def import_collection_skeleton_to_store(
         video_refs=collection.videos,
         now=now,
     )
-    paths = JsonCourseStore(store_root).write_skeleton(skeleton)
+    paths = SQLiteCourseStore(store_root).write_skeleton(skeleton)
     return {
         "course": skeleton.course.to_dict(),
         "lectures": [lecture.to_dict() for lecture in skeleton.lectures],
@@ -52,7 +52,7 @@ def import_lecture_transcript_to_store(
         raise ValueError("lecture.source_url is required")
     subtitles = fetch_bilibili_timed_subtitles(source_url, fetch_json=fetch_json)
     segments = build_transcript_segments(lecture=lecture, timed_lines=subtitles.timed_lines)
-    path = JsonCourseStore(store_root).write_transcript_segments(course_id, lecture_id, segments)
+    path = SQLiteCourseStore(store_root).write_transcript_segments(course_id, lecture_id, segments)
     return {
         "lecture_id": lecture_id,
         "source_id": subtitles.source_id,
@@ -71,7 +71,7 @@ def import_lecture_transcript_by_reference_to_store(
     source_id: str = "",
     fetch_json: JsonFetcher | None = None,
 ) -> dict[str, Any]:
-    store = JsonCourseStore(store_root)
+    store = SQLiteCourseStore(store_root)
     resolved_course_id = str(course_id or "").strip()
     resolved_import_status: dict[str, Any] | None = None
 
@@ -121,7 +121,7 @@ def probe_lecture_transcript_source_by_reference(
     source_id: str = "",
     fetch_json: JsonFetcher | None = None,
 ) -> dict[str, Any]:
-    store = JsonCourseStore(store_root)
+    store = SQLiteCourseStore(store_root)
     resolved_course_id = str(course_id or "").strip()
     resolved_import_status: dict[str, Any] | None = None
 
@@ -165,7 +165,7 @@ def import_manual_transcript_by_reference_to_store(
     lecture_id: str = "",
     source_id: str = "",
 ) -> dict[str, Any]:
-    store = JsonCourseStore(store_root)
+    store = SQLiteCourseStore(store_root)
     resolved_course_id = str(course_id or "").strip()
     resolved_import_status: dict[str, Any] | None = None
 

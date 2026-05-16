@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from course2knowledge_lite_store import JsonCourseStore
-
 GUIDE_MODES = {"continue", "walkthrough", "self_check", "recap"}
 
 _MODE_ALIASES = {
@@ -23,7 +21,7 @@ _MODE_ALIASES = {
 
 def get_learning_guide(
     *,
-    store: JsonCourseStore,
+    store: Any,
     course_id: str,
     mode: str = "continue",
     lecture_id: str = "",
@@ -423,7 +421,7 @@ def _sorted_segments(segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
     )
 
 
-def _progress_by_lecture_id(store: JsonCourseStore, course_id: str) -> dict[str, dict[str, Any]]:
+def _progress_by_lecture_id(store: Any, course_id: str) -> dict[str, dict[str, Any]]:
     return {
         str(item.get("lecture_id") or ""): dict(item)
         for item in store.list_reading_progress(course_id=course_id)
@@ -464,7 +462,7 @@ def _lecture_status(lecture: dict[str, Any], progress_by_lecture_id: dict[str, d
 
 def _lecture_evidence(
     *,
-    store: JsonCourseStore,
+    store: Any,
     course_id: str,
     lecture: dict[str, Any],
     segments: list[dict[str, Any]],

@@ -18,7 +18,7 @@ from course2knowledge_lite_bilibili import import_lecture_transcript_by_referenc
 from course2knowledge_lite_bilibili import import_lecture_transcript_to_store  # noqa: E402
 from course2knowledge_lite_bilibili import import_manual_transcript_by_reference_to_store  # noqa: E402
 from course2knowledge_lite_bilibili import probe_lecture_transcript_source_by_reference  # noqa: E402
-from course2knowledge_lite_store import JsonCourseStore  # noqa: E402
+from course2knowledge_lite_store import SQLiteCourseStore  # noqa: E402
 import course2knowledge_lite_bilibili.subtitles as subtitles_module  # noqa: E402
 
 
@@ -112,10 +112,10 @@ class BilibiliTranscriptTests(unittest.TestCase):
                 lecture=lecture,
                 fetch_json=fake_bilibili_fetch_json,
             )
-            segments = JsonCourseStore(temp_dir).read_transcript_segments("course_demo", lecture["lecture_id"])
+            segments = SQLiteCourseStore(temp_dir).read_transcript_segments("course_demo", lecture["lecture_id"])
 
         self.assertEqual(result["segment_count"], 2)
-        self.assertTrue(result["path"].endswith(".segments.json"))
+        self.assertIn("course2knowledge-lite.sqlite3::transcript_segments", result["path"])
         self.assertEqual(segments[0]["segment_id"], "course_demo::lecture::001::seg::00001")
         self.assertEqual(segments[1]["text"], "second line")
 
@@ -145,7 +145,7 @@ class BilibiliTranscriptTests(unittest.TestCase):
                 lecture_sequence=1,
                 fetch_json=fake_collection_and_subtitle_fetch,
             )
-            segments = JsonCourseStore(temp_dir).read_transcript_segments(
+            segments = SQLiteCourseStore(temp_dir).read_transcript_segments(
                 skeleton["course"]["course_id"],
                 result["lecture_id"],
             )
@@ -243,7 +243,7 @@ class BilibiliTranscriptTests(unittest.TestCase):
                 lecture_sequence=1,
                 transcript_text="第一段介绍课程目标。\n第二段说明 RAG 和 Agent 的区别。",
             )
-            segments = JsonCourseStore(temp_dir).read_transcript_segments(
+            segments = SQLiteCourseStore(temp_dir).read_transcript_segments(
                 skeleton["course"]["course_id"],
                 result["lecture_id"],
             )

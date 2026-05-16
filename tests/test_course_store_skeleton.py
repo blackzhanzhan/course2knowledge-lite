@@ -87,7 +87,7 @@ class CourseStoreSkeletonTests(unittest.TestCase):
                 now="2026-05-14T00:00:00Z",
                 fetch_json=fake_fetch_json,
             )
-            store = JsonCourseStore(temp_dir)
+            store = SQLiteCourseStore(temp_dir)
             lectures = store.read_lectures(result["course"]["course_id"])
 
         self.assertEqual(result["course"]["title"], "AI interview course")
