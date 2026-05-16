@@ -20,8 +20,12 @@ try {
   }
   if ($BootstrapPython) {
     $InstallRoot = Join-Path $RunRoot "python312"
-    $Installer = Join-Path $RunRoot "python-installer.exe"
-    Invoke-WebRequest -Uri $PythonInstallerUrl -OutFile $Installer -UseBasicParsing
+    if (Test-Path $PythonInstallerUrl) {
+      $Installer = $PythonInstallerUrl
+    } else {
+      $Installer = Join-Path $RunRoot "python-installer.exe"
+      Invoke-WebRequest -Uri $PythonInstallerUrl -OutFile $Installer -UseBasicParsing
+    }
     Start-Process -FilePath $Installer -ArgumentList @("/quiet", "InstallAllUsers=0", "TargetDir=$InstallRoot", "Include_pip=1", "Include_test=0", "PrependPath=0") -Wait -NoNewWindow
     $Python = Join-Path $InstallRoot "python.exe"
   }
