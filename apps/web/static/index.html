@@ -13,7 +13,7 @@
           <span class="brand-mark">C2K</span>
           <div>
             <strong>Course2Knowledge</strong>
-            <small>Lite cockpit</small>
+            <small>公开课程工作台</small>
           </div>
         </div>
         <nav class="nav-list" aria-label="Workspace views">
@@ -47,24 +47,24 @@
             <h1 id="view-title">课程管理</h1>
             <p id="view-subtitle">导入合集，检查课时和转写覆盖，再进入学习交互。</p>
           </div>
-          <div class="status" id="status">Loading local store</div>
+          <div class="status" id="status">读取本地课程库</div>
         </header>
 
         <section class="context-bar" aria-label="Current course context">
           <div class="context-title">
-            <p class="eyebrow" id="course-meta">No course selected</p>
-            <h2 id="lecture-title">Lecture Reader</h2>
+            <p class="eyebrow" id="course-meta">尚未选择课程</p>
+            <h2 id="lecture-title">课时阅读</h2>
           </div>
           <label class="select-label">
-            Lecture
+            课时
             <select id="lecture-select"></select>
           </label>
           <label class="select-label">
-            Status
+            阅读状态
             <select id="progress-select">
-              <option value="not_started">Not started</option>
-              <option value="reading">Reading</option>
-              <option value="read">Read</option>
+              <option value="not_started">未开始</option>
+              <option value="reading">阅读中</option>
+              <option value="read">已读</option>
             </select>
           </label>
         </section>
@@ -74,9 +74,9 @@
             <div class="panel-head">
               <div>
                 <h2>导入合集</h2>
-                <p class="panel-note">Bilibili collection URL</p>
+                <p class="panel-note">Bilibili 合集链接</p>
               </div>
-              <button id="import-button" type="button" title="Import collection">Import</button>
+              <button id="import-button" type="button" title="导入合集">导入</button>
             </div>
             <div class="import-row">
               <input
@@ -113,9 +113,9 @@
               <div class="panel-head">
                 <div>
                   <h2>课程列表</h2>
-                  <p class="panel-note">Local course store</p>
+                  <p class="panel-note">本地课程库</p>
                 </div>
-                <button id="refresh-button" type="button" title="Refresh courses">Refresh</button>
+                <button id="refresh-button" type="button" title="刷新课程">刷新</button>
               </div>
               <div id="course-list" class="list"></div>
             </section>
@@ -124,9 +124,9 @@
               <div class="panel-head">
                 <div>
                   <h2>课程状态</h2>
-                  <p class="panel-note">Transcript and lecture health</p>
+                  <p class="panel-note">转写与课时健康</p>
                 </div>
-                <button class="ghost-button" type="button" data-view-jump="study">Open reader</button>
+                <button class="ghost-button" type="button" data-view-jump="study">打开阅读</button>
               </div>
               <div id="selected-course-summary" class="summary-panel"></div>
               <div id="coverage-panel" class="coverage-panel"></div>
@@ -141,7 +141,7 @@
               <div class="panel-head reader-head">
                 <div>
                   <h2>课时阅读</h2>
-                  <p class="panel-note">Transcript evidence</p>
+                  <p class="panel-note">转写证据</p>
                 </div>
               </div>
               <div id="segments" class="segments"></div>
@@ -152,16 +152,16 @@
                 <div class="panel-head">
                   <div>
                     <h2>导学</h2>
-                    <p class="panel-note">Read-only guidance</p>
+                    <p class="panel-note">只读导学</p>
                   </div>
                   <div class="guide-controls">
                     <select id="guide-mode" aria-label="Guide mode">
-                      <option value="continue">Continue</option>
-                      <option value="walkthrough">Walkthrough</option>
-                      <option value="self_check">Self-check</option>
-                      <option value="recap">Recap</option>
+                      <option value="continue">继续学习</option>
+                      <option value="walkthrough">讲解导读</option>
+                      <option value="self_check">自测</option>
+                      <option value="recap">复盘</option>
                     </select>
-                    <button id="guide-button" type="button" title="Run guide">Run</button>
+                    <button id="guide-button" type="button" title="运行导学">运行</button>
                   </div>
                 </div>
                 <div id="guide-output" class="guide-output"></div>
@@ -171,9 +171,9 @@
                 <div class="panel-head">
                   <div>
                     <h2>检索</h2>
-                    <p class="panel-note">Transcript search</p>
+                    <p class="panel-note">转写检索</p>
                   </div>
-                  <button id="search-button" type="button" title="Search transcript">Search</button>
+                  <button id="search-button" type="button" title="检索转写">检索</button>
                 </div>
                 <input id="search-input" type="search" value="RAG Agent" />
                 <div id="search-results" class="result-list"></div>
@@ -183,9 +183,9 @@
                 <div class="panel-head">
                   <div>
                     <h2>课程问答</h2>
-                    <p class="panel-note">Citation Q&A</p>
+                    <p class="panel-note">引用问答</p>
                   </div>
-                  <button id="qa-button" type="button" title="Ask from transcript">Ask</button>
+                  <button id="qa-button" type="button" title="基于转写提问">提问</button>
                 </div>
                 <textarea id="qa-input" rows="4">RAG 和 Agent 的区别是什么？</textarea>
                 <div id="qa-answer" class="answer"></div>
@@ -200,9 +200,9 @@
               <div class="panel-head">
                 <div>
                   <h2>知识卡片</h2>
-                  <p class="panel-note">Generated from transcript evidence</p>
+                  <p class="panel-note">从转写证据生成</p>
                 </div>
-                <button id="cards-button" type="button" title="Generate cards from transcript">Generate</button>
+                <button id="cards-button" type="button" title="从转写生成卡片">生成</button>
               </div>
               <div id="cards-list" class="cards-list"></div>
             </section>
@@ -212,11 +212,11 @@
                 <div class="panel-head">
                   <div>
                     <h2>笔记</h2>
-                    <p class="panel-note">Lecture note</p>
+                    <p class="panel-note">课时笔记</p>
                   </div>
-                  <button id="note-button" type="button" title="Save note">Save</button>
+                  <button id="note-button" type="button" title="保存笔记">保存</button>
                 </div>
-                <textarea id="note-input" rows="4" placeholder="Write a note for this lecture"></textarea>
+                <textarea id="note-input" rows="4" placeholder="为当前课时写一条笔记"></textarea>
                 <div id="notes-list" class="result-list"></div>
               </section>
 
@@ -224,7 +224,7 @@
                 <div class="panel-head">
                   <div>
                     <h2>书签</h2>
-                    <p class="panel-note">Segments and cards</p>
+                    <p class="panel-note">片段与卡片</p>
                   </div>
                 </div>
                 <div id="bookmarks-list" class="result-list"></div>
@@ -239,7 +239,7 @@
               <div class="panel-head">
                 <div>
                   <h2>飞书 / Hermes Lite</h2>
-                  <p class="panel-note">Same store, chat frontdesk</p>
+                  <p class="panel-note">同一课程库，对话前台</p>
                 </div>
               </div>
               <div class="frontdesk-copy">

@@ -113,8 +113,35 @@ async function sendJson(url, payload, { method = "POST" } = {}) {
 }
 
 function setStatus(text) {
-  els.status.textContent = text;
+  els.status.textContent = statusCopy[text] || text;
 }
+
+const statusCopy = {
+  "Guide ready / continue": "导学就绪 / 继续学习",
+  "Guide ready / walkthrough": "导学就绪 / 讲解导读",
+  "Guide ready / self_check": "导学就绪 / 自测",
+  "Guide ready / recap": "导学就绪 / 复盘",
+  "Reading local course store": "读取本地课程库",
+  "No courses": "暂无课程",
+  "Import needs a URL": "需要合集链接",
+  "Importing Bilibili collection": "正在导入合集",
+  "Import accepted": "导入已接受",
+  "Import failed": "导入失败",
+  "Opening lecture reader": "打开课时阅读",
+  "Reader ready / no transcript": "阅读器就绪 / 暂无转写",
+  "Building guide": "生成导学",
+  "Knowledge cards generated": "知识卡片已生成",
+  "Write a note first": "先写一条笔记",
+  "Note saved": "笔记已保存",
+  "Bookmark saved": "书签已保存",
+  "Load failed": "加载失败",
+};
+
+const progressCopy = {
+  not_started: "未开始",
+  reading: "阅读中",
+  read: "已读",
+};
 
 function setView(view) {
   const nextView = viewCopy[view] ? view : "courses";
@@ -131,6 +158,15 @@ function setView(view) {
   els.viewSubtitle.textContent = copy.subtitle;
 }
 
+function guideModeLabel(mode) {
+  return {
+    continue: "继续学习",
+    walkthrough: "讲解导读",
+    self_check: "自测",
+    recap: "复盘",
+  }[mode] || mode;
+}
+
 async function loadCourses() {
   setStatus("Reading local course store");
   const payload = await getJson("/api/courses");
@@ -141,7 +177,7 @@ async function loadCourses() {
     const nextCourseId = state.courseId || state.courses[0].course_id;
     await selectCourse(nextCourseId);
   } else {
-    els.segments.innerHTML = '<div class="empty">No local courses found.</div>';
+    els.segments.innerHTML = '<div class="empty">本地课程库暂无课程。</div>';
     els.coveragePanel.innerHTML = "";
     els.cardsList.innerHTML = "";
     els.guideOutput.innerHTML = "";
@@ -152,7 +188,7 @@ async function loadCourses() {
 async function importCollection() {
   const sourceUrl = els.importUrl.value.trim();
   if (!sourceUrl) {
-    els.importReceipt.textContent = "Paste a Bilibili collection URL.";
+    els.importReceipt.textContent = "粘贴一个 Bilibili 合集链接。";
     setStatus("Import needs a URL");
     return;
   }
@@ -164,8 +200,8 @@ async function importCollection() {
     const course = payload.course || {};
     const importStatus = payload.import_status || {};
     els.importReceipt.innerHTML = `
-      <p class="item-meta">Accepted ${escapeHtml(course.title || course.course_id)}</p>
-      <p class="citation">${Number(payload.lecture_count || importStatus.total_lectures || 0)} lectures / ${escapeHtml(
+      <p class="item-meta">已接受：${escapeHtml(course.title || course.course_id)}</p>
+      <p class="citation">${Number(payload.lecture_count || importStatus.total_lectures || 0)} 课时 / ${escapeHtml(
         importStatus.stage || "collection_expanded",
       )}</p>
     `;
@@ -185,7 +221,7 @@ async function importCollection() {
 
 function renderCourses() {
   if (!state.courses.length) {
-    els.courseList.innerHTML = '<div class="empty">No local courses found.</div>';
+    els.courseList.innerHTML = '<div class="empty">本地课程库暂无课程。</div>';
     renderCourseMetrics();
     return;
   }
@@ -196,9 +232,9 @@ function renderCourses() {
           course.course_id,
         )}">
           <p class="item-title">${escapeHtml(course.title || course.course_id)}</p>
-          <p class="item-meta">${Number(course.lecture_count || 0)} lectures / ${Number(
+          <p class="item-meta">${Number(course.lecture_count || 0)} 课时 / ${Number(
             course.lecture_transcript_count || 0,
-          )} with transcripts</p>
+          )} 有转写</p>
           <p class="citation">${escapeHtml(course.course_id)}</p>
         </article>
       `,
@@ -247,7 +283,7 @@ async function loadCoverage() {
 function renderCoverage() {
   const coverage = state.coverage;
   if (!coverage) {
-    els.coveragePanel.innerHTML = '<div class="empty">Coverage unavailable.</div>';
+    els.coveragePanel.innerHTML = '<div class="empty">转写覆盖信息不可用。</div>';
     return;
   }
   const percent = Math.round(Number(coverage.coverage_ratio || 0) * 100);
@@ -258,9 +294,9 @@ function renderCoverage() {
     <div class="coverage-meter" aria-label="Transcript coverage">
       <div class="coverage-bar" style="width: ${clampedPercent}%"></div>
     </div>
-    <p class="item-meta">${covered}/${total} lectures with transcripts / ${Number(
+    <p class="item-meta">${covered}/${total} 课时有转写 / ${Number(
       coverage.total_segment_count || 0,
-    )} segments</p>
+    )} 个片段</p>
   `;
   renderCourseMetrics();
 }
@@ -283,7 +319,7 @@ function renderCourseMetrics() {
 function renderSelectedCourseSummary() {
   const course = selectedCourse();
   if (!course) {
-    els.selectedCourseSummary.innerHTML = '<div class="empty">Select a course to inspect.</div>';
+    els.selectedCourseSummary.innerHTML = '<div class="empty">选择一门课程查看详情。</div>';
     return;
   }
   const coverage = state.coverage || {};
@@ -298,7 +334,7 @@ function renderSelectedCourseSummary() {
     </div>
     <div class="summary-line">
       <span>课时状态</span>
-      <strong>${Number(course.lecture_transcript_count || 0)} / ${Number(course.lecture_count || 0)} with transcripts</strong>
+      <strong>${Number(course.lecture_transcript_count || 0)} / ${Number(course.lecture_count || 0)} 有转写</strong>
     </div>
     <div class="summary-line">
       <span>证据片段</span>
@@ -309,7 +345,7 @@ function renderSelectedCourseSummary() {
 
 function renderLectureAdminList() {
   if (!state.lectures.length) {
-    els.lectureAdminList.innerHTML = '<div class="empty">No lectures loaded.</div>';
+    els.lectureAdminList.innerHTML = '<div class="empty">还没有加载课时。</div>';
     return;
   }
   els.lectureAdminList.innerHTML = state.lectures
@@ -349,11 +385,11 @@ async function loadReader() {
   );
   const lecture = payload.lecture || {};
   state.lectureId = lecture.lecture_id || "";
-  els.courseMeta.textContent = `${payload.course?.title || state.courseId} / lecture ${lecture.sequence || ""}`;
-  els.lectureTitle.textContent = lecture.title || "Lecture Reader";
+  els.courseMeta.textContent = `${payload.course?.title || state.courseId} / 第 ${lecture.sequence || ""} 课`;
+  els.lectureTitle.textContent = lecture.title || "课时阅读";
   renderLectureAdminList();
   if (!payload.has_transcript) {
-    els.segments.innerHTML = '<div class="empty">This lecture has no transcript segments yet.</div>';
+    els.segments.innerHTML = '<div class="empty">当前课时还没有转写片段。</div>';
     await loadCards();
     setStatus("Reader ready / no transcript");
     return;
@@ -366,7 +402,7 @@ async function loadReader() {
             <p class="segment-title">${secondsLabel(segment.start_seconds)}-${secondsLabel(segment.end_seconds)}</p>
             <button class="ghost-button bookmark-segment" type="button" data-segment-id="${escapeHtml(
               segment.segment_id,
-            )}" title="Bookmark segment">Bookmark</button>
+            )}" title="收藏片段">收藏</button>
           </div>
           <p>${escapeHtml(segment.text)}</p>
           <p class="citation">${escapeHtml(segment.segment_id)}</p>
@@ -378,7 +414,7 @@ async function loadReader() {
     button.addEventListener("click", () => createBookmark("segment", button.dataset.segmentId));
   }
   await loadCards();
-  setStatus(`Reader ready / ${payload.segment_count} segments`);
+  setStatus(`阅读器就绪 / ${payload.segment_count} 个片段`);
 }
 
 async function loadGuide(mode = state.guideMode) {
@@ -398,14 +434,14 @@ async function loadGuide(mode = state.guideMode) {
   setStatus("Building guide");
   const payload = await getJson(`/api/guide?${params.toString()}`);
   renderGuide(payload);
-  setStatus(`Guide ready / ${state.guideMode}`);
+  setStatus(`导学就绪 / ${guideModeLabel(state.guideMode)}`);
 }
 
 function renderGuide(payload) {
   if (!payload || payload.status === "blocked") {
     els.guideOutput.innerHTML = `
       <div class="empty">
-        <p class="blocked">${escapeHtml(payload?.message || "Guide unavailable.")}</p>
+        <p class="blocked">${escapeHtml(payload?.message || "导学暂不可用。")}</p>
         <p class="citation">${escapeHtml(payload?.reason || "blocked")}</p>
       </div>
     `;
@@ -430,12 +466,12 @@ function renderContinueGuide(payload) {
     <article class="guide-block">
       <div class="segment-head">
         <div>
-          <p class="item-title">Next useful lecture: ${escapeHtml(lecture.sequence)} / ${escapeHtml(lecture.title)}</p>
+          <p class="item-title">下一节建议：${escapeHtml(lecture.sequence)} / ${escapeHtml(lecture.title)}</p>
           <p class="item-meta">${escapeHtml(recommendation.reason || "")}</p>
         </div>
         <button class="ghost-button" type="button" id="open-guide-lecture" data-sequence="${escapeHtml(
           lecture.sequence,
-        )}">Open</button>
+        )}">打开</button>
       </div>
       ${renderCitations(preview.segments || [])}
       ${renderGuideCards(preview.cards || [])}
@@ -506,10 +542,10 @@ function renderRecapGuide(payload) {
     ${
       recap.next_reading_target?.lecture_id
         ? `<article class="guide-block">
-            <p class="item-title">Next reading target: ${escapeHtml(recap.next_reading_target.sequence)} / ${escapeHtml(
+            <p class="item-title">下一节阅读目标：${escapeHtml(recap.next_reading_target.sequence)} / ${escapeHtml(
               recap.next_reading_target.title,
             )}</p>
-            <p class="item-meta">A suggestion from transcript-backed lecture order, not a schedule.</p>
+            <p class="item-meta">这是基于转写顺序的阅读建议，不是学习计划。</p>
           </article>`
         : ""
     }
@@ -527,7 +563,7 @@ function renderCitations(citations) {
       ${citations
         .map(
           (citation) => `
-            <p class="citation">Lecture ${escapeHtml(citation.lecture_sequence)} / ${escapeHtml(
+            <p class="citation">第 ${escapeHtml(citation.lecture_sequence)} 课 / ${escapeHtml(
               citation.segment_id,
             )} / ${secondsLabel(citation.start_seconds)}</p>
             <p>${escapeHtml(citation.text || "")}</p>
@@ -547,7 +583,7 @@ function renderGuideCards(cards) {
       ${cards
         .map(
           (card) => `
-            <p class="citation">Card / ${escapeHtml(card.card_id)}</p>
+            <p class="citation">卡片 / ${escapeHtml(card.card_id)}</p>
             <p>${escapeHtml(card.title || "")}</p>
           `,
         )
@@ -565,7 +601,7 @@ function renderVisualEvidence(visuals) {
       ${visuals
         .map(
           (visual) => `
-            <p class="citation">Visual / ${escapeHtml(visual.visual_id)} / ${escapeHtml(visual.image_path)}</p>
+            <p class="citation">视觉证据 / ${escapeHtml(visual.visual_id)} / ${escapeHtml(visual.image_path)}</p>
             <p>${escapeHtml(visual.title || "")}: ${escapeHtml(visual.explanation || "")}</p>
           `,
         )
@@ -577,9 +613,9 @@ function renderVisualEvidence(visuals) {
 function renderGuideLimits(payload) {
   const limits = payload.limits || {};
   return `
-    <p class="citation">Read-only / no plan: ${String(!limits.creates_study_plan)} / no scoring: ${String(
+    <p class="citation">只读 / 不建计划: ${String(!limits.creates_study_plan)} / 不评分: ${String(
       !limits.scores_learner,
-    )} / no review queue: ${String(!limits.spaced_review_queue)}</p>
+    )} / 不建复习队列: ${String(!limits.spaced_review_queue)}</p>
   `;
 }
 
@@ -613,7 +649,7 @@ async function loadCards() {
 
 function renderCards(cards) {
   if (!cards.length) {
-    els.cardsList.innerHTML = '<div class="empty">No knowledge cards for this lecture yet.</div>';
+    els.cardsList.innerHTML = '<div class="empty">当前课时还没有知识卡片。</div>';
     return;
   }
   els.cardsList.innerHTML = cards
@@ -624,7 +660,7 @@ function renderCards(cards) {
             <p class="segment-title">${escapeHtml(card.title || card.card_id)}</p>
             <button class="ghost-button bookmark-card" type="button" data-card-id="${escapeHtml(
               card.card_id,
-            )}" title="Bookmark card">Bookmark</button>
+            )}" title="收藏卡片">收藏</button>
           </div>
           <p>${escapeHtml(card.body)}</p>
           <p class="citation">${escapeHtml((card.source_segment_ids || []).join(", "))}</p>
@@ -653,7 +689,7 @@ async function generateCards() {
 
 function renderNotes(notes) {
   if (!notes.length) {
-    els.notesList.innerHTML = '<div class="empty">No notes for this lecture.</div>';
+    els.notesList.innerHTML = '<div class="empty">当前课时还没有笔记。</div>';
     return;
   }
   els.notesList.innerHTML = notes
@@ -670,7 +706,7 @@ function renderNotes(notes) {
 
 function renderBookmarks(bookmarks) {
   if (!bookmarks.length) {
-    els.bookmarksList.innerHTML = '<div class="empty">No bookmarks yet.</div>';
+    els.bookmarksList.innerHTML = '<div class="empty">还没有书签。</div>';
     return;
   }
   els.bookmarksList.innerHTML = bookmarks
@@ -728,7 +764,7 @@ async function setProgress() {
     status,
   });
   await loadCourses();
-  setStatus(`Progress set to ${status}`);
+  setStatus(`阅读状态：${progressCopy[status] || status}`);
 }
 
 async function runSearch() {
@@ -737,14 +773,14 @@ async function runSearch() {
   }
   const query = els.searchInput.value.trim();
   if (!query) {
-    els.searchResults.innerHTML = '<div class="empty">Enter a search query.</div>';
+    els.searchResults.innerHTML = '<div class="empty">输入要检索的关键词。</div>';
     return;
   }
   const payload = await getJson(
     `/api/search?course_id=${encodeURIComponent(state.courseId)}&query=${encodeURIComponent(query)}&limit=8`,
   );
   if (!payload.result_count) {
-    els.searchResults.innerHTML = '<div class="empty">No transcript matches.</div>';
+    els.searchResults.innerHTML = '<div class="empty">没有匹配的转写片段。</div>';
     return;
   }
   els.searchResults.innerHTML = payload.results
@@ -752,7 +788,7 @@ async function runSearch() {
       const citation = result.citation || {};
       return `
         <article class="result">
-          <p class="citation">Lecture ${escapeHtml(citation.lecture_sequence)} / ${escapeHtml(
+          <p class="citation">第 ${escapeHtml(citation.lecture_sequence)} 课 / ${escapeHtml(
             citation.lecture_title,
           )} / ${secondsLabel(citation.start_seconds)}</p>
           <p>${escapeHtml(result.snippet || citation.text)}</p>
@@ -768,7 +804,7 @@ async function runQa() {
   }
   const question = els.qaInput.value.trim();
   if (!question) {
-    els.qaAnswer.innerHTML = '<div class="empty">Enter a question.</div>';
+    els.qaAnswer.innerHTML = '<div class="empty">输入一个问题。</div>';
     return;
   }
   const payload = await getJson(
@@ -782,7 +818,7 @@ async function runQa() {
       ${citations
         .map(
           (citation) =>
-            `<p class="citation">Lecture ${escapeHtml(citation.lecture_sequence)} / ${escapeHtml(
+            `<p class="citation">第 ${escapeHtml(citation.lecture_sequence)} 课 / ${escapeHtml(
               citation.segment_id,
             )} / ${secondsLabel(citation.start_seconds)}</p>`,
         )

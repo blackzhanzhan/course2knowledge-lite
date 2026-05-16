@@ -94,6 +94,10 @@ textarea {
   padding: 14px;
 }
 
+.brand-block > div {
+  min-width: 0;
+}
+
 .brand-mark {
   display: grid;
   place-items: center;
@@ -111,6 +115,11 @@ textarea {
 .brand-block small {
   display: block;
   overflow-wrap: anywhere;
+}
+
+.brand-block strong {
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 .brand-block small,
@@ -235,6 +244,7 @@ textarea {
   color: var(--muted);
   padding: 8px 10px;
   white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .context-bar {
@@ -285,6 +295,11 @@ textarea {
   padding: 13px 14px;
 }
 
+.panel-head > div,
+.reader-head > div {
+  min-width: 0;
+}
+
 .panel-head h2,
 .reader-head h2 {
   font-size: 17px;
@@ -324,6 +339,7 @@ textarea {
   margin-top: 4px;
   font-size: 24px;
   line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .management-grid {
@@ -366,6 +382,7 @@ textarea {
 .result,
 .answer-card,
 .guide-block {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 3px;
   background: #fff;
@@ -533,6 +550,10 @@ textarea {
 .tool-panel textarea {
   border-width: 0 0 1px;
   border-radius: 0;
+}
+
+.tool-panel input {
+  min-height: 42px;
 }
 
 .frontdesk-copy dl {
