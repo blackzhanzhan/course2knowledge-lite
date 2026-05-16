@@ -27,12 +27,12 @@ try {
   }
 
   $WorkRepo = Join-Path $RunRoot "course2knowledge-lite"
-  Copy-Item -Path $RepoRoot -Destination $WorkRepo -Recurse -Force
-  foreach ($name in @(".git", "tmp", ".pytest_cache", "course2knowledge_lite.egg-info")) {
-    $target = Join-Path $WorkRepo $name
-    if (Test-Path $target) {
-      Remove-Item -LiteralPath $target -Recurse -Force
-    }
+  New-Item -ItemType Directory -Force -Path $WorkRepo | Out-Null
+  $ExcludedRootNames = @(".git", "tmp", ".pytest_cache", "course2knowledge_lite.egg-info")
+  Get-ChildItem -LiteralPath $RepoRoot -Force | Where-Object {
+    $ExcludedRootNames -notcontains $_.Name
+  } | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $WorkRepo -Recurse -Force
   }
 
   Push-Location $WorkRepo
