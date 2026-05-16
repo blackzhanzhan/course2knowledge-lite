@@ -60,7 +60,7 @@ The Feishu/Hermes Lite frontdesk can also import a lecture transcript by local
 course reference. After a collection import returns an `import_id`, the user may
 ask for a sequence such as "import the transcript for lecture 1". The frontdesk
 uses `lecture_transcript_import_by_ref` to resolve the stored lecture from the
-child local JSON store and then runs the normal single-video transcript handoff.
+child-local SQLite store and then runs the normal single-video transcript handoff.
 
 Before importing, the frontdesk can call `lecture_transcript_source_probe` to
 check whether a stored Bilibili lecture exposes public subtitle metadata and

@@ -94,7 +94,7 @@
       "Thirty lectures are expanded with source IDs, titles, and URLs.",
     "shot.06.title": "Course store files",
     "shot.06.body":
-      "Local JSON course-store files support both Web and Hermes tool layers.",
+      "A local SQLite course store supports both Web and Hermes tool layers.",
     "shot.07.title": "Transcript evidence",
     "shot.07.body":
       "Timestamped transcript segments keep stable segment IDs.",

@@ -2,11 +2,23 @@
 
 Course2Knowledge Lite uses a lightweight local product model.
 
+The default local authority is SQLite:
+
+```text
+data/course-store/course2knowledge-lite.sqlite3
+```
+
+JSON files may still appear as public seed data, fixtures, migration input, or
+export/debug artifacts, but they are not the default write authority after the
+SQLite migration.
+
 ## Entities
 
 ### COURSE
 
 Represents one imported course.
+
+SQLite table: `courses`
 
 Fields:
 
@@ -21,6 +33,8 @@ Fields:
 ### LECTURE
 
 Represents one course lecture or video.
+
+SQLite table: `lectures`
 
 Fields:
 
@@ -39,6 +53,8 @@ Fields:
 
 Represents a timestamped text segment.
 
+SQLite table: `transcript_segments`
+
 Fields:
 
 - `segment_id`
@@ -56,6 +72,8 @@ Represents a concept, definition, summary, or cited explanation.
 Current generated cards are conservative source cards: each card is derived
 from one transcript segment and must retain `source_segment_ids`.
 
+SQLite table: `knowledge_cards`
+
 Fields:
 
 - `card_id`
@@ -70,6 +88,8 @@ Fields:
 
 Represents a public image that can be shown in Web Lite or sent by
 Feishu/Hermes Lite with an explanation.
+
+SQLite table: `visual_evidence`
 
 Fields:
 
@@ -93,6 +113,8 @@ repository.
 
 Represents learner-authored notes.
 
+SQLite table: `notes`
+
 Fields:
 
 - `note_id`
@@ -106,6 +128,8 @@ Fields:
 
 Represents a saved lecture, segment, or card.
 
+SQLite table: `bookmarks`
+
 Fields:
 
 - `bookmark_id`
@@ -116,6 +140,8 @@ Fields:
 ### READING_PROGRESS
 
 Represents lightweight progress only.
+
+SQLite table: `reading_progress`
 
 Fields:
 
@@ -133,6 +159,8 @@ Allowed statuses:
 ### IMPORT_STATUS
 
 Represents the lightweight import status for a local course import.
+
+SQLite table: `import_statuses`
 
 Fields:
 

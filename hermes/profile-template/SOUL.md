@@ -89,5 +89,5 @@ Use the `course2knowledge-lite` toolset for public Lite behavior:
 
 The route is:
 
-Feishu/Hermes Lite -> Hermes native tool -> public package API -> local JSON
+Feishu/Hermes Lite -> Hermes native tool -> public package API -> child-local SQLite
 course store.

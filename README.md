@@ -56,7 +56,7 @@ course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\\.hermes\\profi
 ## What It Does
 
 - Import Bilibili course videos and transcripts.
-- Build a local course knowledge store.
+- Build a local SQLite course knowledge store.
 - Generate lecture notes, source-linked chunks, and knowledge cards.
 - Provide a Web workspace for guided reading, search, notes, bookmarks, and
   progress.
@@ -80,7 +80,7 @@ Bilibili URL
   -> import job
   -> transcript segments
   -> lecture notes and knowledge cards
-  -> course knowledge store
+  -> SQLite course knowledge store
   -> guided learning + Web Lite workspace + Feishu/Hermes Lite assistant
 ```
 
@@ -94,7 +94,7 @@ apps/
   feishu-lite/      Feishu/Hermes Lite chat entry
 packages/
   bilibili-import/  Bilibili import boundary
-  course-store/     Local course knowledge records
+  course-store/     Local SQLite course knowledge records
   guidance/          Read-only guided-learning DTOs
   qa/               Citation-based course Q&A boundary
 hermes/             Public Hermes Lite profile skeleton

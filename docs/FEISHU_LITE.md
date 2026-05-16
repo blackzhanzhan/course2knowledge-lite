@@ -74,8 +74,9 @@ Tools:
 - `reading_progress_get`
 - `course_visual_evidence_send`
 
-The tools call public package APIs and write to a local JSON course store. They
-must not shell out to ad hoc scripts, read unrelated private profiles, or
+The tools call public package APIs and write to the child-local SQLite course
+store. JSON may be used only as seed/export or migration compatibility. The
+tools must not shell out to ad hoc scripts, read unrelated private profiles, or
 mutate protected learning-state loops.
 
 `course_visual_evidence_send` must select an existing public `VISUAL_EVIDENCE`

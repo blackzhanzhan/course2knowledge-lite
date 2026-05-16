@@ -30,7 +30,7 @@ The profile may use only the public `course2knowledge-lite` Hermes toolset:
 - `reading_progress_set`
 - `reading_progress_get`
 
-These tools call public package APIs and a local JSON course store. They are not
+These tools call public package APIs and the child-local SQLite course store. They are not
 agent-managed script shortcuts.
 
 ## Product Boundary

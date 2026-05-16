@@ -91,6 +91,8 @@ Purpose:
 Boundary:
 
 - local public product store only
+- SQLite is the default child-local authority
+- JSON is seed/export/migration compatibility only
 - no private learning-state entities
 
 ### Visual Evidence Store
@@ -160,7 +162,7 @@ Web or Feishu
   -> transcript segments
   -> lecture notes and cards
   -> visual evidence
-  -> course knowledge store
+  -> SQLite course knowledge store
   -> citation Q&A, guided learning, and reading workspace
 ```
 
@@ -171,6 +173,7 @@ Web or Feishu
 - No protected orchestration or private study loop is copied here.
 - Bilibili import is real; other platform adapters are out of scope.
 - Web Lite and Feishu Lite are user surfaces, not hidden learning-state engines.
+- Web Lite and Feishu Lite must share the same child-local SQLite course store.
 - Visual evidence is public course evidence only; it is not planning,
   feedback, scoring, mastery, review, or queue-completion state.
 - Guided learning is a read-only public evidence organizer. It may say what to

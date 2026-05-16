@@ -61,9 +61,10 @@ It exposes:
 - `/api/bookmarks`
 - `/api/progress`
 
-The page reads the same child local JSON store as Hermes Lite and does not call
-external private-runtime routes. It may borrow the parent project's cockpit
-layout pattern, but it must not call mother-project web, Feishu Base, planning,
+The page reads the same child-local SQLite store as Hermes Lite and does not
+call external private-runtime routes. JSON may be used only as seed/export or
+migration compatibility. Web Lite may borrow the parent project's cockpit layout
+pattern, but it must not call mother-project web, Feishu Base, planning,
 feedback, scoring, diagnosis, or queue-completion paths.
 
 The import panel owns these stable demo selectors:
