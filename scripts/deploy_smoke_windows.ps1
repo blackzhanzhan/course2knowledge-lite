@@ -30,11 +30,17 @@ try {
       Invoke-WebRequest -Uri $PythonInstallerUrl -OutFile $Installer -UseBasicParsing
     }
     $InstallLog = Join-Path $ResolvedArtifactRoot "python-install.log"
-    Start-Process -FilePath $Installer -ArgumentList @("/quiet", "InstallAllUsers=0", "TargetDir=$InstallRoot", "Include_pip=1", "Include_test=0", "PrependPath=0", "Include_launcher=0", "InstallLauncherAllUsers=0", "/log", $InstallLog) -Wait -NoNewWindow
     $Python = Join-Path $InstallRoot "python.exe"
+    $InstallProcess = Start-Process -FilePath $Installer -ArgumentList @("/quiet", "InstallAllUsers=0", "TargetDir=$InstallRoot", "Include_pip=1", "Include_test=0", "PrependPath=0", "Include_launcher=0", "InstallLauncherAllUsers=0", "/log", $InstallLog) -PassThru -NoNewWindow
+    $Deadline = (Get-Date).AddMinutes(5)
+    while (!(Test-Path $Python) -and (Get-Date) -lt $Deadline) {
+      Start-Sleep -Seconds 2
+    }
     if (!(Test-Path $Python)) {
+      Stop-Process -Id $InstallProcess.Id -Force -ErrorAction SilentlyContinue
       throw "Python bootstrap did not produce python.exe at $Python"
     }
+    Stop-Process -Id $InstallProcess.Id -Force -ErrorAction SilentlyContinue
   }
 
   $WorkRepo = Join-Path $RunRoot "course2knowledge-lite"
