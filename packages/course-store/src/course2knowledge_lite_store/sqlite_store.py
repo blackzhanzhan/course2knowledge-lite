@@ -120,6 +120,14 @@ class SQLiteCourseStore:
             ).fetchall()
         return [_dict(row) for row in rows]
 
+    def delete_course(self, course_id: str) -> dict[str, Any]:
+        cleaned_course_id = str(course_id or "").strip()
+        if not cleaned_course_id:
+            raise ValueError("course_id is required")
+        with self._connect() as conn:
+            result = conn.execute("DELETE FROM courses WHERE course_id = ?", (cleaned_course_id,))
+        return {"deleted": result.rowcount > 0, "course_id": cleaned_course_id}
+
     def write_transcript_segments(
         self,
         course_id: str,

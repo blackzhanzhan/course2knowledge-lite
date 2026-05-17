@@ -5,11 +5,11 @@ const state = {
   lectureSequence: 1,
   lectureId: "",
   coverage: null,
-  guideMode: "continue",
-  activeView: "classroom",
+  activeView: "interaction",
   chatThreadId: "",
   chatBusy: false,
   cards: [],
+  courseCards: [],
   transientAtomSignals: new Set(),
   currentProgressStatus: "not_started",
 };
@@ -21,72 +21,88 @@ const els = {
   viewEyebrow: document.querySelector("#view-eyebrow"),
   navItems: document.querySelectorAll(".nav-item"),
   viewPanels: document.querySelectorAll("[data-view-panel]"),
+  courseSelect: document.querySelector("#course-select"),
+  notesCourseSelect: document.querySelector("#notes-course-select"),
+  lectureSelect: document.querySelector("#lecture-select"),
+  notesLectureSelect: document.querySelector("#notes-lecture-select"),
   courseList: document.querySelector("#course-list"),
   coveragePanel: document.querySelector("#coverage-panel"),
   selectedCourseSummary: document.querySelector("#selected-course-summary"),
   lectureAdminList: document.querySelector("#lecture-admin-list"),
-  metricCourseCount: document.querySelector("#metric-course-count"),
-  metricLectureCount: document.querySelector("#metric-lecture-count"),
-  metricCoverage: document.querySelector("#metric-coverage"),
-  metricSegments: document.querySelector("#metric-segments"),
-  stripStore: document.querySelector("#strip-store"),
-  stripAuthority: document.querySelector("#strip-authority"),
-  stripGuide: document.querySelector("#strip-guide"),
-  stripFrontdesk: document.querySelector("#strip-frontdesk"),
   importUrl: document.querySelector("#import-url"),
   importReceipt: document.querySelector("#import-receipt"),
   courseMeta: document.querySelector("#course-meta"),
   lectureTitle: document.querySelector("#lecture-title"),
-  lectureSelect: document.querySelector("#lecture-select"),
   progressSelect: document.querySelector("#progress-select"),
-  guideMode: document.querySelector("#guide-mode"),
-  guideButton: document.querySelector("#guide-button"),
-  guideOutput: document.querySelector("#guide-output"),
   segments: document.querySelector("#segments"),
   cardsList: document.querySelector("#cards-list"),
-  searchInput: document.querySelector("#search-input"),
-  searchResults: document.querySelector("#search-results"),
-  qaInput: document.querySelector("#qa-input"),
-  qaAnswer: document.querySelector("#qa-answer"),
   chatInput: document.querySelector("#chat-input"),
   chatLog: document.querySelector("#chat-log"),
   chatSendButton: document.querySelector("#chat-send-button"),
   atomProgressSummary: document.querySelector("#atom-progress-summary"),
   atomStateList: document.querySelector("#atom-state-list"),
+  markdownNotes: document.querySelector("#markdown-notes"),
   noteInput: document.querySelector("#note-input"),
   notesList: document.querySelector("#notes-list"),
   bookmarksList: document.querySelector("#bookmarks-list"),
   importButton: document.querySelector("#import-button"),
   refreshButton: document.querySelector("#refresh-button"),
-  searchButton: document.querySelector("#search-button"),
-  qaButton: document.querySelector("#qa-button"),
   noteButton: document.querySelector("#note-button"),
   cardsButton: document.querySelector("#cards-button"),
-  cardsButtonNotebook: document.querySelector("#cards-button-notebook"),
   viewJumpButtons: document.querySelectorAll("[data-view-jump]"),
 };
 
 const viewCopy = {
-  classroom: {
-    eyebrow: "Online classroom",
-    title: "今日教室",
-    subtitle: "选一节课，读一段材料，直接向学习助手提问。",
+  interaction: {
+    eyebrow: "Interaction",
+    title: "互动",
+    subtitle: "选择课程和课时后，直接在这里和学习助手聊天，右侧同步看知识节点状态。",
   },
-  library: {
-    eyebrow: "Course library",
-    title: "课程库",
-    subtitle: "添加公开课程，检查课时和转写覆盖，然后回到教室。",
+  courses: {
+    eyebrow: "Courses",
+    title: "课程管理",
+    subtitle: "导入课程、查看课时、删除课程，并直观看到课程内部的知识原子节点。",
   },
-  notebook: {
-    eyebrow: "Study notes",
-    title: "学习资料",
-    subtitle: "把当前课时的证据整理成卡片、笔记和书签。",
+  notes: {
+    eyebrow: "Notes",
+    title: "课程笔记",
+    subtitle: "显示真实 Markdown / Obsidian 内容；未接入时只展示本地笔记和课程证据。",
   },
-  adapter: {
-    eyebrow: "Adapter",
-    title: "连接方式",
-    subtitle: "Web 是主课堂；Hermes Lite 复用同一个本地课程库和聊天核心。",
-  },
+};
+
+const statusCopy = {
+  "Reading local course store": "读取本地课程库",
+  "No courses": "暂无课程",
+  "Import needs a URL": "需要合集链接",
+  "Importing Bilibili collection": "正在导入合集",
+  "Import accepted": "导入已接收",
+  "Import failed": "导入失败",
+  "Course deleted": "课程已删除",
+  "Delete failed": "删除失败",
+  "Opening lecture reader": "打开课时证据",
+  "Reader ready / no transcript": "证据就绪 / 暂无转写",
+  "Knowledge cards generated": "知识节点已生成",
+  "Chat needs a course": "先选择一门课程",
+  "Chat needs a message": "输入一条消息",
+  "Chat is running": "正在对话",
+  "Chat ready": "对话就绪",
+  "Chat failed": "对话失败",
+  "Write a note first": "先写一条笔记",
+  "Note saved": "笔记已保存",
+  "Bookmark saved": "书签已保存",
+  "Load failed": "加载失败",
+};
+
+const atomStateCopy = {
+  new: "待提问",
+  appeared: "已出现",
+  read: "已读课时",
+};
+
+const progressCopy = {
+  not_started: "未开始",
+  reading: "阅读中",
+  read: "已读",
 };
 
 function escapeHtml(value) {
@@ -115,11 +131,11 @@ async function getJson(url) {
 }
 
 async function sendJson(url, payload, { method = "POST" } = {}) {
-  const response = await fetch(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const options = { method, headers: { "Content-Type": "application/json" } };
+  if (payload !== undefined) {
+    options.body = JSON.stringify(payload);
+  }
+  const response = await fetch(url, options);
   const result = await response.json();
   if (!response.ok) {
     throw new Error(result.error || `Request failed: ${response.status}`);
@@ -131,46 +147,20 @@ function setStatus(text) {
   els.status.textContent = statusCopy[text] || text;
 }
 
-const statusCopy = {
-  "Guide ready / continue": "导学就绪 / 继续学习",
-  "Guide ready / walkthrough": "导学就绪 / 讲解导读",
-  "Guide ready / self_check": "导学就绪 / 自测",
-  "Guide ready / recap": "导学就绪 / 复盘",
-  "Reading local course store": "读取本地课程库",
-  "No courses": "暂无课程",
-  "Import needs a URL": "需要合集链接",
-  "Importing Bilibili collection": "正在导入合集",
-  "Import accepted": "导入已接受",
-  "Import failed": "导入失败",
-  "Opening lecture reader": "打开课时阅读",
-  "Reader ready / no transcript": "阅读器就绪 / 暂无转写",
-  "Building guide": "生成导学",
-  "Knowledge cards generated": "知识卡片已生成",
-  "Chat needs a course": "先选择一门课程",
-  "Chat needs a message": "输入一条消息",
-  "Chat is running": "正在对话",
-  "Chat ready": "对话就绪",
-  "Chat failed": "对话失败",
-  "Write a note first": "先写一条笔记",
-  "Note saved": "笔记已保存",
-  "Bookmark saved": "书签已保存",
-  "Load failed": "加载失败",
-};
+function selectedCourse() {
+  return state.courses.find((course) => course.course_id === state.courseId) || null;
+}
 
-const atomStateCopy = {
-  new: "待提问",
-  appeared: "已出现",
-  read: "已读课时",
-};
-
-const progressCopy = {
-  not_started: "未开始",
-  reading: "阅读中",
-  read: "已读",
-};
+function selectedLecture() {
+  return (
+    state.lectures.find((lecture) => Number(lecture.sequence) === Number(state.lectureSequence)) ||
+    state.lectures[0] ||
+    null
+  );
+}
 
 function setView(view) {
-  const nextView = viewCopy[view] ? view : "classroom";
+  const nextView = viewCopy[view] ? view : "interaction";
   state.activeView = nextView;
   for (const item of els.navItems) {
     item.classList.toggle("is-active", item.dataset.view === nextView);
@@ -182,51 +172,107 @@ function setView(view) {
   els.viewEyebrow.textContent = copy.eyebrow;
   els.viewTitle.textContent = copy.title;
   els.viewSubtitle.textContent = copy.subtitle;
-  renderWorkspaceStrip();
 }
 
-function guideModeLabel(mode) {
-  return {
-    continue: "继续学习",
-    walkthrough: "讲解导读",
-    self_check: "自测",
-    recap: "复盘",
-  }[mode] || mode;
-}
-
-function renderWorkspaceStrip() {
-  const course = selectedCourse();
-  const courseCount = state.courses.length;
-  const lectureCount = state.lectures.length || Number(course?.lecture_count || 0);
-  const courseLabel = course ? course.title || course.course_id : "请选择课程";
-  els.stripStore.textContent = courseCount
-    ? `${courseCount} 门课 / ${lectureCount} 课时`
-    : "本地课程库";
-  els.stripAuthority.textContent = courseLabel;
-  els.stripGuide.textContent = `${guideModeLabel(state.guideMode)} / 只读`;
-  els.stripFrontdesk.textContent = state.courseId ? "课堂内可问" : "等待课程";
+function clearCourseSurface() {
+  state.lectures = [];
+  state.courseId = "";
+  state.lectureId = "";
+  state.cards = [];
+  state.courseCards = [];
+  els.courseSelect.innerHTML = '<option value="">暂无课程</option>';
+  els.notesCourseSelect.innerHTML = '<option value="">暂无课程</option>';
+  els.lectureSelect.innerHTML = '<option value="">暂无课时</option>';
+  els.notesLectureSelect.innerHTML = '<option value="">暂无课时</option>';
+  els.courseList.innerHTML = '<div class="empty">本地课程库暂无课程。</div>';
+  els.coveragePanel.innerHTML = "";
+  els.selectedCourseSummary.innerHTML = "";
+  els.lectureAdminList.innerHTML = "";
+  els.cardsList.innerHTML = '<div class="empty">暂无课程，暂时没有知识原子。</div>';
+  els.segments.innerHTML = '<div class="empty">导入课程后，这里会显示当前课时证据。</div>';
+  els.notesList.innerHTML = '<div class="empty">暂无课程笔记。</div>';
+  els.bookmarksList.innerHTML = "";
+  els.courseMeta.textContent = "尚未选择课程";
+  els.lectureTitle.textContent = "等待课程";
+  renderMarkdownUnavailable();
+  renderAtomStates();
 }
 
 async function loadCourses() {
   setStatus("Reading local course store");
   const payload = await getJson("/api/courses");
   state.courses = payload.courses || [];
-  renderWorkspaceStrip();
-  renderCourseMetrics();
-  renderCourses();
-  if (state.courses.length) {
-    const nextCourseId = state.courseId || state.courses[0].course_id;
-    await selectCourse(nextCourseId);
-  } else {
-    els.segments.innerHTML = '<div class="empty">本地课程库暂无课程。</div>';
-    els.coveragePanel.innerHTML = "";
-    els.cardsList.innerHTML = "";
-    state.cards = [];
-    renderAtomStates();
-    els.guideOutput.innerHTML = "";
+  if (!state.courses.length) {
+    clearCourseSurface();
     setStatus("No courses");
-    renderWorkspaceStrip();
+    return;
   }
+  const nextCourseId =
+    state.courseId && state.courses.some((course) => course.course_id === state.courseId)
+      ? state.courseId
+      : state.courses[0].course_id;
+  renderCourseSelects();
+  renderCourses();
+  await selectCourse(nextCourseId);
+}
+
+function renderCourseSelects() {
+  const options = state.courses
+    .map((course) => `<option value="${escapeHtml(course.course_id)}">${escapeHtml(course.title || course.course_id)}</option>`)
+    .join("");
+  els.courseSelect.innerHTML = options || '<option value="">暂无课程</option>';
+  els.notesCourseSelect.innerHTML = options || '<option value="">暂无课程</option>';
+  els.courseSelect.value = state.courseId;
+  els.notesCourseSelect.value = state.courseId;
+}
+
+function renderLectureSelects() {
+  const options = state.lectures
+    .map(
+      (lecture) =>
+        `<option value="${escapeHtml(lecture.sequence)}">${escapeHtml(lecture.sequence)} / ${escapeHtml(
+          lecture.title || lecture.lecture_id,
+        )}</option>`,
+    )
+    .join("");
+  els.lectureSelect.innerHTML = options || '<option value="">暂无课时</option>';
+  els.notesLectureSelect.innerHTML = options || '<option value="">暂无课时</option>';
+  els.lectureSelect.value = String(state.lectureSequence);
+  els.notesLectureSelect.value = String(state.lectureSequence);
+}
+
+async function selectCourse(courseId) {
+  if (!courseId) {
+    clearCourseSurface();
+    return;
+  }
+  state.courseId = courseId;
+  state.transientAtomSignals.clear();
+  state.cards = [];
+  state.courseCards = [];
+  renderCourseSelects();
+  renderCourses();
+  renderAtomStates();
+  const payload = await getJson(`/api/lectures?course_id=${encodeURIComponent(courseId)}`);
+  state.lectures = payload.lectures || [];
+  state.lectureSequence = Number(state.lectures[0]?.sequence || 1);
+  renderLectureSelects();
+  await loadCoverage();
+  renderSelectedCourseSummary();
+  renderLectureAdminList();
+  await loadCourseCards();
+  await loadReader();
+  await loadLearningState();
+}
+
+async function selectLecture(sequence) {
+  const parsed = Number(sequence || 1);
+  state.lectureSequence = Number.isFinite(parsed) ? parsed : 1;
+  state.transientAtomSignals.clear();
+  renderLectureSelects();
+  renderLectureAdminList();
+  await loadReader();
+  await loadLearningState();
 }
 
 async function importCollection() {
@@ -237,14 +283,14 @@ async function importCollection() {
     return;
   }
   els.importButton.disabled = true;
-  els.importReceipt.textContent = "Importing collection metadata...";
+  els.importReceipt.textContent = "正在导入课程元数据...";
   setStatus("Importing Bilibili collection");
   try {
     const payload = await sendJson("/api/import", { source_url: sourceUrl });
     const course = payload.course || {};
     const importStatus = payload.import_status || {};
     els.importReceipt.innerHTML = `
-      <p class="item-meta">已接受：${escapeHtml(course.title || course.course_id)}</p>
+      <p class="item-meta">已接收：${escapeHtml(course.title || course.course_id)}</p>
       <p class="citation">${Number(payload.lecture_count || importStatus.total_lectures || 0)} 课时 / ${escapeHtml(
         importStatus.stage || "collection_expanded",
       )}</p>
@@ -266,8 +312,6 @@ async function importCollection() {
 function renderCourses() {
   if (!state.courses.length) {
     els.courseList.innerHTML = '<div class="empty">本地课程库暂无课程。</div>';
-    renderCourseMetrics();
-    renderWorkspaceStrip();
     return;
   }
   els.courseList.innerHTML = state.courses
@@ -276,11 +320,16 @@ function renderCourses() {
         <article class="course-item ${course.course_id === state.courseId ? "is-active" : ""}" data-course-id="${escapeHtml(
           course.course_id,
         )}">
-          <p class="item-title">${escapeHtml(course.title || course.course_id)}</p>
-          <p class="item-meta">${Number(course.lecture_count || 0)} 课时 / ${Number(
-            course.lecture_transcript_count || 0,
-          )} 有转写</p>
-          <p class="citation">${escapeHtml(course.course_id)}</p>
+          <div>
+            <p class="item-title">${escapeHtml(course.title || course.course_id)}</p>
+            <p class="item-meta">${Number(course.lecture_count || 0)} 课时 / ${Number(
+              course.lecture_transcript_count || 0,
+            )} 有转写</p>
+            <p class="citation">${escapeHtml(course.course_id)}</p>
+          </div>
+          <button class="ghost-button delete-course-button" type="button" data-course-id="${escapeHtml(
+            course.course_id,
+          )}" title="删除课程">删除</button>
         </article>
       `,
     )
@@ -288,43 +337,36 @@ function renderCourses() {
   for (const item of els.courseList.querySelectorAll(".course-item")) {
     item.addEventListener("click", () => selectCourse(item.dataset.courseId));
   }
+  for (const button of els.courseList.querySelectorAll(".delete-course-button")) {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      deleteCourse(button.dataset.courseId);
+    });
+  }
 }
 
-async function selectCourse(courseId) {
-  state.courseId = courseId;
-  state.transientAtomSignals.clear();
-  state.cards = [];
-  renderAtomStates();
-  renderCourses();
-  renderCourseMetrics();
-  renderWorkspaceStrip();
-  const payload = await getJson(`/api/lectures?course_id=${encodeURIComponent(courseId)}`);
-  state.lectures = payload.lectures || [];
-  await loadCoverage();
-  renderCourseMetrics();
-  renderWorkspaceStrip();
-  renderSelectedCourseSummary();
-  renderLectureAdminList();
-  state.lectureSequence = Number(state.lectures[0]?.sequence || 1);
-  renderLectureSelect();
-  await loadReader();
-  await loadLearningState();
-  await loadGuide("continue");
-}
-
-function renderLectureSelect() {
-  els.lectureSelect.innerHTML = state.lectures
-    .map(
-      (lecture) =>
-        `<option value="${escapeHtml(lecture.sequence)}">${escapeHtml(lecture.sequence)} / ${escapeHtml(
-          lecture.title || lecture.lecture_id,
-        )}</option>`,
-    )
-    .join("");
-  els.lectureSelect.value = String(state.lectureSequence);
+async function deleteCourse(courseId) {
+  const course = state.courses.find((item) => item.course_id === courseId);
+  if (!courseId || !window.confirm(`删除课程「${course?.title || courseId}」？本地 SQLite 中的课时、笔记、知识节点也会一起删除。`)) {
+    return;
+  }
+  try {
+    await sendJson(`/api/courses?course_id=${encodeURIComponent(courseId)}`, undefined, { method: "DELETE" });
+    if (state.courseId === courseId) {
+      state.courseId = "";
+    }
+    await loadCourses();
+    setStatus("Course deleted");
+  } catch (error) {
+    setStatus("Delete failed");
+    els.importReceipt.innerHTML = `<p class="blocked">${escapeHtml(error.message)}</p>`;
+  }
 }
 
 async function loadCoverage() {
+  if (!state.courseId) {
+    return;
+  }
   const payload = await getJson(`/api/coverage?course_id=${encodeURIComponent(state.courseId)}`);
   state.coverage = payload.coverage || null;
   renderCoverage();
@@ -344,27 +386,8 @@ function renderCoverage() {
     <div class="coverage-meter" aria-label="Transcript coverage">
       <div class="coverage-bar" style="width: ${clampedPercent}%"></div>
     </div>
-    <p class="item-meta">${covered}/${total} 课时有转写 / ${Number(
-      coverage.total_segment_count || 0,
-    )} 个片段</p>
+    <p class="item-meta">${covered}/${total} 课时有转写 / ${Number(coverage.total_segment_count || 0)} 个片段</p>
   `;
-  renderCourseMetrics();
-}
-
-function selectedCourse() {
-  return state.courses.find((course) => course.course_id === state.courseId) || null;
-}
-
-function renderCourseMetrics() {
-  const courseCount = state.courses.length;
-  const lectureCount = state.lectures.length || Number(selectedCourse()?.lecture_count || 0);
-  const coverage = state.coverage || {};
-  const percent = Math.round(Number(coverage.coverage_ratio || 0) * 100);
-  els.metricCourseCount.textContent = String(courseCount);
-  els.metricLectureCount.textContent = String(lectureCount);
-  els.metricCoverage.textContent = `${Math.max(0, Math.min(percent, 100))}%`;
-  els.metricSegments.textContent = String(Number(coverage.total_segment_count || 0));
-  renderWorkspaceStrip();
 }
 
 function renderSelectedCourseSummary() {
@@ -386,6 +409,10 @@ function renderSelectedCourseSummary() {
     <div class="summary-line">
       <span>课时状态</span>
       <strong>${Number(course.lecture_transcript_count || 0)} / ${Number(course.lecture_count || 0)} 有转写</strong>
+    </div>
+    <div class="summary-line">
+      <span>知识原子</span>
+      <strong>${Number(state.courseCards.length || 0)}</strong>
     </div>
     <div class="summary-line">
       <span>证据片段</span>
@@ -413,19 +440,14 @@ function renderLectureAdminList() {
     .join("");
   for (const button of els.lectureAdminList.querySelectorAll(".lecture-row")) {
     button.addEventListener("click", async () => {
-      state.lectureSequence = Number(button.dataset.sequence || 1);
-      renderLectureSelect();
-      renderLectureAdminList();
-      await loadReader();
-      await loadLearningState();
-      await loadGuide(state.guideMode === "continue" ? "walkthrough" : state.guideMode);
-      setView("classroom");
+      await selectLecture(button.dataset.sequence);
+      setView("interaction");
     });
   }
 }
 
 async function loadReader() {
-  if (!state.courseId) {
+  if (!state.courseId || !state.lectures.length) {
     return;
   }
   setStatus("Opening lecture reader");
@@ -440,11 +462,11 @@ async function loadReader() {
   }
   state.lectureId = lecture.lecture_id || "";
   els.courseMeta.textContent = `${payload.course?.title || state.courseId} / 第 ${lecture.sequence || ""} 课`;
-  els.lectureTitle.textContent = lecture.title || "课时阅读";
-  renderLectureAdminList();
+  els.lectureTitle.textContent = lecture.title || "课时证据";
   if (!payload.has_transcript) {
     els.segments.innerHTML = '<div class="empty">当前课时还没有转写片段。</div>';
     await loadCards();
+    renderMarkdownUnavailable();
     setStatus("Reader ready / no transcript");
     return;
   }
@@ -468,220 +490,15 @@ async function loadReader() {
     button.addEventListener("click", () => createBookmark("segment", button.dataset.segmentId));
   }
   await loadCards();
-  setStatus(`阅读器就绪 / ${payload.segment_count} 个片段`);
-}
-
-async function loadGuide(mode = state.guideMode) {
-  if (!state.courseId) {
-    return;
-  }
-  state.guideMode = mode || "continue";
-  els.guideMode.value = state.guideMode;
-  renderWorkspaceStrip();
-  const params = new URLSearchParams({
-    course_id: state.courseId,
-    mode: state.guideMode,
-    limit: "4",
-  });
-  if (state.guideMode !== "continue" && state.lectureId) {
-    params.set("lecture_id", state.lectureId);
-  }
-  setStatus("Building guide");
-  const payload = await getJson(`/api/guide?${params.toString()}`);
-  renderGuide(payload);
-  renderWorkspaceStrip();
-  setStatus(`导学就绪 / ${guideModeLabel(state.guideMode)}`);
-}
-
-function renderGuide(payload) {
-  if (!payload || payload.status === "blocked") {
-    els.guideOutput.innerHTML = `
-      <div class="empty">
-        <p class="blocked">${escapeHtml(payload?.message || "导学暂不可用。")}</p>
-        <p class="citation">${escapeHtml(payload?.reason || "blocked")}</p>
-      </div>
-    `;
-    return;
-  }
-  if (payload.mode === "continue") {
-    renderContinueGuide(payload);
-  } else if (payload.mode === "walkthrough") {
-    renderWalkthroughGuide(payload);
-  } else if (payload.mode === "self_check") {
-    renderSelfCheckGuide(payload);
-  } else {
-    renderRecapGuide(payload);
-  }
-}
-
-function renderContinueGuide(payload) {
-  const lecture = payload.lecture || {};
-  const recommendation = payload.recommendation || {};
-  const preview = payload.preview || {};
-  els.guideOutput.innerHTML = `
-    <article class="guide-block">
-      <div class="segment-head">
-        <div>
-          <p class="item-title">下一节建议：${escapeHtml(lecture.sequence)} / ${escapeHtml(lecture.title)}</p>
-          <p class="item-meta">${escapeHtml(recommendation.reason || "")}</p>
-        </div>
-        <button class="ghost-button" type="button" id="open-guide-lecture" data-sequence="${escapeHtml(
-          lecture.sequence,
-        )}">打开</button>
-      </div>
-      ${renderCitations(preview.segments || [])}
-      ${renderGuideCards(preview.cards || [])}
-      ${renderVisualEvidence(preview.visual_evidence || [])}
-      ${renderGuideLimits(payload)}
-    </article>
-  `;
-  const openButton = document.querySelector("#open-guide-lecture");
-  openButton?.addEventListener("click", async () => {
-    state.lectureSequence = Number(openButton.dataset.sequence || 1);
-    renderLectureSelect();
-    await loadReader();
-    await loadLearningState();
-    await loadGuide("walkthrough");
-  });
-}
-
-function renderWalkthroughGuide(payload) {
-  els.guideOutput.innerHTML = `
-    ${(payload.walkthrough || [])
-      .map(
-        (step) => `
-          <article class="guide-block">
-            <p class="item-title">${escapeHtml(step.title || step.step_id)}</p>
-            <p>${escapeHtml(step.body || "")}</p>
-            ${renderCitations(step.citations || [])}
-            ${renderGuideCards(step.cards || [])}
-            ${renderVisualEvidence(step.visual_evidence || [])}
-          </article>
-        `,
-      )
-      .join("")}
-    ${renderGuideLimits(payload)}
-  `;
-}
-
-function renderSelfCheckGuide(payload) {
-  els.guideOutput.innerHTML = `
-    ${(payload.questions || [])
-      .map(
-        (question) => `
-          <article class="guide-block">
-            <p class="item-title">${escapeHtml(question.prompt || question.question_id)}</p>
-            <p class="item-meta">${escapeHtml(question.answer_policy || "")}</p>
-            ${renderCitations(question.citations || [])}
-          </article>
-        `,
-      )
-      .join("")}
-    ${renderGuideLimits(payload)}
-  `;
-}
-
-function renderRecapGuide(payload) {
-  const recap = payload.recap || {};
-  els.guideOutput.innerHTML = `
-    ${(recap.key_points || [])
-      .map(
-        (point) => `
-          <article class="guide-block">
-            <p class="item-title">${escapeHtml(point.title || "Key point")}</p>
-            <p>${escapeHtml(point.body || "")}</p>
-            <p class="citation">${escapeHtml((point.source_segment_ids || []).join(", "))}</p>
-          </article>
-        `,
-      )
-      .join("")}
-    ${
-      recap.next_reading_target?.lecture_id
-        ? `<article class="guide-block">
-            <p class="item-title">下一节阅读目标：${escapeHtml(recap.next_reading_target.sequence)} / ${escapeHtml(
-              recap.next_reading_target.title,
-            )}</p>
-            <p class="item-meta">这是基于转写顺序的阅读建议，不是学习计划。</p>
-          </article>`
-        : ""
-    }
-    ${renderVisualEvidence(recap.visual_evidence || [])}
-    ${renderGuideLimits(payload)}
-  `;
-}
-
-function renderCitations(citations) {
-  if (!citations.length) {
-    return "";
-  }
-  return `
-    <div class="guide-evidence">
-      ${citations
-        .map(
-          (citation) => `
-            <p class="citation">第 ${escapeHtml(citation.lecture_sequence)} 课 / ${escapeHtml(
-              citation.segment_id,
-            )} / ${secondsLabel(citation.start_seconds)}</p>
-            <p>${escapeHtml(citation.text || "")}</p>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
-}
-
-function renderGuideCards(cards) {
-  if (!cards.length) {
-    return "";
-  }
-  return `
-    <div class="guide-evidence">
-      ${cards
-        .map(
-          (card) => `
-            <p class="citation">卡片 / ${escapeHtml(card.card_id)}</p>
-            <p>${escapeHtml(card.title || "")}</p>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
-}
-
-function renderVisualEvidence(visuals) {
-  if (!visuals.length) {
-    return "";
-  }
-  return `
-    <div class="guide-evidence">
-      ${visuals
-        .map(
-          (visual) => `
-            <p class="citation">视觉证据 / ${escapeHtml(visual.visual_id)} / ${escapeHtml(visual.image_path)}</p>
-            <p>${escapeHtml(visual.title || "")}: ${escapeHtml(visual.explanation || "")}</p>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
-}
-
-function renderGuideLimits(payload) {
-  const limits = payload.limits || {};
-  return `
-    <p class="citation">只读 / 不建计划: ${String(!limits.creates_study_plan)} / 不评分: ${String(
-      !limits.scores_learner,
-    )} / 不建复习队列: ${String(!limits.spaced_review_queue)}</p>
-  `;
+  renderMarkdownUnavailable();
+  setStatus(`证据就绪 / ${payload.segment_count} 个片段`);
 }
 
 async function loadLearningState() {
   if (!state.courseId || !state.lectureId) {
     return;
   }
-  const lectureQuery = `course_id=${encodeURIComponent(state.courseId)}&lecture_id=${encodeURIComponent(
-    state.lectureId,
-  )}`;
+  const lectureQuery = `course_id=${encodeURIComponent(state.courseId)}&lecture_id=${encodeURIComponent(state.lectureId)}`;
   const [notesPayload, bookmarksPayload, progressPayload] = await Promise.all([
     getJson(`/api/notes?${lectureQuery}`),
     getJson(`/api/bookmarks?course_id=${encodeURIComponent(state.courseId)}`),
@@ -703,16 +520,25 @@ async function loadCards() {
     `/api/cards?course_id=${encodeURIComponent(state.courseId)}&lecture_id=${encodeURIComponent(state.lectureId)}`,
   );
   state.cards = payload.cards || [];
-  renderCards(state.cards);
   renderAtomStates();
 }
 
-function renderCards(cards) {
-  if (!cards.length) {
-    els.cardsList.innerHTML = '<div class="empty">当前课时还没有知识卡片。</div>';
+async function loadCourseCards() {
+  if (!state.courseId) {
     return;
   }
-  els.cardsList.innerHTML = cards
+  const payload = await getJson(`/api/cards?course_id=${encodeURIComponent(state.courseId)}`);
+  state.courseCards = payload.cards || [];
+  renderCourseCards();
+  renderSelectedCourseSummary();
+}
+
+function renderCourseCards() {
+  if (!state.courseCards.length) {
+    els.cardsList.innerHTML = '<div class="empty">当前课程还没有知识原子。进入互动模块后，可从当前课时生成。</div>';
+    return;
+  }
+  els.cardsList.innerHTML = state.courseCards
     .map(
       (card) => `
         <article class="knowledge-card">
@@ -720,10 +546,10 @@ function renderCards(cards) {
             <p class="segment-title">${escapeHtml(card.title || card.card_id)}</p>
             <button class="ghost-button bookmark-card" type="button" data-card-id="${escapeHtml(
               card.card_id,
-            )}" title="收藏卡片">收藏</button>
+            )}" title="收藏知识原子">收藏</button>
           </div>
           <p>${escapeHtml(card.body)}</p>
-          <p class="citation">${escapeHtml((card.source_segment_ids || []).join(", "))}</p>
+          <p class="citation">${escapeHtml(card.lecture_id)} / ${escapeHtml((card.source_segment_ids || []).join(", "))}</p>
           <p class="tags">${(card.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</p>
         </article>
       `,
@@ -745,13 +571,10 @@ function atomStateForCard(card) {
 }
 
 function renderAtomStates() {
-  if (!els.atomStateList || !els.atomProgressSummary) {
-    return;
-  }
   const cards = state.cards || [];
   if (!cards.length) {
-    els.atomProgressSummary.textContent = "当前课时暂无候选点";
-    els.atomStateList.innerHTML = '<div class="empty">生成知识卡片后，这里会显示本节候选知识点。</div>';
+    els.atomProgressSummary.textContent = "当前课时暂无知识节点";
+    els.atomStateList.innerHTML = '<div class="empty">生成知识节点后，这里会显示本节候选知识点。</div>';
     return;
   }
   const counts = cards.reduce(
@@ -796,7 +619,7 @@ function markAtomsFromText(text) {
 }
 
 async function generateCards() {
-  if (!state.courseId) {
+  if (!state.courseId || !state.lectureId) {
     return;
   }
   await sendJson("/api/cards/generate", {
@@ -805,24 +628,43 @@ async function generateCards() {
     overwrite: true,
   });
   await loadCards();
+  await loadCourseCards();
   setStatus("Knowledge cards generated");
 }
 
+function renderMarkdownUnavailable() {
+  const course = selectedCourse();
+  const lecture = selectedLecture();
+  els.markdownNotes.innerHTML = `
+    <article class="markdown-empty">
+      <p class="item-title">Markdown / Obsidian 内容未接入或未生成</p>
+      <p class="item-meta">${escapeHtml(course?.title || "暂无课程")} ${
+        lecture ? `/ 第 ${escapeHtml(lecture.sequence)} 课 ${escapeHtml(lecture.title || "")}` : ""
+      }</p>
+      <p>当前本地库里没有真实的课程 Markdown 文件。下面只显示 SQLite 中已经保存的本地笔记、书签和当前课时证据。</p>
+    </article>
+  `;
+}
+
 function renderNotes(notes) {
+  renderMarkdownUnavailable();
   if (!notes.length) {
-    els.notesList.innerHTML = '<div class="empty">当前课时还没有笔记。</div>';
+    els.notesList.innerHTML = '<div class="empty">当前课时还没有本地笔记。</div>';
     return;
   }
-  els.notesList.innerHTML = notes
-    .map(
-      (note) => `
-        <article class="result">
-          <p>${escapeHtml(note.body)}</p>
-          <p class="citation">${escapeHtml(note.updated_at || note.created_at)} / ${escapeHtml(note.note_id)}</p>
-        </article>
-      `,
-    )
-    .join("");
+  els.notesList.innerHTML = `
+    <h3>本地笔记</h3>
+    ${notes
+      .map(
+        (note) => `
+          <article class="result">
+            <p>${escapeHtml(note.body)}</p>
+            <p class="citation">${escapeHtml(note.updated_at || note.created_at)} / ${escapeHtml(note.note_id)}</p>
+          </article>
+        `,
+      )
+      .join("")}
+  `;
 }
 
 function renderBookmarks(bookmarks) {
@@ -830,16 +672,19 @@ function renderBookmarks(bookmarks) {
     els.bookmarksList.innerHTML = '<div class="empty">还没有书签。</div>';
     return;
   }
-  els.bookmarksList.innerHTML = bookmarks
-    .map(
-      (bookmark) => `
-        <article class="result">
-          <p>${escapeHtml(bookmark.target_type)}: ${escapeHtml(bookmark.target_id)}</p>
-          <p class="citation">${escapeHtml(bookmark.created_at)} / ${escapeHtml(bookmark.bookmark_id)}</p>
-        </article>
-      `,
-    )
-    .join("");
+  els.bookmarksList.innerHTML = `
+    <h3>书签</h3>
+    ${bookmarks
+      .map(
+        (bookmark) => `
+          <article class="result">
+            <p>${escapeHtml(bookmark.target_type)}: ${escapeHtml(bookmark.target_id)}</p>
+            <p class="citation">${escapeHtml(bookmark.created_at)} / ${escapeHtml(bookmark.bookmark_id)}</p>
+          </article>
+        `,
+      )
+      .join("")}
+  `;
 }
 
 async function saveNote() {
@@ -886,70 +731,9 @@ async function setProgress() {
     lecture_id: state.lectureId,
     status,
   });
-  await loadCourses();
   state.currentProgressStatus = status;
   renderAtomStates();
   setStatus(`阅读状态：${progressCopy[status] || status}`);
-}
-
-async function runSearch() {
-  if (!state.courseId) {
-    return;
-  }
-  const query = els.searchInput.value.trim();
-  if (!query) {
-    els.searchResults.innerHTML = '<div class="empty">输入要检索的关键词。</div>';
-    return;
-  }
-  const payload = await getJson(
-    `/api/search?course_id=${encodeURIComponent(state.courseId)}&query=${encodeURIComponent(query)}&limit=8`,
-  );
-  if (!payload.result_count) {
-    els.searchResults.innerHTML = '<div class="empty">没有匹配的转写片段。</div>';
-    return;
-  }
-  els.searchResults.innerHTML = payload.results
-    .map((result) => {
-      const citation = result.citation || {};
-      return `
-        <article class="result">
-          <p class="citation">第 ${escapeHtml(citation.lecture_sequence)} 课 / ${escapeHtml(
-            citation.lecture_title,
-          )} / ${secondsLabel(citation.start_seconds)}</p>
-          <p>${escapeHtml(result.snippet || citation.text)}</p>
-        </article>
-      `;
-    })
-    .join("");
-}
-
-async function runQa() {
-  if (!state.courseId) {
-    return;
-  }
-  const question = els.qaInput.value.trim();
-  if (!question) {
-    els.qaAnswer.innerHTML = '<div class="empty">输入一个问题。</div>';
-    return;
-  }
-  const payload = await getJson(
-    `/api/qa?course_id=${encodeURIComponent(state.courseId)}&question=${encodeURIComponent(question)}&limit=5`,
-  );
-  const citations = payload.citations || [];
-  els.qaAnswer.innerHTML = `
-    <article class="answer-card">
-      <p class="${payload.status === "blocked" ? "blocked" : ""}">${escapeHtml(payload.answer)}</p>
-      <p class="citation">${escapeHtml(payload.status)} / ${Number(payload.citation_count || 0)} citations</p>
-      ${citations
-        .map(
-          (citation) =>
-            `<p class="citation">第 ${escapeHtml(citation.lecture_sequence)} 课 / ${escapeHtml(
-              citation.segment_id,
-            )} / ${secondsLabel(citation.start_seconds)}</p>`,
-        )
-        .join("")}
-    </article>
-  `;
 }
 
 async function runChat() {
@@ -1095,8 +879,6 @@ function renderChatEmptyState() {
 
 els.importButton.addEventListener("click", importCollection);
 els.refreshButton.addEventListener("click", loadCourses);
-els.searchButton.addEventListener("click", runSearch);
-els.qaButton.addEventListener("click", runQa);
 els.chatSendButton.addEventListener("click", runChat);
 els.chatInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
@@ -1105,8 +887,6 @@ els.chatInput.addEventListener("keydown", (event) => {
 });
 els.noteButton.addEventListener("click", saveNote);
 els.cardsButton.addEventListener("click", generateCards);
-els.cardsButtonNotebook?.addEventListener("click", generateCards);
-els.guideButton.addEventListener("click", () => loadGuide(els.guideMode.value));
 for (const item of els.navItems) {
   item.addEventListener("click", () => setView(item.dataset.view));
 }
@@ -1114,16 +894,14 @@ for (const button of els.viewJumpButtons) {
   button.addEventListener("click", () => setView(button.dataset.viewJump));
 }
 els.progressSelect.addEventListener("change", setProgress);
-els.lectureSelect.addEventListener("change", async () => {
-  state.lectureSequence = Number(els.lectureSelect.value || 1);
-  renderLectureAdminList();
-  await loadReader();
-  await loadLearningState();
-  await loadGuide(state.guideMode === "continue" ? "walkthrough" : state.guideMode);
-});
+els.courseSelect.addEventListener("change", () => selectCourse(els.courseSelect.value));
+els.notesCourseSelect.addEventListener("change", () => selectCourse(els.notesCourseSelect.value));
+els.lectureSelect.addEventListener("change", () => selectLecture(els.lectureSelect.value));
+els.notesLectureSelect.addEventListener("change", () => selectLecture(els.notesLectureSelect.value));
 
-setView("classroom");
+setView("interaction");
 renderChatEmptyState();
+renderMarkdownUnavailable();
 
 loadCourses().catch((error) => {
   els.segments.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;

@@ -191,7 +191,10 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
         try:
             params = parse_qs(parsed.query)
             store = SQLiteCourseStore(self.store_root)
-            if parsed.path == "/api/notes":
+            if parsed.path == "/api/courses":
+                result = store.delete_course(_required_param(params, "course_id"))
+                self._send_json({"status": "completed", **result})
+            elif parsed.path == "/api/notes":
                 result = store.delete_note(_required_param(params, "course_id"), _required_param(params, "note_id"))
                 self._send_json({"status": "completed", **result})
             elif parsed.path == "/api/bookmarks":

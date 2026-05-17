@@ -218,6 +218,29 @@ class WebLiteTests(unittest.TestCase):
         self.assertEqual(bookmarks["bookmark_count"], 1)
         self.assertEqual(progress_list["progress"][0]["status"], "read")
 
+    def test_web_course_delete_api_removes_local_course(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _store, course_id = _store_with_transcript(temp_dir)
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                deleted = _request_json(host, port, "DELETE", f"/api/courses?course_id={course_id}")
+                courses = _request_json(host, port, "GET", "/api/courses")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertEqual(deleted["status"], "completed")
+        self.assertTrue(deleted["deleted"])
+        self.assertEqual(deleted["course_id"], course_id)
+        self.assertEqual(courses["courses"], [])
+
     def test_web_learning_state_api_rejects_invalid_progress_status(self) -> None:
         web_server = load_web_server_module()
 
@@ -399,18 +422,31 @@ class WebLiteTests(unittest.TestCase):
         app_js = (ROOT / "apps" / "web" / "static" / "app.js").read_text(encoding="utf-8")
         styles = (ROOT / "apps" / "web" / "static" / "styles.css").read_text(encoding="utf-8")
 
-        self.assertIn("今日教室", index_html)
-        self.assertIn("学习助手", index_html)
-        self.assertIn('data-view="classroom"', index_html)
-        self.assertIn('id="view-classroom"', index_html)
-        self.assertIn("chat-first-layout", index_html)
-        self.assertIn("chat-main", index_html)
-        self.assertIn("learning-sidebar", index_html)
+        self.assertIn("\u4e92\u52a8", index_html)
+        self.assertIn("\u8bfe\u7a0b\u7ba1\u7406", index_html)
+        self.assertIn("\u8bfe\u7a0b\u7b14\u8bb0", index_html)
+        self.assertIn("\u5b66\u4e60\u52a9\u624b", index_html)
+        self.assertIn('data-view="interaction"', index_html)
+        self.assertIn('data-view="courses"', index_html)
+        self.assertIn('data-view="notes"', index_html)
+        self.assertIn('id="view-interaction"', index_html)
+        self.assertIn('id="view-courses"', index_html)
+        self.assertIn('id="view-notes"', index_html)
+        self.assertIn("interaction-layout", index_html)
+        self.assertIn("side-stack", index_html)
         self.assertIn('id="atom-state-list"', index_html)
         self.assertIn('id="atom-progress-summary"', index_html)
-        self.assertNotIn("飞书前台", index_html)
-        self.assertNotIn("课程管理", index_html)
-        self.assertNotIn("学习交互", index_html)
+        for old_nav_label in (
+            "<span>\u4eca\u65e5\u6559\u5ba4</span>",
+            "<span>\u8bfe\u7a0b\u5e93</span>",
+            "<span>\u5b66\u4e60\u8d44\u6599</span>",
+            "<span>\u8fde\u63a5\u65b9\u5f0f</span>",
+        ):
+            self.assertNotIn(old_nav_label, index_html)
+        for old_panel_label in ("\u5feb\u901f\u67e5\u8d44\u6599", "\u5f15\u7528\u95ee\u7b54", "\u4e0b\u4e00\u6b65"):
+            self.assertNotIn(old_panel_label, index_html)
+        self.assertNotIn('data-view="adapter"', index_html)
+        self.assertNotIn('id="view-adapter"', index_html)
         self.assertIn('id="chat-log"', index_html)
         self.assertIn('id="chat-input"', index_html)
         self.assertIn('id="chat-send-button"', index_html)
@@ -419,11 +455,12 @@ class WebLiteTests(unittest.TestCase):
         self.assertIn("renderChatEvents", app_js)
         self.assertIn("renderAtomStates", app_js)
         self.assertIn("markAtomsFromText", app_js)
-        self.assertIn('setView("classroom")', app_js)
+        self.assertIn("Markdown / Obsidian \u5185\u5bb9\u672a\u63a5\u5165\u6216\u672a\u751f\u6210", app_js)
+        self.assertIn('setView("interaction")', app_js)
         self.assertIn(".chat-panel", styles)
         self.assertIn(".chat-message", styles)
-        self.assertIn(".classroom-layout", styles)
-        self.assertIn(".learning-sidebar", styles)
+        self.assertIn(".interaction-layout", styles)
+        self.assertIn(".side-stack", styles)
         self.assertIn(".atom-item", styles)
         forbidden_static = "\n".join([index_html, styles]).lower()
         for blocked_term in ("mastery", "review_stage", "diagnosis", "feedback"):
