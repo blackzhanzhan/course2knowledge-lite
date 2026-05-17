@@ -6,7 +6,7 @@ const state = {
   lectureId: "",
   coverage: null,
   guideMode: "continue",
-  activeView: "courses",
+  activeView: "classroom",
   chatThreadId: "",
   chatBusy: false,
 };
@@ -61,25 +61,25 @@ const els = {
 };
 
 const viewCopy = {
-  courses: {
-    eyebrow: "Web Lite",
-    title: "课程管理",
-    subtitle: "导入合集，检查课时和转写覆盖，再进入学习交互。",
+  classroom: {
+    eyebrow: "Online classroom",
+    title: "今日教室",
+    subtitle: "选一节课，读一段材料，直接向学习助手提问。",
   },
-  study: {
-    eyebrow: "Evidence workspace",
-    title: "学习交互",
-    subtitle: "阅读转写、运行导学、检索片段，并基于引用进行课程问答。",
+  library: {
+    eyebrow: "Course library",
+    title: "课程库",
+    subtitle: "添加公开课程，检查课时和转写覆盖，然后回到教室。",
   },
-  cards: {
-    eyebrow: "Knowledge workspace",
-    title: "知识管理",
-    subtitle: "把转写证据整理成卡片、笔记和书签。",
+  notebook: {
+    eyebrow: "Study notes",
+    title: "学习资料",
+    subtitle: "把当前课时的证据整理成卡片、笔记和书签。",
   },
-  frontdesk: {
-    eyebrow: "Dual frontdesk",
-    title: "飞书前台",
-    subtitle: "Hermes Lite 读取同一个公开课程 store，不另起私有门户。",
+  adapter: {
+    eyebrow: "Adapter",
+    title: "连接方式",
+    subtitle: "Web 是主课堂；Hermes Lite 复用同一个本地课程库和聊天核心。",
   },
 };
 
@@ -158,7 +158,7 @@ const progressCopy = {
 };
 
 function setView(view) {
-  const nextView = viewCopy[view] ? view : "courses";
+  const nextView = viewCopy[view] ? view : "classroom";
   state.activeView = nextView;
   for (const item of els.navItems) {
     item.classList.toggle("is-active", item.dataset.view === nextView);
@@ -186,13 +186,13 @@ function renderWorkspaceStrip() {
   const course = selectedCourse();
   const courseCount = state.courses.length;
   const lectureCount = state.lectures.length || Number(course?.lecture_count || 0);
-  const courseLabel = course ? course.title || course.course_id : "Public child repo";
+  const courseLabel = course ? course.title || course.course_id : "请选择课程";
   els.stripStore.textContent = courseCount
-    ? `${courseCount} courses / ${lectureCount} lectures`
-    : "Local course store";
+    ? `${courseCount} 门课 / ${lectureCount} 课时`
+    : "本地课程库";
   els.stripAuthority.textContent = courseLabel;
-  els.stripGuide.textContent = `${guideModeLabel(state.guideMode)} / read-only`;
-  els.stripFrontdesk.textContent = state.activeView === "frontdesk" ? "Hermes Lite active" : "Web + Hermes Lite";
+  els.stripGuide.textContent = `${guideModeLabel(state.guideMode)} / 只读`;
+  els.stripFrontdesk.textContent = state.courseId ? "课堂内可问" : "等待课程";
 }
 
 async function loadCourses() {
@@ -402,7 +402,7 @@ function renderLectureAdminList() {
       await loadReader();
       await loadLearningState();
       await loadGuide(state.guideMode === "continue" ? "walkthrough" : state.guideMode);
-      setView("study");
+      setView("classroom");
     });
   }
 }
@@ -943,7 +943,7 @@ function appendChatBubble(role, text) {
   const bubble = document.createElement("article");
   bubble.className = `chat-message is-${role}`;
   bubble.innerHTML = `
-    <p class="chat-role">${role === "user" ? "You" : "Hermes Lite"}</p>
+    <p class="chat-role">${role === "user" ? "我" : "学习助手"}</p>
     <div class="chat-body">${escapeHtml(text)}</div>
     <div class="chat-events"></div>
   `;
@@ -997,8 +997,8 @@ function renderChatEmptyState() {
   }
   els.chatLog.innerHTML = `
     <div class="empty">
-      <p>Ask against the selected local course. Events stream from SQLite-backed Lite Chat Core.</p>
-      <p class="citation">Try: What is RAG Agent? / Show visual RAG Agent / show cards</p>
+      <p>这里可以直接围绕当前课程提问。回答来自本地 SQLite 课程库和 Lite Chat Core。</p>
+      <p class="citation">试试：What is RAG Agent? / Show visual RAG Agent / show cards</p>
     </div>
   `;
 }
@@ -1031,7 +1031,7 @@ els.lectureSelect.addEventListener("change", async () => {
   await loadGuide(state.guideMode === "continue" ? "walkthrough" : state.guideMode);
 });
 
-setView("courses");
+setView("classroom");
 renderChatEmptyState();
 
 loadCourses().catch((error) => {

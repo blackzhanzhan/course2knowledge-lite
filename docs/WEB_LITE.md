@@ -1,33 +1,36 @@
 # Web Lite
 
-Web Lite is the primary visual workspace. Its first screen is a public Lite
-course-management cockpit, following the parent project's web-cockpit
-information architecture without copying private runtime loops.
+Web Lite is the primary visual classroom for the public Lite release. Its first
+screen is a relaxed online-school frontdoor: pick the current lesson, read the
+course evidence, and ask the learning assistant without leaving the classroom.
 
 ## Screens
 
-- Course library
-- Import status
-- Course-management cockpit
+- Today's classroom
+- Learning assistant chat
 - Lecture reader
 - Guided learning
+- Quick transcript search
+- Citation Q&A
+- Course library
+- Import status
 - Knowledge cards
-- Search
-- Course Q&A
 - Notes
 - Bookmarks
 - Reading progress
+- Adapter information for Hermes Lite
 
 ## Expected Experience
 
-The learner can import a course, inspect lectures and transcript coverage, open
-a lecture, follow evidence-grounded guidance, read structured notes, inspect
-source citations, ask course questions, and keep lightweight reading state.
+The learner lands in a classroom, sees the selected course and lesson, follows
+evidence-grounded guidance, reads transcript segments, and can immediately ask
+the learning assistant questions backed by the same child-local course store.
+Course import, transcript coverage, cards, notes, and bookmarks remain nearby
+support surfaces, not the main mental model.
 
-Course management is intentionally not a Q&A surface. The default page focuses
-on import, course list, transcript coverage, lecture health, and reading
-progress. Search and citation Q&A remain available in the learning-interaction
-view.
+The Web product should not ask the learner to think in cockpit/admin terms.
+The default page focuses on the next useful classroom action. Search and
+citation Q&A are available inside the classroom next to the assistant.
 
 Guided learning in Web Lite means:
 
@@ -63,8 +66,9 @@ It exposes:
 
 The page reads the same child-local SQLite store as Hermes Lite and does not
 call external private-runtime routes. JSON may be used only as seed/export or
-migration compatibility. Web Lite may borrow the parent project's cockpit layout
-pattern, but it must not call mother-project web, Feishu Base, planning,
+migration compatibility. Web Lite is the primary public classroom; Hermes Lite
+is a channel adapter over the same Lite Chat Core, not a separate public product
+frontdoor. Web Lite must not call mother-project web, Feishu Base, planning,
 feedback, scoring, diagnosis, or queue-completion paths.
 
 The import panel owns these stable demo selectors:
@@ -74,9 +78,8 @@ The import panel owns these stable demo selectors:
 - `#import-receipt`
 
 Visual evidence is read from public child-local records only. Web Lite may show
-the same evidence that Feishu/Hermes Lite can explain and send, but it must not
-load private note systems, production chat exports, or unrelated workspace
-files.
+the same evidence that Hermes Lite can explain and send, but it must not load
+private note systems, production chat exports, or unrelated workspace files.
 
 ## Real Demo Acceptance
 
@@ -91,10 +94,9 @@ The current public demo case uses:
 The in-app browser acceptance run on `http://127.0.0.1:3014/` verified:
 
 - `#import-url`, `#import-button`, and `#import-receipt` render after reload.
-- the course-management cockpit opens one public demo course with 30 lecture
-  options.
-- the reader opens a transcript-backed lecture from the learning-interaction
-  view.
+- the online classroom opens one public demo course with 30 lecture options.
+- the learning assistant is visible from the classroom and uses
+  `/api/chat/stream`.
 - the `RAG Agent` search returns 5 transcript hits.
 - Q&A returns an answered state with 5 citations from the same local store.
 - Guided Learning renders continue, self-check, and recap modes from
@@ -115,5 +117,6 @@ Evidence screenshots are stored under ignored `tmp/lite-demo-capability/`.
 
 ## Design Direction
 
-This should feel like a focused course workspace, not a marketing landing page.
-The first screen should be useful: a course library or import/status view.
+This should feel like a focused online school, not a marketing landing page and
+not an operations console. The first screen should be useful: a classroom with
+the current lesson, guidance, and an assistant ready to answer from evidence.

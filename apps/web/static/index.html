@@ -13,39 +13,39 @@
           <span class="brand-mark">C2K</span>
           <div>
             <strong>Course2Knowledge</strong>
-            <small>公开课程工作台</small>
+            <small>轻量线上学校</small>
           </div>
         </div>
-        <nav class="nav-list" aria-label="Workspace views">
-          <button class="nav-item is-active" type="button" data-view="courses">
-            <span>课程管理</span>
-            <small>导入 / 课时 / 转写</small>
+        <nav class="nav-list" aria-label="School views">
+          <button class="nav-item is-active" type="button" data-view="classroom">
+            <span>今日教室</span>
+            <small>阅读 / 导学 / 聊天</small>
           </button>
-          <button class="nav-item" type="button" data-view="study">
-            <span>学习交互</span>
-            <small>导学 / 阅读 / 问答</small>
+          <button class="nav-item" type="button" data-view="library">
+            <span>课程库</span>
+            <small>导入 / 课时 / 覆盖</small>
           </button>
-          <button class="nav-item" type="button" data-view="cards">
-            <span>知识管理</span>
+          <button class="nav-item" type="button" data-view="notebook">
+            <span>学习资料</span>
             <small>卡片 / 笔记 / 书签</small>
           </button>
-          <button class="nav-item" type="button" data-view="frontdesk">
-            <span>飞书前台</span>
-            <small>Hermes Lite</small>
+          <button class="nav-item" type="button" data-view="adapter">
+            <span>连接方式</span>
+            <small>Web 与 Hermes Lite</small>
           </button>
         </nav>
         <div class="sider-foot">
           <span>Public Lite</span>
-          <strong>Web + Feishu</strong>
+          <strong>Local SQLite</strong>
         </div>
       </aside>
 
       <section class="main-shell">
         <header class="topbar">
           <div>
-            <p class="eyebrow" id="view-eyebrow">Web Lite</p>
-            <h1 id="view-title">课程管理</h1>
-            <p id="view-subtitle">导入合集，检查课时和转写覆盖，再进入学习交互。</p>
+            <p class="eyebrow" id="view-eyebrow">Online classroom</p>
+            <h1 id="view-title">今日教室</h1>
+            <p id="view-subtitle">选一节课，读一段材料，直接向学习助手提问。</p>
           </div>
           <div class="topbar-status">
             <div class="status" id="status">读取本地课程库</div>
@@ -57,10 +57,10 @@
           </div>
         </header>
 
-        <section class="context-bar" aria-label="Current course context">
+        <section class="context-bar" aria-label="Current lesson context">
           <div class="context-title">
             <p class="eyebrow" id="course-meta">尚未选择课程</p>
-            <h2 id="lecture-title">课时阅读</h2>
+            <h2 id="lecture-title">等待课程</h2>
           </div>
           <label class="select-label">
             课时
@@ -76,31 +76,107 @@
           </label>
         </section>
 
-        <section class="workspace-strip" aria-label="Workspace status">
+        <section class="workspace-strip" aria-label="Classroom status">
           <div>
-            <span>Store</span>
-            <strong id="strip-store">Local course store</strong>
+            <span>课程</span>
+            <strong id="strip-store">本地课程库</strong>
           </div>
           <div>
-            <span>Authority</span>
-            <strong id="strip-authority">Public child repo</strong>
+            <span>当前位置</span>
+            <strong id="strip-authority">请选择课程</strong>
           </div>
           <div>
-            <span>Guide</span>
-            <strong id="strip-guide">Read-only</strong>
+            <span>导学</span>
+            <strong id="strip-guide">只读模式</strong>
           </div>
           <div>
-            <span>Frontdesk</span>
-            <strong id="strip-frontdesk">Web + Hermes Lite</strong>
+            <span>学习助手</span>
+            <strong id="strip-frontdesk">课堂内可用</strong>
           </div>
         </section>
 
-        <section class="view is-active" id="view-courses" data-view-panel="courses">
+        <section class="view is-active" id="view-classroom" data-view-panel="classroom">
+          <section class="classroom-layout">
+            <section class="lesson-column">
+              <section class="guide-panel classroom-guide" aria-label="Guided learning">
+                <div class="panel-head">
+                  <div>
+                    <h2>今天先学什么</h2>
+                    <p class="panel-note">从当前课程证据里给出下一步</p>
+                  </div>
+                  <div class="guide-controls">
+                    <select id="guide-mode" aria-label="Guide mode">
+                      <option value="continue">继续学习</option>
+                      <option value="walkthrough">讲解导读</option>
+                      <option value="self_check">自测</option>
+                      <option value="recap">复盘</option>
+                    </select>
+                    <button id="guide-button" type="button" title="运行导学">开始</button>
+                  </div>
+                </div>
+                <div id="guide-output" class="guide-output"></div>
+              </section>
+
+              <section class="reader">
+                <div class="panel-head reader-head">
+                  <div>
+                    <h2>课时阅读</h2>
+                    <p class="panel-note">转写证据</p>
+                  </div>
+                  <button class="ghost-button" type="button" data-view-jump="library">换一门课</button>
+                </div>
+                <div id="segments" class="segments"></div>
+              </section>
+            </section>
+
+            <aside class="assistant-column">
+              <section class="panel chat-panel" aria-label="Course learning assistant chat">
+                <div class="panel-head">
+                  <div>
+                    <h2>学习助手</h2>
+                    <p class="panel-note">基于当前课程证据回答</p>
+                  </div>
+                  <button id="chat-send-button" type="button" title="发送消息">发送</button>
+                </div>
+                <div id="chat-log" class="chat-log" aria-live="polite"></div>
+                <div class="chat-composer">
+                  <textarea id="chat-input" rows="3">What is RAG Agent?</textarea>
+                </div>
+              </section>
+
+              <section class="tool-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>快速查资料</h2>
+                    <p class="panel-note">转写检索</p>
+                  </div>
+                  <button id="search-button" type="button" title="检索转写">检索</button>
+                </div>
+                <input id="search-input" type="search" value="RAG Agent" />
+                <div id="search-results" class="result-list"></div>
+              </section>
+
+              <section class="tool-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>引用问答</h2>
+                    <p class="panel-note">保留可追溯引用</p>
+                  </div>
+                  <button id="qa-button" type="button" title="基于转写提问">提问</button>
+                </div>
+                <textarea id="qa-input" rows="4">RAG 和 Agent 的区别是什么？</textarea>
+                <div id="qa-answer" class="answer"></div>
+              </section>
+            </aside>
+          </section>
+        </section>
+
+        <section class="view" id="view-library" data-view-panel="library">
           <section class="import-panel" aria-label="Import Bilibili collection">
             <div class="panel-head">
               <div>
-                <h2>导入合集</h2>
-                <p class="panel-note">Bilibili 合集链接</p>
+                <h2>添加课程</h2>
+                <p class="panel-note">粘贴 Bilibili 合集链接</p>
               </div>
               <button id="import-button" type="button" title="导入合集">导入</button>
             </div>
@@ -138,8 +214,8 @@
             <section class="panel course-panel">
               <div class="panel-head">
                 <div>
-                  <h2>课程列表</h2>
-                  <p class="panel-note">本地课程库</p>
+                  <h2>课程书架</h2>
+                  <p class="panel-note">选择后回到教室学习</p>
                 </div>
                 <button id="refresh-button" type="button" title="刷新课程">刷新</button>
               </div>
@@ -149,10 +225,10 @@
             <section class="panel course-inspector">
               <div class="panel-head">
                 <div>
-                  <h2>课程状态</h2>
-                  <p class="panel-note">转写与课时健康</p>
+                  <h2>课程准备情况</h2>
+                  <p class="panel-note">课时与转写覆盖</p>
                 </div>
-                <button class="ghost-button" type="button" data-view-jump="study">打开阅读</button>
+                <button class="ghost-button" type="button" data-view-jump="classroom">进入教室</button>
               </div>
               <div id="selected-course-summary" class="summary-panel"></div>
               <div id="coverage-panel" class="coverage-panel"></div>
@@ -161,66 +237,7 @@
           </section>
         </section>
 
-        <section class="view" id="view-study" data-view-panel="study">
-          <section class="reader-grid">
-            <section class="reader">
-              <div class="panel-head reader-head">
-                <div>
-                  <h2>课时阅读</h2>
-                  <p class="panel-note">转写证据</p>
-                </div>
-              </div>
-              <div id="segments" class="segments"></div>
-            </section>
-
-            <aside class="study-tools">
-              <section class="guide-panel" aria-label="Guided learning">
-                <div class="panel-head">
-                  <div>
-                    <h2>导学</h2>
-                    <p class="panel-note">只读导学</p>
-                  </div>
-                  <div class="guide-controls">
-                    <select id="guide-mode" aria-label="Guide mode">
-                      <option value="continue">继续学习</option>
-                      <option value="walkthrough">讲解导读</option>
-                      <option value="self_check">自测</option>
-                      <option value="recap">复盘</option>
-                    </select>
-                    <button id="guide-button" type="button" title="运行导学">运行</button>
-                  </div>
-                </div>
-                <div id="guide-output" class="guide-output"></div>
-              </section>
-
-              <section class="tool-panel">
-                <div class="panel-head">
-                  <div>
-                    <h2>检索</h2>
-                    <p class="panel-note">转写检索</p>
-                  </div>
-                  <button id="search-button" type="button" title="检索转写">检索</button>
-                </div>
-                <input id="search-input" type="search" value="RAG Agent" />
-                <div id="search-results" class="result-list"></div>
-              </section>
-
-              <section class="tool-panel">
-                <div class="panel-head">
-                  <div>
-                    <h2>课程问答</h2>
-                    <p class="panel-note">引用问答</p>
-                  </div>
-                  <button id="qa-button" type="button" title="基于转写提问">提问</button>
-                </div>
-                <textarea id="qa-input" rows="4">RAG 和 Agent 的区别是什么？</textarea>
-                <div id="qa-answer" class="answer"></div>
-              </section>
-            </aside>
-          </section>
-        </section>
-
-        <section class="view" id="view-cards" data-view-panel="cards">
+        <section class="view" id="view-notebook" data-view-panel="notebook">
           <section class="knowledge-grid">
             <section class="cards-panel" aria-label="Knowledge cards">
               <div class="panel-head">
@@ -259,31 +276,17 @@
           </section>
         </section>
 
-        <section class="view" id="view-frontdesk" data-view-panel="frontdesk">
-          <section class="frontdesk-grid">
-            <section class="panel chat-panel" aria-label="Hermes Lite chat">
-              <div class="panel-head">
-                <div>
-                  <h2>Hermes Lite Chat</h2>
-                  <p class="panel-note">Local SQLite / typed events</p>
-                </div>
-                <button id="chat-send-button" type="button" title="发送消息">发送</button>
-              </div>
-              <div id="chat-log" class="chat-log" aria-live="polite"></div>
-              <div class="chat-composer">
-                <textarea id="chat-input" rows="3">What is RAG Agent?</textarea>
-              </div>
-            </section>
-
+        <section class="view" id="view-adapter" data-view-panel="adapter">
+          <section class="adapter-grid">
             <section class="panel">
               <div class="panel-head">
                 <div>
-                  <h2>飞书 / Hermes Lite</h2>
-                  <p class="panel-note">同一课程库，对话前台</p>
+                  <h2>统一课程助手</h2>
+                  <p class="panel-note">Web 是主入口，Hermes Lite 是另一条接入方式</p>
                 </div>
               </div>
               <div class="frontdesk-copy">
-                <p>Feishu/Hermes Lite 连接同一份本地课程 store，用于导入回执、课程查询、引用问答和公开视觉证据发送。</p>
+                <p>这个公开 Lite 版本使用同一份本地 SQLite 课程库和 Lite Chat Core。网页里的学习助手负责课堂体验；Hermes Lite 只作为 Feishu/Lark 形态的适配器。</p>
                 <dl>
                   <div>
                     <dt>Profile</dt>

@@ -399,14 +399,23 @@ class WebLiteTests(unittest.TestCase):
         app_js = (ROOT / "apps" / "web" / "static" / "app.js").read_text(encoding="utf-8")
         styles = (ROOT / "apps" / "web" / "static" / "styles.css").read_text(encoding="utf-8")
 
+        self.assertIn("今日教室", index_html)
+        self.assertIn("学习助手", index_html)
+        self.assertIn('data-view="classroom"', index_html)
+        self.assertIn('id="view-classroom"', index_html)
+        self.assertNotIn("飞书前台", index_html)
+        self.assertNotIn("课程管理", index_html)
+        self.assertNotIn("学习交互", index_html)
         self.assertIn('id="chat-log"', index_html)
         self.assertIn('id="chat-input"', index_html)
         self.assertIn('id="chat-send-button"', index_html)
         self.assertIn('"/api/chat/stream"', app_js)
         self.assertIn("parseSse", app_js)
         self.assertIn("renderChatEvents", app_js)
+        self.assertIn('setView("classroom")', app_js)
         self.assertIn(".chat-panel", styles)
         self.assertIn(".chat-message", styles)
+        self.assertIn(".classroom-layout", styles)
 
     def test_web_serves_public_docs_assets_for_chat_media(self) -> None:
         web_server = load_web_server_module()
