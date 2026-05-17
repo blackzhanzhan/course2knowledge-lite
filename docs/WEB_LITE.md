@@ -1,8 +1,9 @@
 # Web Lite
 
 Web Lite is the primary visual classroom for the public Lite release. Its first
-screen is a relaxed online-school frontdoor: pick the current lesson, read the
-course evidence, and ask the learning assistant without leaving the classroom.
+screen is a relaxed online-school frontdoor: chat with the learning assistant as
+the main classroom action, while lesson progress and knowledge atom candidates
+stay in the side panel.
 
 ## Screens
 
@@ -23,10 +24,17 @@ course evidence, and ask the learning assistant without leaving the classroom.
 ## Expected Experience
 
 The learner lands in a classroom, sees the selected course and lesson, follows
-evidence-grounded guidance, reads transcript segments, and can immediately ask
-the learning assistant questions backed by the same child-local course store.
-Course import, transcript coverage, cards, notes, and bookmarks remain nearby
-support surfaces, not the main mental model.
+evidence-grounded guidance, and can immediately ask the learning assistant
+questions backed by the same child-local course store. Transcript segments are
+available as supporting evidence below the conversation. The side panel carries
+lesson selection, reading progress, read-only guidance, and knowledge atom
+candidates derived from existing `KNOWLEDGE_CARD` records.
+
+Knowledge atom candidate state in the Web UI is intentionally lightweight. It
+may show labels such as `待提问`, `已出现`, or `已读课时` from current cards,
+reading progress, and in-memory chat signals. It is not a durable learning-state
+model, does not write oral-check results, and does not import private mother
+project mastery or review semantics.
 
 The Web product should not ask the learner to think in cockpit/admin terms.
 The default page focuses on the next useful classroom action. Search and

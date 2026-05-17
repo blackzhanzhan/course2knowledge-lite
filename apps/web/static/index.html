@@ -57,25 +57,6 @@
           </div>
         </header>
 
-        <section class="context-bar" aria-label="Current lesson context">
-          <div class="context-title">
-            <p class="eyebrow" id="course-meta">尚未选择课程</p>
-            <h2 id="lecture-title">等待课程</h2>
-          </div>
-          <label class="select-label">
-            课时
-            <select id="lecture-select"></select>
-          </label>
-          <label class="select-label">
-            阅读状态
-            <select id="progress-select">
-              <option value="not_started">未开始</option>
-              <option value="reading">阅读中</option>
-              <option value="read">已读</option>
-            </select>
-          </label>
-        </section>
-
         <section class="workspace-strip" aria-label="Classroom status">
           <div>
             <span>课程</span>
@@ -96,13 +77,59 @@
         </section>
 
         <section class="view is-active" id="view-classroom" data-view-panel="classroom">
-          <section class="classroom-layout">
-            <section class="lesson-column">
+          <section class="classroom-layout chat-first-layout">
+            <section class="chat-main">
+              <section class="panel chat-panel" aria-label="Course learning assistant chat">
+                <div class="panel-head">
+                  <div>
+                    <h2>学习助手</h2>
+                    <p class="panel-note">直接围绕当前课时提问</p>
+                  </div>
+                  <button id="chat-send-button" type="button" title="发送消息">发送</button>
+                </div>
+                <div id="chat-log" class="chat-log" aria-live="polite"></div>
+                <div class="chat-composer">
+                  <textarea id="chat-input" rows="3">What is RAG Agent?</textarea>
+                </div>
+              </section>
+
+              <section class="reader evidence-reader">
+                <div class="panel-head reader-head">
+                  <div>
+                    <h2>本节证据</h2>
+                    <p class="panel-note">需要时向下看原文片段</p>
+                  </div>
+                  <button class="ghost-button" type="button" data-view-jump="library">换一门课</button>
+                </div>
+                <div id="segments" class="segments"></div>
+              </section>
+            </section>
+
+            <aside class="learning-sidebar" aria-label="Lesson progress and knowledge atoms">
+              <section class="context-card" aria-label="Current lesson context">
+                <div class="context-title">
+                  <p class="eyebrow" id="course-meta">尚未选择课程</p>
+                  <h2 id="lecture-title">等待课程</h2>
+                </div>
+                <label class="select-label">
+                  课时
+                  <select id="lecture-select"></select>
+                </label>
+                <label class="select-label">
+                  阅读状态
+                  <select id="progress-select">
+                    <option value="not_started">未开始</option>
+                    <option value="reading">阅读中</option>
+                    <option value="read">已读</option>
+                  </select>
+                </label>
+              </section>
+
               <section class="guide-panel classroom-guide" aria-label="Guided learning">
                 <div class="panel-head">
                   <div>
-                    <h2>今天先学什么</h2>
-                    <p class="panel-note">从当前课程证据里给出下一步</p>
+                    <h2>下一步</h2>
+                    <p class="panel-note">只读导学</p>
                   </div>
                   <div class="guide-controls">
                     <select id="guide-mode" aria-label="Guide mode">
@@ -117,31 +144,15 @@
                 <div id="guide-output" class="guide-output"></div>
               </section>
 
-              <section class="reader">
-                <div class="panel-head reader-head">
-                  <div>
-                    <h2>课时阅读</h2>
-                    <p class="panel-note">转写证据</p>
-                  </div>
-                  <button class="ghost-button" type="button" data-view-jump="library">换一门课</button>
-                </div>
-                <div id="segments" class="segments"></div>
-              </section>
-            </section>
-
-            <aside class="assistant-column">
-              <section class="panel chat-panel" aria-label="Course learning assistant chat">
+              <section class="atom-panel" aria-label="Knowledge atom candidates">
                 <div class="panel-head">
                   <div>
-                    <h2>学习助手</h2>
-                    <p class="panel-note">基于当前课程证据回答</p>
+                    <h2>知识点候选</h2>
+                    <p class="panel-note" id="atom-progress-summary">等待当前课时卡片</p>
                   </div>
-                  <button id="chat-send-button" type="button" title="发送消息">发送</button>
+                  <button id="cards-button" type="button" title="从转写生成卡片">生成</button>
                 </div>
-                <div id="chat-log" class="chat-log" aria-live="polite"></div>
-                <div class="chat-composer">
-                  <textarea id="chat-input" rows="3">What is RAG Agent?</textarea>
-                </div>
+                <div id="atom-state-list" class="atom-state-list"></div>
               </section>
 
               <section class="tool-panel">
@@ -245,7 +256,7 @@
                   <h2>知识卡片</h2>
                   <p class="panel-note">从转写证据生成</p>
                 </div>
-                <button id="cards-button" type="button" title="从转写生成卡片">生成</button>
+                <button id="cards-button-notebook" type="button" title="从转写生成卡片">生成</button>
               </div>
               <div id="cards-list" class="cards-list"></div>
             </section>

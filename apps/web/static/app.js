@@ -9,6 +9,9 @@ const state = {
   activeView: "classroom",
   chatThreadId: "",
   chatBusy: false,
+  cards: [],
+  transientAtomSignals: new Set(),
+  currentProgressStatus: "not_started",
 };
 
 const els = {
@@ -48,6 +51,8 @@ const els = {
   chatInput: document.querySelector("#chat-input"),
   chatLog: document.querySelector("#chat-log"),
   chatSendButton: document.querySelector("#chat-send-button"),
+  atomProgressSummary: document.querySelector("#atom-progress-summary"),
+  atomStateList: document.querySelector("#atom-state-list"),
   noteInput: document.querySelector("#note-input"),
   notesList: document.querySelector("#notes-list"),
   bookmarksList: document.querySelector("#bookmarks-list"),
@@ -57,6 +62,7 @@ const els = {
   qaButton: document.querySelector("#qa-button"),
   noteButton: document.querySelector("#note-button"),
   cardsButton: document.querySelector("#cards-button"),
+  cardsButtonNotebook: document.querySelector("#cards-button-notebook"),
   viewJumpButtons: document.querySelectorAll("[data-view-jump]"),
 };
 
@@ -151,6 +157,12 @@ const statusCopy = {
   "Load failed": "加载失败",
 };
 
+const atomStateCopy = {
+  new: "待提问",
+  appeared: "已出现",
+  read: "已读课时",
+};
+
 const progressCopy = {
   not_started: "未开始",
   reading: "阅读中",
@@ -209,6 +221,8 @@ async function loadCourses() {
     els.segments.innerHTML = '<div class="empty">本地课程库暂无课程。</div>';
     els.coveragePanel.innerHTML = "";
     els.cardsList.innerHTML = "";
+    state.cards = [];
+    renderAtomStates();
     els.guideOutput.innerHTML = "";
     setStatus("No courses");
     renderWorkspaceStrip();
@@ -278,6 +292,9 @@ function renderCourses() {
 
 async function selectCourse(courseId) {
   state.courseId = courseId;
+  state.transientAtomSignals.clear();
+  state.cards = [];
+  renderAtomStates();
   renderCourses();
   renderCourseMetrics();
   renderWorkspaceStrip();
@@ -418,6 +435,9 @@ async function loadReader() {
     )}`,
   );
   const lecture = payload.lecture || {};
+  if (state.lectureId && state.lectureId !== lecture.lecture_id) {
+    state.transientAtomSignals.clear();
+  }
   state.lectureId = lecture.lecture_id || "";
   els.courseMeta.textContent = `${payload.course?.title || state.courseId} / 第 ${lecture.sequence || ""} 课`;
   els.lectureTitle.textContent = lecture.title || "课时阅读";
@@ -670,7 +690,9 @@ async function loadLearningState() {
   renderNotes(notesPayload.notes || []);
   renderBookmarks(bookmarksPayload.bookmarks || []);
   const progress = (progressPayload.progress || [])[0] || {};
-  els.progressSelect.value = progress.status || "not_started";
+  state.currentProgressStatus = progress.status || "not_started";
+  els.progressSelect.value = state.currentProgressStatus;
+  renderAtomStates();
 }
 
 async function loadCards() {
@@ -680,7 +702,9 @@ async function loadCards() {
   const payload = await getJson(
     `/api/cards?course_id=${encodeURIComponent(state.courseId)}&lecture_id=${encodeURIComponent(state.lectureId)}`,
   );
-  renderCards(payload.cards || []);
+  state.cards = payload.cards || [];
+  renderCards(state.cards);
+  renderAtomStates();
 }
 
 function renderCards(cards) {
@@ -708,6 +732,67 @@ function renderCards(cards) {
   for (const button of els.cardsList.querySelectorAll(".bookmark-card")) {
     button.addEventListener("click", () => createBookmark("card", button.dataset.cardId));
   }
+}
+
+function atomStateForCard(card) {
+  if (state.currentProgressStatus === "read") {
+    return "read";
+  }
+  if (state.transientAtomSignals.has(card.card_id)) {
+    return "appeared";
+  }
+  return "new";
+}
+
+function renderAtomStates() {
+  if (!els.atomStateList || !els.atomProgressSummary) {
+    return;
+  }
+  const cards = state.cards || [];
+  if (!cards.length) {
+    els.atomProgressSummary.textContent = "当前课时暂无候选点";
+    els.atomStateList.innerHTML = '<div class="empty">生成知识卡片后，这里会显示本节候选知识点。</div>';
+    return;
+  }
+  const counts = cards.reduce(
+    (result, card) => {
+      result[atomStateForCard(card)] += 1;
+      return result;
+    },
+    { new: 0, appeared: 0, read: 0 },
+  );
+  const activeCount = counts.read || counts.appeared;
+  els.atomProgressSummary.textContent = `${activeCount}/${cards.length} 个已有课堂信号`;
+  els.atomStateList.innerHTML = cards
+    .map((card) => {
+      const atomState = atomStateForCard(card);
+      return `
+        <article class="atom-item is-${atomState}">
+          <div>
+            <p class="atom-title">${escapeHtml(card.title || card.card_id)}</p>
+            <p class="citation">${escapeHtml((card.tags || []).slice(0, 3).join(" / ") || card.card_id)}</p>
+          </div>
+          <span class="atom-state">${atomStateCopy[atomState]}</span>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function markAtomsFromText(text) {
+  const content = String(text || "").toLowerCase();
+  if (!content || !state.cards.length) {
+    return;
+  }
+  for (const card of state.cards) {
+    const candidates = [card.title, ...(card.tags || [])]
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter((value) => value.length >= 3);
+    if (candidates.some((value) => content.includes(value))) {
+      state.transientAtomSignals.add(card.card_id);
+    }
+  }
+  renderAtomStates();
 }
 
 async function generateCards() {
@@ -794,12 +879,16 @@ async function setProgress() {
     return;
   }
   const status = els.progressSelect.value;
+  state.currentProgressStatus = status;
+  renderAtomStates();
   await sendJson("/api/progress", {
     course_id: state.courseId,
     lecture_id: state.lectureId,
     status,
   });
   await loadCourses();
+  state.currentProgressStatus = status;
+  renderAtomStates();
   setStatus(`阅读状态：${progressCopy[status] || status}`);
 }
 
@@ -958,6 +1047,7 @@ function renderChatEvents(events, { bodyWrap, eventsWrap }) {
   const mediaEvents = events.filter((event) => event.event === "media");
   if (messageEvent?.data?.payload?.delta) {
     bodyWrap.innerHTML = `<p>${escapeHtml(messageEvent.data.payload.delta)}</p>`;
+    markAtomsFromText(messageEvent.data.payload.delta);
   } else if (errorEvent?.data?.payload?.message) {
     bodyWrap.innerHTML = `<p class="blocked">${escapeHtml(errorEvent.data.payload.message)}</p>`;
   } else {
@@ -1015,6 +1105,7 @@ els.chatInput.addEventListener("keydown", (event) => {
 });
 els.noteButton.addEventListener("click", saveNote);
 els.cardsButton.addEventListener("click", generateCards);
+els.cardsButtonNotebook?.addEventListener("click", generateCards);
 els.guideButton.addEventListener("click", () => loadGuide(els.guideMode.value));
 for (const item of els.navItems) {
   item.addEventListener("click", () => setView(item.dataset.view));

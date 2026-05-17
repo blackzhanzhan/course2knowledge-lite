@@ -191,6 +191,7 @@ textarea {
 
 .topbar,
 .context-bar,
+.context-card,
 .workspace-strip,
 .panel,
 .import-panel,
@@ -198,6 +199,7 @@ textarea {
 .guide-panel,
 .tool-panel,
 .cards-panel,
+.atom-panel,
 .chat-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -290,16 +292,30 @@ textarea {
 
 .classroom-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 430px);
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 390px);
   gap: 12px;
   align-items: start;
 }
 
-.lesson-column,
-.assistant-column,
+.chat-main,
+.learning-sidebar,
 .adapter-grid {
   display: grid;
   gap: 12px;
+}
+
+.learning-sidebar {
+  position: sticky;
+  top: 18px;
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  align-content: start;
+}
+
+.context-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
 }
 
 .classroom-guide {
@@ -461,7 +477,8 @@ textarea {
 .lecture-admin-list,
 .frontdesk-copy,
 .chat-log,
-.chat-composer {
+.chat-composer,
+.atom-state-list {
   padding: 14px;
 }
 
@@ -471,7 +488,8 @@ textarea {
 .result,
 .answer-card,
 .guide-block,
-.chat-message {
+.chat-message,
+.atom-item {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -484,7 +502,8 @@ textarea {
 .knowledge-card + .knowledge-card,
 .result + .result,
 .guide-block + .guide-block,
-.chat-message + .chat-message {
+.chat-message + .chat-message,
+.atom-item + .atom-item {
   margin-top: 8px;
 }
 
@@ -554,7 +573,8 @@ textarea {
 .guide-block p,
 .frontdesk-copy p,
 .frontdesk-copy li,
-.chat-message p {
+.chat-message p,
+.atom-item p {
   margin: 7px 0 0;
   line-height: 1.55;
   overflow-wrap: anywhere;
@@ -677,14 +697,16 @@ textarea {
 }
 
 .chat-panel {
-  min-height: 520px;
+  display: grid;
+  grid-template-rows: auto minmax(420px, calc(100vh - 330px)) auto;
+  min-height: 650px;
 }
 
 .chat-log {
   display: flex;
   flex-direction: column;
-  min-height: 300px;
-  max-height: 46vh;
+  min-height: 420px;
+  max-height: none;
   overflow: auto;
   background: #fbfcfe;
 }
@@ -769,6 +791,73 @@ textarea {
   padding-top: 0;
 }
 
+.chat-composer textarea {
+  min-height: 92px;
+}
+
+.evidence-reader .segments {
+  max-height: 32vh;
+  overflow: auto;
+}
+
+.guide-output {
+  max-height: 24vh;
+  overflow: auto;
+}
+
+.atom-state-list {
+  max-height: 30vh;
+  overflow: auto;
+}
+
+.atom-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  background: #fff;
+}
+
+.atom-item.is-appeared {
+  border-color: #a7d6cf;
+  background: var(--green-soft);
+}
+
+.atom-item.is-read {
+  border-color: #b9d2f8;
+  background: var(--blue-soft);
+}
+
+.atom-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.atom-state {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+  padding: 5px 7px;
+  white-space: nowrap;
+}
+
+.atom-item.is-appeared .atom-state {
+  border-color: #a7d6cf;
+  color: var(--teal);
+}
+
+.atom-item.is-read .atom-state {
+  border-color: #b9d2f8;
+  color: var(--blue);
+}
+
 .empty {
   color: var(--muted);
   padding: 18px 14px;
@@ -788,6 +877,12 @@ textarea {
   .knowledge-grid,
   .adapter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .learning-sidebar {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .metric-grid {
@@ -858,8 +953,17 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .assistant-column {
+  .chat-main {
     order: -1;
+  }
+
+  .chat-panel {
+    grid-template-rows: auto minmax(360px, 52vh) auto;
+    min-height: 560px;
+  }
+
+  .chat-log {
+    min-height: 360px;
   }
 
   .workspace-strip > div,
