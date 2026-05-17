@@ -261,6 +261,20 @@
 
         <section class="view" id="view-frontdesk" data-view-panel="frontdesk">
           <section class="frontdesk-grid">
+            <section class="panel chat-panel" aria-label="Hermes Lite chat">
+              <div class="panel-head">
+                <div>
+                  <h2>Hermes Lite Chat</h2>
+                  <p class="panel-note">Local SQLite / typed events</p>
+                </div>
+                <button id="chat-send-button" type="button" title="发送消息">发送</button>
+              </div>
+              <div id="chat-log" class="chat-log" aria-live="polite"></div>
+              <div class="chat-composer">
+                <textarea id="chat-input" rows="3">What is RAG Agent?</textarea>
+              </div>
+            </section>
+
             <section class="panel">
               <div class="panel-head">
                 <div>

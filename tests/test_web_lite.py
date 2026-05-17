@@ -394,6 +394,45 @@ class WebLiteTests(unittest.TestCase):
         for blocked_term in ("mastery", "review_stage", "queue", "diagnosis", "feedback"):
             self.assertNotIn(blocked_term, serialized.lower())
 
+    def test_web_chat_panel_assets_wire_to_stream_endpoint(self) -> None:
+        index_html = (ROOT / "apps" / "web" / "static" / "index.html").read_text(encoding="utf-8")
+        app_js = (ROOT / "apps" / "web" / "static" / "app.js").read_text(encoding="utf-8")
+        styles = (ROOT / "apps" / "web" / "static" / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="chat-log"', index_html)
+        self.assertIn('id="chat-input"', index_html)
+        self.assertIn('id="chat-send-button"', index_html)
+        self.assertIn('"/api/chat/stream"', app_js)
+        self.assertIn("parseSse", app_js)
+        self.assertIn("renderChatEvents", app_js)
+        self.assertIn(".chat-panel", styles)
+        self.assertIn(".chat-message", styles)
+
+    def test_web_serves_public_docs_assets_for_chat_media(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                connection = HTTPConnection(host, port, timeout=10)
+                connection.request("GET", "/docs/assets/visual-evidence/rag-agent-flow.png")
+                response = connection.getresponse()
+                content_type = response.getheader("Content-Type")
+                body = response.read()
+                connection.close()
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content_type, "image/png")
+        self.assertGreater(len(body), 100)
+
 
 def _store_with_transcript(temp_dir: str) -> tuple[SQLiteCourseStore, str]:
     skeleton = build_course_skeleton(

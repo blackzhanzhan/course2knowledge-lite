@@ -7,6 +7,8 @@ const state = {
   coverage: null,
   guideMode: "continue",
   activeView: "courses",
+  chatThreadId: "",
+  chatBusy: false,
 };
 
 const els = {
@@ -43,6 +45,9 @@ const els = {
   searchResults: document.querySelector("#search-results"),
   qaInput: document.querySelector("#qa-input"),
   qaAnswer: document.querySelector("#qa-answer"),
+  chatInput: document.querySelector("#chat-input"),
+  chatLog: document.querySelector("#chat-log"),
+  chatSendButton: document.querySelector("#chat-send-button"),
   noteInput: document.querySelector("#note-input"),
   notesList: document.querySelector("#notes-list"),
   bookmarksList: document.querySelector("#bookmarks-list"),
@@ -135,6 +140,11 @@ const statusCopy = {
   "Reader ready / no transcript": "阅读器就绪 / 暂无转写",
   "Building guide": "生成导学",
   "Knowledge cards generated": "知识卡片已生成",
+  "Chat needs a course": "先选择一门课程",
+  "Chat needs a message": "输入一条消息",
+  "Chat is running": "正在对话",
+  "Chat ready": "对话就绪",
+  "Chat failed": "对话失败",
   "Write a note first": "先写一条笔记",
   "Note saved": "笔记已保存",
   "Bookmark saved": "书签已保存",
@@ -853,10 +863,156 @@ async function runQa() {
   `;
 }
 
+async function runChat() {
+  if (!state.courseId || state.chatBusy) {
+    setStatus("Chat needs a course");
+    return;
+  }
+  const message = els.chatInput.value.trim();
+  if (!message) {
+    setStatus("Chat needs a message");
+    return;
+  }
+  state.chatBusy = true;
+  els.chatSendButton.disabled = true;
+  appendChatBubble("user", message);
+  const assistantBubble = appendChatBubble("assistant", "");
+  const eventsWrap = assistantBubble.querySelector(".chat-events");
+  const bodyWrap = assistantBubble.querySelector(".chat-body");
+  setStatus("Chat is running");
+  try {
+    const events = await postSse("/api/chat/stream", {
+      course_id: state.courseId,
+      message,
+      thread_id: state.chatThreadId,
+      channel: "web",
+    });
+    renderChatEvents(events, { bodyWrap, eventsWrap });
+    const threadState = events.find((event) => event.event === "thread_state")?.data || {};
+    state.chatThreadId = threadState.thread?.thread_id || state.chatThreadId;
+    setStatus("Chat ready");
+  } catch (error) {
+    bodyWrap.innerHTML = `<p class="blocked">${escapeHtml(error.message)}</p>`;
+    setStatus("Chat failed");
+  } finally {
+    state.chatBusy = false;
+    els.chatSendButton.disabled = false;
+    els.chatLog.scrollTop = els.chatLog.scrollHeight;
+  }
+}
+
+async function postSse(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(text || `Request failed: ${response.status}`);
+  }
+  return parseSse(text);
+}
+
+function parseSse(text) {
+  return text
+    .trim()
+    .split("\n\n")
+    .filter(Boolean)
+    .map((block) => {
+      const event = { event: "message", id: "", data: {} };
+      const dataLines = [];
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event: ")) {
+          event.event = line.slice(7);
+        } else if (line.startsWith("id: ")) {
+          event.id = line.slice(4);
+        } else if (line.startsWith("data: ")) {
+          dataLines.push(line.slice(6));
+        }
+      }
+      event.data = JSON.parse(dataLines.join("\n") || "{}");
+      return event;
+    });
+}
+
+function appendChatBubble(role, text) {
+  if (!els.chatLog.querySelector(".chat-message")) {
+    els.chatLog.innerHTML = "";
+  }
+  const bubble = document.createElement("article");
+  bubble.className = `chat-message is-${role}`;
+  bubble.innerHTML = `
+    <p class="chat-role">${role === "user" ? "You" : "Hermes Lite"}</p>
+    <div class="chat-body">${escapeHtml(text)}</div>
+    <div class="chat-events"></div>
+  `;
+  els.chatLog.appendChild(bubble);
+  els.chatLog.scrollTop = els.chatLog.scrollHeight;
+  return bubble;
+}
+
+function renderChatEvents(events, { bodyWrap, eventsWrap }) {
+  const messageEvent = events.find((event) => event.event === "message_delta");
+  const errorEvent = events.find((event) => event.event === "error");
+  const mediaEvents = events.filter((event) => event.event === "media");
+  if (messageEvent?.data?.payload?.delta) {
+    bodyWrap.innerHTML = `<p>${escapeHtml(messageEvent.data.payload.delta)}</p>`;
+  } else if (errorEvent?.data?.payload?.message) {
+    bodyWrap.innerHTML = `<p class="blocked">${escapeHtml(errorEvent.data.payload.message)}</p>`;
+  } else {
+    bodyWrap.innerHTML = '<p class="blocked">No local evidence matched this request.</p>';
+  }
+  if (mediaEvents.length) {
+    bodyWrap.insertAdjacentHTML(
+      "beforeend",
+      mediaEvents
+        .map((event) => {
+          const payload = event.data.payload || {};
+          return `
+            <figure class="chat-media">
+              <img src="/${escapeHtml(payload.image_path || "")}" alt="${escapeHtml(payload.title || "Visual evidence")}" />
+              <figcaption>${escapeHtml(payload.title || payload.visual_id || "")}</figcaption>
+            </figure>
+          `;
+        })
+        .join(""),
+    );
+  }
+  eventsWrap.innerHTML = events
+    .filter((event) => event.event !== "thread_state")
+    .map((event) => {
+      const payload = event.data.payload || {};
+      const label = payload.reason || payload.hit_count || payload.visual_id || payload.status || payload.source || "";
+      return `<span class="chat-event is-${escapeHtml(event.event)}">${escapeHtml(event.event)}${
+        label ? ` / ${escapeHtml(label)}` : ""
+      }</span>`;
+    })
+    .join("");
+}
+
+function renderChatEmptyState() {
+  if (!els.chatLog || els.chatLog.querySelector(".chat-message")) {
+    return;
+  }
+  els.chatLog.innerHTML = `
+    <div class="empty">
+      <p>Ask against the selected local course. Events stream from SQLite-backed Lite Chat Core.</p>
+      <p class="citation">Try: What is RAG Agent? / Show visual RAG Agent / show cards</p>
+    </div>
+  `;
+}
+
 els.importButton.addEventListener("click", importCollection);
 els.refreshButton.addEventListener("click", loadCourses);
 els.searchButton.addEventListener("click", runSearch);
 els.qaButton.addEventListener("click", runQa);
+els.chatSendButton.addEventListener("click", runChat);
+els.chatInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    runChat();
+  }
+});
 els.noteButton.addEventListener("click", saveNote);
 els.cardsButton.addEventListener("click", generateCards);
 els.guideButton.addEventListener("click", () => loadGuide(els.guideMode.value));
@@ -876,6 +1032,7 @@ els.lectureSelect.addEventListener("change", async () => {
 });
 
 setView("courses");
+renderChatEmptyState();
 
 loadCourses().catch((error) => {
   els.segments.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;

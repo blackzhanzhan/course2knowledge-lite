@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_ROOT = Path(__file__).resolve().parent / "static"
+DOCS_ASSETS_ROOT = REPO_ROOT / "docs" / "assets"
 DEFAULT_STORE_ROOT = REPO_ROOT / "data" / "course-store"
 
 sys.path.insert(0, str(REPO_ROOT / "packages" / "course-store" / "src"))
@@ -35,6 +36,8 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 self._send_static("index.html")
             elif parsed.path.startswith("/static/"):
                 self._send_static(parsed.path.removeprefix("/static/"))
+            elif parsed.path.startswith("/docs/assets/"):
+                self._send_docs_asset(parsed.path.removeprefix("/docs/assets/"))
             elif parsed.path == "/api/courses":
                 self._send_json({"courses": _list_courses(self.store_root)})
             elif parsed.path == "/api/lectures":
@@ -227,6 +230,20 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
     def _send_static(self, relative_path: str) -> None:
         path = (STATIC_ROOT / relative_path).resolve()
         if not _is_relative_to(path, STATIC_ROOT.resolve()) or not path.exists() or not path.is_file():
+            self.send_error(404, "Not found")
+            return
+        content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+        body = path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_docs_asset(self, relative_path: str) -> None:
+        path = (DOCS_ASSETS_ROOT / relative_path).resolve()
+        if not _is_relative_to(path, DOCS_ASSETS_ROOT.resolve()) or not path.exists() or not path.is_file():
             self.send_error(404, "Not found")
             return
         content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
