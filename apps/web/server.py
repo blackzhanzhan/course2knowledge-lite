@@ -22,7 +22,7 @@ sys.path.insert(0, str(REPO_ROOT / "packages" / "guidance" / "src"))
 from course2knowledge_lite_bilibili import import_collection_skeleton_to_store  # noqa: E402
 from course2knowledge_lite_guidance import get_learning_guide  # noqa: E402
 from course2knowledge_lite_qa import answer_course_question  # noqa: E402
-from course2knowledge_lite_store import SQLiteCourseStore  # noqa: E402
+from course2knowledge_lite_store import LiteChatCore, SQLiteCourseStore  # noqa: E402
 
 
 class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
@@ -154,6 +154,14 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     overwrite=_bool_body(payload.get("overwrite"), default=True),
                 )
                 self._send_json({"status": "completed", **result}, status=201)
+            elif parsed.path == "/api/chat/stream":
+                result = LiteChatCore(store).run_turn(
+                    course_id=_required_body(payload, "course_id"),
+                    message=_required_body(payload, "message"),
+                    thread_id=str(payload.get("thread_id", "") or "").strip(),
+                    channel=str(payload.get("channel", "web") or "web").strip(),
+                )
+                self._send_sse(_chat_sse_events(result))
             elif parsed.path == "/api/import":
                 result = import_collection_skeleton_to_store(
                     _required_body(payload, "source_url"),
@@ -206,6 +214,16 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_sse(self, events: list[dict[str, Any]], *, status: int = 200) -> None:
+        body = "".join(_encode_sse_event(event) for event in events).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _send_static(self, relative_path: str) -> None:
         path = (STATIC_ROOT / relative_path).resolve()
         if not _is_relative_to(path, STATIC_ROOT.resolve()) or not path.exists() or not path.is_file():
@@ -231,6 +249,79 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
 
 def _list_courses(store_root: Path) -> list[dict[str, Any]]:
     return SQLiteCourseStore(store_root).list_courses()
+
+
+def _chat_sse_events(result: dict[str, Any]) -> list[dict[str, Any]]:
+    thread = dict(result.get("thread") or {})
+    assistant_message = dict(result.get("assistant_message") or {})
+    events: list[dict[str, Any]] = []
+    for item in result.get("events") or []:
+        event = dict(item)
+        events.append(
+            {
+                "event": str(event.get("event_type") or "message"),
+                "id": str(event.get("event_id") or ""),
+                "data": _sanitize_chat_event_payload(
+                    {
+                        "event_id": str(event.get("event_id") or ""),
+                        "event_type": str(event.get("event_type") or ""),
+                        "thread_id": str(event.get("thread_id") or ""),
+                        "message_id": str(event.get("message_id") or ""),
+                        "tool_name": str(event.get("tool_name") or ""),
+                        "payload": dict(event.get("payload") or {}),
+                    }
+                ),
+            }
+        )
+    events.append(
+        {
+            "event": "thread_state",
+            "id": str(assistant_message.get("message_id") or ""),
+            "data": _sanitize_chat_event_payload(
+                {
+                    "status": str(result.get("status") or ""),
+                    "route": str(result.get("route") or ""),
+                    "thread": thread,
+                    "assistant_message": assistant_message,
+                }
+            ),
+        }
+    )
+    return events
+
+
+def _encode_sse_event(event: dict[str, Any]) -> str:
+    event_type = str(event.get("event") or "message")
+    event_id = str(event.get("id") or "")
+    data = json.dumps(event.get("data") or {}, ensure_ascii=False, sort_keys=True)
+    lines = [f"event: {event_type}"]
+    if event_id:
+        lines.append(f"id: {event_id}")
+    lines.extend(f"data: {line}" for line in data.splitlines() or ["{}"])
+    return "\n".join(lines) + "\n\n"
+
+
+def _sanitize_chat_event_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _sanitize_chat_event_payload(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_chat_event_payload(item) for item in value]
+    if isinstance(value, str):
+        return _redact_raw_path(value)
+    return value
+
+
+def _redact_raw_path(value: str) -> str:
+    parts = []
+    for token in value.split():
+        cleaned = token.strip(".,;:!?()[]{}\"'")
+        path = Path(cleaned.replace("\\", "/"))
+        is_windows_absolute = len(cleaned) >= 3 and cleaned[1:3] in {":/", ":\\"}
+        if is_windows_absolute or path.is_absolute() or ".." in path.parts:
+            parts.append(token.replace(cleaned, "[redacted-path]"))
+        else:
+            parts.append(token)
+    return " ".join(parts)
 
 
 def _required_param(params: dict[str, list[str]], name: str) -> str:

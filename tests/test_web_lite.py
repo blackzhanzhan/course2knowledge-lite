@@ -15,7 +15,12 @@ WEB_SERVER = ROOT / "apps" / "web" / "server.py"
 sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 sys.path.insert(0, str(ROOT / "packages" / "guidance" / "src"))
 
-from course2knowledge_lite_store import SQLiteCourseStore, TranscriptSegmentRecord, build_course_skeleton  # noqa: E402
+from course2knowledge_lite_store import (  # noqa: E402
+    SQLiteCourseStore,
+    TranscriptSegmentRecord,
+    VisualEvidenceRecord,
+    build_course_skeleton,
+)
 
 
 def load_web_server_module():
@@ -283,6 +288,112 @@ class WebLiteTests(unittest.TestCase):
         self.assertFalse(guide["limits"]["scores_learner"])
         self.assertEqual(progress["progress"][0]["status"], "not_started")
 
+    def test_web_chat_stream_returns_typed_sse_events(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _store, course_id = _store_with_transcript(temp_dir)
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                headers, events = _request_sse(
+                    host,
+                    port,
+                    "/api/chat/stream",
+                    {"course_id": course_id, "message": "What is RAG Agent?"},
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        self.assertEqual(headers["content-type"], "text/event-stream; charset=utf-8")
+        self.assertEqual([event["event"] for event in events[:4]], ["tool_start", "tool_result", "message_delta", "done"])
+        self.assertEqual(events[-1]["event"], "thread_state")
+        self.assertEqual(events[-1]["data"]["status"], "completed")
+        self.assertEqual(events[1]["data"]["payload"]["hit_count"], 1)
+        self.assertIn("RAG retrieves course evidence", events[2]["data"]["payload"]["delta"])
+
+    def test_web_chat_stream_emits_media_from_visual_evidence(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store, course_id = _store_with_transcript(temp_dir)
+            lecture = store.read_lectures(course_id)[0]
+            card = store.generate_knowledge_cards(course_id)["cards"][0]
+            store.write_visual_evidence_records(
+                course_id,
+                [
+                    VisualEvidenceRecord(
+                        visual_id="visual_rag_agent_flow",
+                        course_id=course_id,
+                        lecture_id=str(lecture["lecture_id"]),
+                        segment_id=f"{lecture['lecture_id']}::manual::00001",
+                        card_id=card["card_id"],
+                        title="RAG and Agent flow",
+                        explanation="RAG grounds answers in retrieved evidence.",
+                        image_path="docs/assets/visual-evidence/rag-agent-flow.png",
+                        source_url=str(lecture["source_url"]),
+                        provenance="public demo diagram derived from transcript segment",
+                        created_at="2026-05-15T00:00:00Z",
+                    )
+                ],
+            )
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                _headers, events = _request_sse(
+                    host,
+                    port,
+                    "/api/chat/stream",
+                    {"course_id": course_id, "message": "Show visual RAG Agent"},
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        media = next(event for event in events if event["event"] == "media")
+        self.assertEqual(media["data"]["payload"]["source"], "VISUAL_EVIDENCE")
+        self.assertEqual(media["data"]["payload"]["visual_id"], "visual_rag_agent_flow")
+        self.assertEqual(media["data"]["payload"]["image_path"], "docs/assets/visual-evidence/rag-agent-flow.png")
+
+    def test_web_chat_stream_blocks_missing_visual_without_raw_path_leak(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _store, course_id = _store_with_transcript(temp_dir)
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                _headers, events = _request_sse(
+                    host,
+                    port,
+                    "/api/chat/stream",
+                    {"course_id": course_id, "message": "show visual C:/private/image.png"},
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+        serialized = json.dumps(events, ensure_ascii=False)
+        self.assertEqual([event["event"] for event in events[:4]], ["tool_start", "tool_result", "error", "done"])
+        self.assertEqual(events[-1]["data"]["status"], "blocked")
+        self.assertIn("[redacted-path]", serialized)
+        self.assertNotIn("C:/private/image.png", serialized)
+        for blocked_term in ("mastery", "review_stage", "queue", "diagnosis", "feedback"):
+            self.assertNotIn(blocked_term, serialized.lower())
+
 
 def _store_with_transcript(temp_dir: str) -> tuple[SQLiteCourseStore, str]:
     skeleton = build_course_skeleton(
@@ -345,6 +456,52 @@ def _request_json(
     if not isinstance(result, dict):
         raise AssertionError(f"expected object response, got {type(result).__name__}")
     return result
+
+
+def _request_sse(
+    host: str,
+    port: int,
+    path: str,
+    payload: dict[str, object],
+    *,
+    expected_status: int = 200,
+) -> tuple[dict[str, str], list[dict[str, object]]]:
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    connection = HTTPConnection(host, port, timeout=10)
+    try:
+        connection.request("POST", path, body=body, headers={"Content-Type": "application/json"})
+        response = connection.getresponse()
+        raw_body = response.read().decode("utf-8")
+        headers = {key.lower(): value for key, value in response.getheaders()}
+    finally:
+        connection.close()
+    if response.status != expected_status:
+        raise AssertionError(f"expected HTTP {expected_status}, got {response.status}: {raw_body}")
+    return headers, _parse_sse(raw_body)
+
+
+def _parse_sse(raw_body: str) -> list[dict[str, object]]:
+    events = []
+    for block in raw_body.strip().split("\n\n"):
+        event_type = ""
+        event_id = ""
+        data_lines = []
+        for line in block.splitlines():
+            if line.startswith("event: "):
+                event_type = line.removeprefix("event: ")
+            elif line.startswith("id: "):
+                event_id = line.removeprefix("id: ")
+            elif line.startswith("data: "):
+                data_lines.append(line.removeprefix("data: "))
+        if event_type:
+            events.append(
+                {
+                    "event": event_type,
+                    "id": event_id,
+                    "data": json.loads("\n".join(data_lines) or "{}"),
+                }
+            )
+    return events
 
 
 if __name__ == "__main__":
