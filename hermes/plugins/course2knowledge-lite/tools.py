@@ -14,8 +14,7 @@ from course2knowledge_lite_bilibili import (
     probe_lecture_transcript_source_by_reference,
 )
 from course2knowledge_lite_guidance import get_learning_guide
-from course2knowledge_lite_qa import answer_course_question
-from course2knowledge_lite_store import SQLiteCourseStore
+from course2knowledge_lite_store import LiteChatCore, SQLiteCourseStore
 
 
 TOOLSET = "course2knowledge-lite"
@@ -244,24 +243,40 @@ def _course_visual_evidence_send_handler(arguments: dict[str, Any], **_registry_
             raise ValueError("image_path is not accepted; select an existing visual evidence record")
         store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
+        visual_query = str(arguments.get("query", "") or arguments.get("visual_id", "") or "visual evidence").strip()
+        message = f"show visual image {visual_query}"
         lecture_id = str(arguments.get("lecture_id", "") or "").strip()
         lecture_sequence = arguments.get("lecture_sequence")
         if not lecture_id and lecture_sequence not in (None, ""):
             lecture_id = str(store.read_lecture_reader(course_id, lecture_sequence=lecture_sequence)["lecture"]["lecture_id"])
-        visual = store.select_visual_evidence(
+        if str(arguments.get("visual_id", "") or "").strip() or lecture_id:
+            visual = store.select_visual_evidence(
+                course_id=course_id,
+                visual_id=str(arguments.get("visual_id", "") or "").strip(),
+                lecture_id=lecture_id,
+                query=str(arguments.get("query", "") or "").strip(),
+            )
+            if str(visual.get("title") or "").strip():
+                message = f"show visual image {visual['title']}"
+        turn = LiteChatCore(store).run_turn(
             course_id=course_id,
-            visual_id=str(arguments.get("visual_id", "") or "").strip(),
-            lecture_id=lecture_id,
-            query=str(arguments.get("query", "") or "").strip(),
+            message=message,
+            thread_id=str(arguments.get("thread_id", "") or "").strip(),
+            channel="hermes",
         )
+        media_event = _first_chat_event(turn, "media")
+        if not media_event:
+            raise ValueError(str(turn.get("assistant_message", {}).get("content") or "No visual evidence is available."))
+        visual = dict((media_event.get("payload") or {}))
         media_path = _resolve_public_media_path(str(visual.get("image_path") or ""))
-        explanation = _visual_evidence_explanation(visual)
+        explanation = str(turn.get("assistant_message", {}).get("content") or "").strip() or _visual_evidence_explanation(visual)
         media_directive = f"MEDIA:{media_path}"
         return _json_response(
             {
                 "status": "completed",
                 "tool": "course_visual_evidence_send",
                 "course_id": course_id,
+                "chat_turn": _chat_turn_public(turn),
                 "visual_evidence": visual,
                 "media_path": media_path,
                 "media_directive": media_directive,
@@ -333,12 +348,16 @@ def _course_question_answer_handler(arguments: dict[str, Any], **_registry_kwarg
     try:
         store = SQLiteCourseStore(_store_root(arguments))
         course_id = _resolve_course_id(arguments, store)
-        payload = answer_course_question(
-            store=store,
+        question = str(arguments.get("question", "") or "")
+        turn = LiteChatCore(store).run_turn(
             course_id=course_id,
-            question=str(arguments.get("question", "") or ""),
-            limit=_positive_limit(arguments.get("limit"), default=5),
+            message=question,
+            thread_id=str(arguments.get("thread_id", "") or "").strip(),
+            channel="hermes",
         )
+        delta_event = _first_chat_event(turn, "message_delta")
+        error_event = _first_chat_event(turn, "error")
+        payload = _answer_from_chat_turn(turn, delta_event=delta_event, error_event=error_event)
         return _json_response({"status": "completed", "tool": "course_question_answer", "answer": payload})
     except Exception as exc:  # noqa: BLE001
         return _tool_error("course_question_answer", exc)
@@ -656,6 +675,7 @@ def _course_visual_evidence_send_schema() -> dict[str, Any]:
                 "type": ["string", "null"],
                 "description": "Optional topic query used to select a public visual evidence record.",
             },
+            "thread_id": {"type": ["string", "null"], "description": "Optional Lite Chat Core thread id."},
             "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "additionalProperties": False,
@@ -683,6 +703,7 @@ def _course_question_answer_schema() -> dict[str, Any]:
             "course_id": {"type": ["string", "null"], "description": "Optional local course id."},
             "question": {"type": "string", "description": "Question to answer from transcript evidence."},
             "limit": {"type": ["integer", "string", "null"], "description": "Maximum citation count."},
+            "thread_id": {"type": ["string", "null"], "description": "Optional Lite Chat Core thread id."},
             "store_root": {"type": ["string", "null"], "description": "Optional local SQLite store root."},
         },
         "required": ["question"],
@@ -884,6 +905,60 @@ def _visual_evidence_explanation(visual: dict[str, Any]) -> str:
     if source_url:
         lines.append(f"Source: {source_url}")
     return "\n".join(lines)
+
+
+def _first_chat_event(turn: dict[str, Any], event_type: str) -> dict[str, Any]:
+    for event in turn.get("events") or []:
+        if str(event.get("event_type") or "") == event_type:
+            return dict(event)
+    return {}
+
+
+def _chat_turn_public(turn: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": turn.get("status"),
+        "route": turn.get("route"),
+        "thread": turn.get("thread"),
+        "assistant_message": turn.get("assistant_message"),
+        "event_count": len(turn.get("events") or []),
+        "events": [
+            {
+                "event_type": event.get("event_type"),
+                "tool_name": event.get("tool_name"),
+                "payload": event.get("payload") or {},
+            }
+            for event in turn.get("events") or []
+        ],
+    }
+
+
+def _answer_from_chat_turn(
+    turn: dict[str, Any],
+    *,
+    delta_event: dict[str, Any],
+    error_event: dict[str, Any],
+) -> dict[str, Any]:
+    delta_payload = dict(delta_event.get("payload") or {})
+    error_payload = dict(error_event.get("payload") or {})
+    tool_result = _first_chat_event(turn, "tool_result")
+    result_payload = dict(tool_result.get("payload") or {})
+    citations = list(delta_payload.get("citations") or [])
+    status = "answered" if str(turn.get("status") or "") == "completed" else "blocked"
+    return {
+        "status": status,
+        "course_id": str((turn.get("thread") or {}).get("course_id") or ""),
+        "question": str((turn.get("user_message") or {}).get("content") or ""),
+        "query": str(result_payload.get("query") or ""),
+        "answer": str((turn.get("assistant_message") or {}).get("content") or error_payload.get("message") or ""),
+        "citations": citations,
+        "citation_count": len(citations),
+        "evidence_snippets": [str(citation.get("text") or "") for citation in citations],
+        "chat_turn": _chat_turn_public(turn),
+        "limits": {
+            "mode": "lite_chat_core_transcript_citation_only",
+            "external_llm_used": False,
+        },
+    }
 
 
 def _is_relative_to(path: Path, parent: Path) -> bool:

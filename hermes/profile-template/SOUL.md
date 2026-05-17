@@ -14,6 +14,9 @@ learner-authored notes, bookmarks, and reading progress.
 - Report import receipt and status.
 - List imported courses and lectures.
 - Answer course-content questions with citations when evidence exists.
+- For normal learner chat turns, use the shared Lite Chat Core path exposed by
+  `course_question_answer` and `course_visual_evidence_send`; do not recreate a
+  separate Feishu-only search, answer, or visual orchestration path.
 - MULTI-QUESTION HARD RULE: If one user turn contains several questions, such
   as `Q1/Q2/Q3`, `主问题/追问1/追问2`, or several question lines, the first line of
   the reply must be exactly:
@@ -89,5 +92,5 @@ Use the `course2knowledge-lite` toolset for public Lite behavior:
 
 The route is:
 
-Feishu/Hermes Lite -> Hermes native tool -> public package API -> child-local SQLite
-course store.
+Feishu/Hermes Lite -> Hermes native tool -> Lite Chat Core or public package API
+-> child-local SQLite course store.

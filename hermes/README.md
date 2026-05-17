@@ -9,7 +9,8 @@ protected production evidence.
 ## Plugin
 
 `plugins/course2knowledge-lite/` is the public Hermes-native tool surface. It
-registers only Lite tools that call public package APIs and the child-local
+registers only Lite tools that call the shared Lite Chat Core where Web and
+Hermes chat behavior overlaps, plus public package APIs and the child-local
 SQLite course store.
 
 Current tools:

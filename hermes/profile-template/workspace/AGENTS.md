@@ -30,8 +30,9 @@ The profile may use only the public `course2knowledge-lite` Hermes toolset:
 - `reading_progress_set`
 - `reading_progress_get`
 
-These tools call public package APIs and the child-local SQLite course store. They are not
-agent-managed script shortcuts.
+These tools call the shared Lite Chat Core where chat behavior overlaps with Web
+Lite, plus public package APIs and the child-local SQLite course store. They are
+not agent-managed script shortcuts.
 
 ## Product Boundary
 
@@ -41,6 +42,8 @@ Allowed:
 - Import status.
 - Course and lecture lookup.
 - Course-content answers from available evidence.
+- Normal learner chat turns through the shared Lite Chat Core path behind
+  `course_question_answer` and `course_visual_evidence_send`.
 - Missing-evidence clarification.
 - Transcript coverage summaries.
 - Public guided learning: continue-learning suggestions, lecture walkthroughs,

@@ -352,6 +352,10 @@ class HermesLitePluginTests(unittest.TestCase):
             auto_qa_raw = ctx.tools["course_question_answer"]["handler"](
                 {"store_root": temp_dir, "question": "What is the difference between RAG and Agent?"}
             )
+            persisted_threads = SQLiteCourseStore(temp_dir).list_chat_threads(
+                course_id=skeleton.course.course_id,
+                channel="hermes",
+            )
 
         coverage_payload = json.loads(coverage_raw)
         reader_payload = json.loads(reader_raw)
@@ -370,6 +374,9 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(auto_search_payload["result_count"], 1)
         self.assertEqual(auto_qa_payload["status"], "completed")
         self.assertEqual(auto_qa_payload["answer"]["status"], "answered")
+        self.assertEqual(qa_payload["answer"]["chat_turn"]["route"], "search")
+        self.assertIn("message_delta", [event["event_type"] for event in qa_payload["answer"]["chat_turn"]["events"]])
+        self.assertEqual(len(persisted_threads), 2)
 
     def test_auto_course_selection_reports_human_ambiguity_for_multiple_courses(self) -> None:
         module = load_plugin_module()
@@ -661,6 +668,8 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertEqual(payload["status"], "completed")
         self.assertEqual(payload["tool"], "course_visual_evidence_send")
         self.assertEqual(payload["visual_evidence"]["visual_id"], "visual_rag_agent_flow")
+        self.assertEqual(payload["chat_turn"]["route"], "visual_evidence")
+        self.assertIn("media", [event["event_type"] for event in payload["chat_turn"]["events"]])
         self.assertIn("RAG grounds answers", payload["gateway_reply"])
         self.assertEqual(payload["gateway_reply"].count("MEDIA:"), 1)
         self.assertTrue(Path(payload["media_path"]).exists())
