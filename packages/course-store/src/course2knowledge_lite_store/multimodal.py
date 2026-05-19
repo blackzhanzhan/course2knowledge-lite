@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+import shutil
+import subprocess
 from typing import Any
 
 
 class MultimodalConfigError(ValueError):
     """Raised when a Lite multimodal anchor cannot be interpreted."""
+
+
+class MultimodalDependencyError(RuntimeError):
+    """Raised when a required local multimodal dependency is unavailable."""
+
+
+class MultimodalExtractionError(RuntimeError):
+    """Raised when ffmpeg cannot extract frames from a real media file."""
 
 
 @dataclass(frozen=True)
@@ -106,10 +117,84 @@ def build_lite_anchor_frame_windows(
     return windows
 
 
+def require_ffmpeg() -> str:
+    resolved = shutil.which("ffmpeg")
+    if resolved:
+        return resolved
+    raise MultimodalDependencyError("ffmpeg is required for Lite multimodal keyframe extraction")
+
+
+def resolve_lite_source_media(*, media_path: str = "") -> str:
+    cleaned = str(media_path or "").strip()
+    if not cleaned:
+        raise MultimodalConfigError("Lite multimodal extraction requires a local media_path")
+    resolved = Path(cleaned).expanduser().resolve()
+    if not resolved.exists() or not resolved.is_file():
+        raise MultimodalConfigError(f"Lite multimodal source media is missing: {resolved}")
+    return str(resolved)
+
+
+def extract_lite_candidate_frames_for_windows(
+    *,
+    media_path: str,
+    windows: list[LiteAnchorFrameWindow],
+    output_root: str,
+    sample_every_seconds: float = 1.0,
+) -> dict[str, list[str]]:
+    source_media = resolve_lite_source_media(media_path=media_path)
+    ffmpeg = require_ffmpeg()
+    output_dir = Path(str(output_root or "").strip()).expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fps_value = 1.0 / max(float(sample_every_seconds), 0.1)
+    results: dict[str, list[str]] = {}
+    for window in windows:
+        anchor_dir = output_dir / _safe_anchor_dir(window.anchor_id)
+        anchor_dir.mkdir(parents=True, exist_ok=True)
+        output_pattern = anchor_dir / "frame_%03d.jpg"
+        completed = subprocess.run(
+            [
+                ffmpeg,
+                "-y",
+                "-ss",
+                f"{window.start_seconds:.3f}",
+                "-to",
+                f"{window.end_seconds:.3f}",
+                "-i",
+                source_media,
+                "-vf",
+                f"fps={fps_value:.4f}",
+                "-q:v",
+                "2",
+                str(output_pattern),
+            ],
+            text=True,
+            capture_output=True,
+            timeout=1800,
+            check=False,
+        )
+        if completed.returncode != 0:
+            detail = str(completed.stderr or completed.stdout or "").strip()
+            raise MultimodalExtractionError(
+                f"ffmpeg could not extract Lite frames for {window.anchor_id}: {detail[:300]}"
+            )
+        results[window.anchor_id] = sorted(str(path.resolve()) for path in anchor_dir.glob("frame_*.jpg"))
+    return results
+
+
+def _safe_anchor_dir(raw_value: str) -> str:
+    cleaned = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in str(raw_value or "").strip())
+    return cleaned.strip("._") or "anchor"
+
+
 __all__ = [
     "LiteAnchorFrameWindow",
     "MultimodalConfigError",
+    "MultimodalDependencyError",
+    "MultimodalExtractionError",
     "build_lite_anchor_frame_windows",
+    "extract_lite_candidate_frames_for_windows",
     "format_anchor_timestamp",
     "parse_anchor_timestamp",
+    "require_ffmpeg",
+    "resolve_lite_source_media",
 ]
