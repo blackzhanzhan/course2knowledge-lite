@@ -86,8 +86,19 @@ Fields:
 
 ### VISUAL_EVIDENCE
 
-Represents a public image that can be shown in Web Lite or sent by
+Represents a public visual item that can be shown in Web Lite or sent by
 Feishu/Hermes Lite with an explanation.
+
+There are two allowed provenance classes:
+
+- `demo_visual`: a public diagram fixture used by smoke tests and showcase
+  material.
+- `generated_keyframe`: a real keyframe extracted from the lecture's source
+  video around a transcript or dossier anchor.
+
+Only `generated_keyframe` records count toward imported-course multimodal
+readiness. Demo visuals must not be used as a substitute for lecture-bound
+key screenshots.
 
 SQLite table: `visual_evidence`
 
@@ -108,6 +119,10 @@ Fields:
 `image_path` must be a repo-local public asset path. Visual evidence cannot be
 created from a naked user-supplied local path and cannot point outside this
 repository.
+
+When the importer cannot obtain usable source media, it must record an import
+artifact with an explicit unavailable reason instead of creating a placeholder
+visual evidence image.
 
 ### NOTE
 
