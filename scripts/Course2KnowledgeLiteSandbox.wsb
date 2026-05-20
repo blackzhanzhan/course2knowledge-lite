@@ -1,0 +1,14 @@
+<Configuration>
+  <!--
+    This file is a portable placeholder kept for discoverability.
+
+    Do not hard-code host machine paths here. Run:
+
+      powershell.exe -ExecutionPolicy Bypass -File .\scripts\run_sandbox_smoke.ps1
+
+    The runner derives the repository root from its own location and writes the
+    real Windows Sandbox configuration to:
+
+      tmp\deploy-smoke-windows\sandbox-config\Course2KnowledgeLiteSandbox.generated.wsb
+  -->
+</Configuration>

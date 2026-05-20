@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Course2Knowledge Lite</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="app-sider" aria-label="Course2Knowledge Lite navigation">
+        <div class="brand-block">
+          <span class="brand-mark">C2K</span>
+          <div>
+            <strong>Course2Knowledge</strong>
+            <small>轻量线上学校</small>
+          </div>
+        </div>
+        <nav class="nav-list" aria-label="School modules">
+          <button class="nav-item is-active" type="button" data-view="interaction">
+            <span>互动</span>
+            <small>聊天 / 知识节点</small>
+          </button>
+          <button class="nav-item" type="button" data-view="courses">
+            <span>课程管理</span>
+            <small>导入 / 课时 / 原子</small>
+          </button>
+          <button class="nav-item" type="button" data-view="notes">
+            <span>课程笔记</span>
+            <small>Markdown / 本地笔记</small>
+          </button>
+        </nav>
+        <div class="sider-foot">
+          <span>Public Lite</span>
+          <strong>Local SQLite</strong>
+        </div>
+      </aside>
+
+      <section class="main-shell">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="view-eyebrow">Interaction</p>
+            <h1 id="view-title">互动</h1>
+            <p id="view-subtitle">选择课程和课时后，直接在这里和学习助手聊天，右侧同步看知识节点状态。</p>
+          </div>
+          <div class="topbar-status">
+            <div class="status" id="status">读取本地课程库</div>
+          </div>
+        </header>
+
+        <section class="view is-active" id="view-interaction" data-view-panel="interaction">
+          <section class="interaction-layout">
+            <section class="panel chat-panel" aria-label="Course learning assistant chat">
+              <div class="panel-head">
+                <div>
+                  <h2>学习助手</h2>
+                  <p class="panel-note">通过 Hermes 教学路由带你一步一步回答。</p>
+                </div>
+                <label class="thread-select-label">
+                  对话
+                  <select id="chat-thread-select"></select>
+                </label>
+              </div>
+              <div id="chat-log" class="chat-log" aria-live="polite"></div>
+              <div class="chat-composer">
+                <textarea id="chat-input" rows="3" placeholder="输入你想学的问题，或直接说：开始学习当前课程"></textarea>
+                <div class="chat-actions">
+                  <button id="chat-send-button" type="button" title="发送消息">发送</button>
+                </div>
+              </div>
+            </section>
+
+            <aside class="side-stack" aria-label="Current course and knowledge atoms">
+              <section class="panel context-card">
+                <div class="context-title">
+                  <p class="eyebrow" id="course-meta">尚未选择课程</p>
+                  <h2 id="lecture-title">等待课程</h2>
+                </div>
+                <label class="select-label">
+                  课程
+                  <select id="course-select"></select>
+                </label>
+                <label class="select-label">
+                  课时
+                  <select id="lecture-select"></select>
+                </label>
+                <label class="select-label">
+                  阅读状态
+                  <select id="progress-select">
+                    <option value="not_started">未开始</option>
+                    <option value="reading">阅读中</option>
+                    <option value="read">已读</option>
+                  </select>
+                </label>
+              </section>
+
+              <section class="panel atom-panel" aria-label="Knowledge atom candidates">
+                <div class="panel-head">
+                  <div>
+                    <h2>知识节点状态</h2>
+                    <p class="panel-note" id="atom-progress-summary">等待当前课时卡片</p>
+                  </div>
+                  <button id="cards-button" type="button" title="从当前课时生成知识节点">生成</button>
+                </div>
+                <div id="atom-state-list" class="atom-state-list"></div>
+                <div id="learning-signal-list" class="learning-signal-list" aria-label="Hermes learning signals"></div>
+                <div id="lesson-advance-panel" class="lesson-advance-panel" hidden>
+                  <button id="lesson-advance-button" type="button" title="进入下一个视频">下一节课</button>
+                </div>
+              </section>
+
+              <section class="panel evidence-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>本节证据</h2>
+                    <p class="panel-note">当前课时的转写片段。</p>
+                  </div>
+                </div>
+                <div id="segments" class="segments"></div>
+              </section>
+            </aside>
+          </section>
+        </section>
+
+        <section class="view" id="view-courses" data-view-panel="courses">
+          <section class="import-panel" aria-label="Import Bilibili collection">
+            <div class="panel-head">
+              <div>
+                <h2>导入课程</h2>
+                <p class="panel-note">粘贴 Bilibili 合集链接，写入本地 SQLite。</p>
+              </div>
+              <button id="import-button" type="button" title="导入合集">导入</button>
+            </div>
+            <div class="import-row">
+              <input
+                id="import-url"
+                type="url"
+                value="https://space.bilibili.com/1112988584/lists/7726472?type=season"
+                autocomplete="off"
+              />
+              <div class="secret-field">
+                <label for="bilibili-cookie">Bilibili Cookie</label>
+                <input
+                  id="bilibili-cookie"
+                  type="password"
+                  inputmode="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="SESSDATA=...; bili_jct=..."
+                />
+                <div class="secret-actions">
+                  <button id="paste-cookie-button" class="ghost-button" type="button">从剪贴板读取</button>
+                  <button id="qr-login-button" class="ghost-button" type="button">扫码登录</button>
+                  <button id="clear-qr-login-button" class="ghost-button" type="button">清空扫码</button>
+                  <button id="clear-cookie-button" class="ghost-button" type="button">清空</button>
+                  <button id="clear-stored-cookie-button" class="ghost-button" type="button">清除已保存登录态</button>
+                </div>
+                <label class="remember-cookie-row">
+                  <input id="remember-bilibili-cookie" type="checkbox" />
+                  <span>记住登录态到本机 .codex/auth，后续导入自动使用</span>
+                </label>
+                <p class="field-hint">默认仅本次导入临时发送；勾选后只在本机保存 cookie 名值，不回显、不写入 SQLite。</p>
+                <p id="bilibili-cookie-status" class="field-hint">正在读取本机登录态...</p>
+                <div id="qr-login-panel" class="qr-login-panel is-hidden" aria-live="polite"></div>
+              </div>
+            </div>
+            <div id="import-receipt" class="import-receipt" aria-live="polite"></div>
+          </section>
+
+          <section class="course-management-layout">
+            <section class="panel course-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>课程</h2>
+                  <p class="panel-note">选择课程后查看课时和知识原子。</p>
+                </div>
+                <button id="refresh-button" type="button" title="刷新课程">刷新</button>
+              </div>
+              <div id="course-list" class="list"></div>
+            </section>
+
+            <section class="panel course-detail-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>课程内部</h2>
+                  <p class="panel-note">课时、转写覆盖、知识原子节点。</p>
+                </div>
+                <button class="ghost-button" type="button" data-view-jump="interaction">去互动</button>
+              </div>
+              <div id="selected-course-summary" class="summary-panel"></div>
+              <div id="coverage-panel" class="coverage-panel"></div>
+              <div class="detail-split">
+                <div>
+                  <h3>课时</h3>
+                  <div id="lecture-admin-list" class="lecture-admin-list"></div>
+                </div>
+                <div>
+                  <h3>知识原子</h3>
+                  <div id="cards-list" class="cards-list"></div>
+                </div>
+              </div>
+            </section>
+          </section>
+        </section>
+
+        <section class="view" id="view-notes" data-view-panel="notes">
+          <section class="notes-layout">
+            <aside class="panel notes-side">
+              <div class="panel-head">
+                <div>
+                  <h2>笔记范围</h2>
+                  <p class="panel-note">跟随当前课程和课时。</p>
+                </div>
+              </div>
+              <label class="select-label">
+                课程
+                <select id="notes-course-select"></select>
+              </label>
+              <label class="select-label">
+                课时
+                <select id="notes-lecture-select"></select>
+              </label>
+              <div class="note-editor">
+                <textarea id="note-input" rows="5" placeholder="为当前课时写一条本地笔记"></textarea>
+                <button id="note-button" type="button" title="保存笔记">保存笔记</button>
+              </div>
+            </aside>
+
+            <section class="panel note-main">
+              <div class="panel-head">
+                <div>
+                  <h2>课程笔记</h2>
+                  <p class="panel-note">优先显示真实 Markdown / Obsidian 内容；未接入时只显示本地笔记和证据。</p>
+                </div>
+              </div>
+              <div id="markdown-notes" class="markdown-notes"></div>
+              <div id="notes-list" class="result-list"></div>
+              <div id="bookmarks-list" class="result-list"></div>
+            </section>
+          </section>
+        </section>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
