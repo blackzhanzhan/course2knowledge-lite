@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 演示视频脚本
+permalink: /demo-video/
+---
 # Demo Video Plan
 
 This document defines the public demo video for Course2Knowledge Lite. The video

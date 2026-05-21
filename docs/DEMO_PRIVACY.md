@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 演示隐私规则
+permalink: /demo-privacy/
+---
 # Demo Privacy And Masking Rules
 
 This document defines what may appear in public demo video assets and what must

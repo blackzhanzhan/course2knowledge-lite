@@ -1,3 +1,8 @@
+---
+layout: technical
+title: Clean Deploy Smoke
+permalink: /clean-deploy-smoke/
+---
 # Clean Deployment Smoke
 
 This checklist verifies the public child project outside the current editable

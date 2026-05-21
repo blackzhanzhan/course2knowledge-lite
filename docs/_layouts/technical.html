@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page.title }} · Course2Knowledge Lite</title>
+    <meta
+      name="description"
+      content="Course2Knowledge Lite 技术文档：{{ page.title }}"
+    />
+    <link rel="stylesheet" href="{{ '/site.css' | relative_url }}" />
+  </head>
+  <body class="doc-page">
+    <header class="topbar">
+      <a class="brand" href="{{ '/' | relative_url }}" aria-label="Course2Knowledge Lite 技术档案">
+        <span>Course2Knowledge</span>
+        <strong>Lite 技术档案</strong>
+      </a>
+      <nav class="topnav" aria-label="技术文档导航">
+        <a href="{{ '/architecture/' | relative_url }}">架构</a>
+        <a href="{{ '/data-model/' | relative_url }}">数据模型</a>
+        <a href="{{ '/bilibili-import/' | relative_url }}">导入</a>
+        <a href="{{ '/deployment/' | relative_url }}">部署</a>
+        <a href="{{ '/testing/' | relative_url }}">测试</a>
+      </nav>
+    </header>
+
+    <main class="doc-layout">
+      <article class="doc-article">
+        <p class="doc-kicker"><a href="{{ '/' | relative_url }}">技术档案</a> / {{ page.title }}</p>
+        {{ content }}
+      </article>
+    </main>
+  </body>
+</html>

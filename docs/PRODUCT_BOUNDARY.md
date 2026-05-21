@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 产品边界
+permalink: /product-boundary/
+---
 # Product Boundary
 
 Course2Knowledge Lite 是一个“在线视频课程 -> 本地课程知识运行时”的公开子项目。它的目标不是复制一个完整学习教练系统，而是把课程导入、证据保留、知识编译、SQLite 持久化和前台交互这条公开链路跑通。

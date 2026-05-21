@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 测试说明
+permalink: /testing/
+---
 # Testing
 
 Course2Knowledge Lite 的测试目标不是只证明“代码能跑”，而是证明公共子项目没有偏离边界：
@@ -195,14 +200,14 @@ course2knowledge-lite smoke-profile --profile-root <profile-root>
 
 README 和 GitHub Pages 会链接多个 docs。发布前至少检查：
 
-- `docs/TECHNICAL_WHITEPAPER.md`
-- `docs/ARCHITECTURE.md`
-- `docs/DATA_MODEL.md`
-- `docs/WEB_LITE.md`
-- `docs/FEISHU_LITE.md`
-- `docs/BILIBILI_IMPORT.md`
-- `docs/DEPLOYMENT.md`
-- `docs/TESTING.md`
+- `/course2knowledge-lite/technical-whitepaper/`
+- `/course2knowledge-lite/architecture/`
+- `/course2knowledge-lite/data-model/`
+- `/course2knowledge-lite/web-lite/`
+- `/course2knowledge-lite/feishu-lite/`
+- `/course2knowledge-lite/bilibili-import/`
+- `/course2knowledge-lite/deployment/`
+- `/course2knowledge-lite/testing/`
 
 这些文档不能只是占位标题，应能解释自己的边界、入口、测试方式和风险。
 

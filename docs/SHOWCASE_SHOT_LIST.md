@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 截图证据清单
+permalink: /showcase-shot-list/
+---
 # Showcase Shot List
 
 This document is the capture contract for the public showcase site. The page

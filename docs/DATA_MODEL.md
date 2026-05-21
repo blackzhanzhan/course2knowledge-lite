@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 数据模型
+permalink: /data-model/
+---
 # Data Model
 
 Course2Knowledge Lite 使用本地 SQLite 作为默认写入权威。数据模型围绕“课程证据 -> 编译对象 -> 前台交互”组织，而不是围绕聊天消息或向量检索组织。

@@ -1,0 +1,6 @@
+title: Course2Knowledge Lite
+description: Course2Knowledge Lite technical dossier
+url: "https://blackzhanzhan.github.io"
+baseurl: "/course2knowledge-lite"
+markdown: kramdown
+permalink: pretty

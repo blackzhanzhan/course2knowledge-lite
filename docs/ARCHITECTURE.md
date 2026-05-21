@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 架构说明
+permalink: /architecture/
+---
 # Architecture
 
 Course2Knowledge Lite 的架构可以概括为：

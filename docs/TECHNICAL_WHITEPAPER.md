@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 技术白皮书
+permalink: /technical-whitepaper/
+---
 # Course2Knowledge Lite 技术白皮书
 
 ## 摘要

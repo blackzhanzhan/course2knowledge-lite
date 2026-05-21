@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 站点地图
+permalink: /site-map/
+---
 # Static Site Map
 
 Course2Knowledge Lite uses `docs/` as the GitHub Pages source. The site is a
@@ -39,7 +44,7 @@ the conversational workspace. Both consume the same public course store.
    - Show the same case chain as the screenshot gallery: import receipt,
      lecture expansion, transcript segments, Web reader/search/Q&A, cards, and
      Hermes Lite boundary proof.
-   - Link directly to `DEMO_VIDEO.md` and `DEMO_PRIVACY.md` so the showcase
+   - Link directly to `/course2knowledge-lite/demo-video/` and `/course2knowledge-lite/demo-privacy/` so the showcase
      keeps its technical-dossier responsibility.
 
 3. **Walkthrough**
@@ -57,7 +62,7 @@ the conversational workspace. Both consume the same public course store.
    - The shot set keeps stable `SHOT-*` IDs.
    - `SHOT-02` remains a future safe Feishu chat capture; it is not shown with a
      private production substitute.
-   - Detailed capture contract: [`SHOWCASE_SHOT_LIST.md`](SHOWCASE_SHOT_LIST.md).
+   - Detailed capture contract: [`/course2knowledge-lite/showcase-shot-list/`](/course2knowledge-lite/showcase-shot-list/).
 
 6. **Product Thought**
    - Express the core idea: course videos are not lacking content; the content is
@@ -73,16 +78,16 @@ the conversational workspace. Both consume the same public course store.
    - The public version is a deliberately trimmed loop, not a thin demo.
 
 8. **Technical Dossier**
-   - Demo video: [`DEMO_VIDEO.md`](DEMO_VIDEO.md)
-   - Privacy and masking rules: [`DEMO_PRIVACY.md`](DEMO_PRIVACY.md)
-   - Product boundary: [`PRODUCT_BOUNDARY.md`](PRODUCT_BOUNDARY.md)
-   - Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md)
-   - Data model: [`DATA_MODEL.md`](DATA_MODEL.md)
-   - Bilibili import: [`BILIBILI_IMPORT.md`](BILIBILI_IMPORT.md)
-   - Web Lite: [`WEB_LITE.md`](WEB_LITE.md)
-   - Feishu Lite: [`FEISHU_LITE.md`](FEISHU_LITE.md)
-   - Testing: [`TESTING.md`](TESTING.md)
-   - Deployment: [`DEPLOYMENT.md`](DEPLOYMENT.md)
+   - Demo video: [`/course2knowledge-lite/demo-video/`](/course2knowledge-lite/demo-video/)
+   - Privacy and masking rules: [`/course2knowledge-lite/demo-privacy/`](/course2knowledge-lite/demo-privacy/)
+   - Product boundary: [`/course2knowledge-lite/product-boundary/`](/course2knowledge-lite/product-boundary/)
+   - Architecture: [`/course2knowledge-lite/architecture/`](/course2knowledge-lite/architecture/)
+   - Data model: [`/course2knowledge-lite/data-model/`](/course2knowledge-lite/data-model/)
+   - Bilibili import: [`/course2knowledge-lite/bilibili-import/`](/course2knowledge-lite/bilibili-import/)
+   - Web Lite: [`/course2knowledge-lite/web-lite/`](/course2knowledge-lite/web-lite/)
+   - Feishu Lite: [`/course2knowledge-lite/feishu-lite/`](/course2knowledge-lite/feishu-lite/)
+   - Testing: [`/course2knowledge-lite/testing/`](/course2knowledge-lite/testing/)
+   - Deployment: [`/course2knowledge-lite/deployment/`](/course2knowledge-lite/deployment/)
 
 9. **Deploy**
    - Minimal local install path.
@@ -118,8 +123,8 @@ chat captures out of the public repo.
 
 ## Demo Video Plan
 
-The public video plan lives in [`DEMO_VIDEO.md`](DEMO_VIDEO.md), with masking
-rules in [`DEMO_PRIVACY.md`](DEMO_PRIVACY.md). The short homepage video should
+The public video plan lives in [`/course2knowledge-lite/demo-video/`](/course2knowledge-lite/demo-video/), with masking
+rules in [`/course2knowledge-lite/demo-privacy/`](/course2knowledge-lite/demo-privacy/). The short homepage video should
 reuse the same public course case as the screenshot gallery: import receipt,
 lecture expansion, transcript segments, Web reader/search/Q&A, knowledge cards,
 and Hermes Lite boundary proof. Raw footage must stay out of git.
@@ -138,4 +143,7 @@ Recommended GitHub Pages setting:
 - Branch: `main`
 - Folder: `/docs`
 
-No build step is required.
+GitHub Pages should use its normal Jekyll rendering pass. Public technical
+documents are exposed through route permalinks such as `/architecture/`,
+`/bilibili-import/`, `/deployment/`, and `/testing/`. Do not link to raw
+Markdown filenames such as `BILIBILI_IMPORT.md` from the public site.

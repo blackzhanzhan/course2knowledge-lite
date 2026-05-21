@@ -1,3 +1,8 @@
+---
+layout: technical
+title: Feishu / Hermes Lite
+permalink: /feishu-lite/
+---
 # Feishu/Hermes Lite
 
 Feishu/Hermes Lite is the public chat surface.

@@ -33,6 +33,10 @@ body {
   line-height: 1.72;
 }
 
+.doc-page {
+  background: #fbfbf8;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -172,6 +176,88 @@ pre code {
 
 .article {
   min-width: 0;
+}
+
+.doc-layout {
+  width: min(920px, calc(100vw - 36px));
+  margin: 0 auto;
+  padding: clamp(34px, 5vw, 64px) 0 80px;
+}
+
+.doc-article {
+  min-width: 0;
+}
+
+.doc-kicker {
+  margin: 0 0 18px;
+  color: var(--quiet);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.doc-kicker a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.doc-article h1 {
+  max-width: 900px;
+  margin: 0 0 22px;
+  font-size: clamp(36px, 6vw, 58px);
+}
+
+.doc-article h2 {
+  max-width: 900px;
+  margin: 44px 0 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 36px;
+  font-size: clamp(26px, 4vw, 38px);
+}
+
+.doc-article h3 {
+  margin: 30px 0 10px;
+}
+
+.doc-article p,
+.doc-article li {
+  color: #3d4651;
+}
+
+.doc-article p {
+  max-width: 850px;
+}
+
+.doc-article a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.doc-article ul,
+.doc-article ol {
+  max-width: 850px;
+  margin: 14px 0 0;
+  padding-left: 24px;
+}
+
+.doc-article table {
+  width: 100%;
+  margin: 24px 0 0;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.doc-article th,
+.doc-article td {
+  border-top: 1px solid var(--line);
+  padding: 11px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc-article th {
+  color: var(--ink);
+  font-weight: 760;
 }
 
 .article *,

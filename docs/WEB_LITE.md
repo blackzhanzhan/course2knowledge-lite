@@ -1,3 +1,8 @@
+---
+layout: technical
+title: Web Lite 课堂
+permalink: /web-lite/
+---
 # Web Lite
 
 Web Lite 是 Course2Knowledge Lite 的主要可视化课堂前台。它的目标不是做一个控制台，而是让学习者进入一门本地课程后，能直接聊天、查看知识节点、管理课程、阅读讲义和记录轻量学习状态。

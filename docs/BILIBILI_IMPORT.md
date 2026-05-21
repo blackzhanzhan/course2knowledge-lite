@@ -1,3 +1,8 @@
+---
+layout: technical
+title: Bilibili 导入链路
+permalink: /bilibili-import/
+---
 # Bilibili Import
 
 Bilibili import is the retained real platform adapter for Course2Knowledge Lite.

@@ -4,7 +4,7 @@
 
 Course2Knowledge Lite 不是 LMS、普通 RAG demo、笔记软件、视频下载器，也不是通用 Agent 框架。它把一门 B 站视频课当作证据源，经过字幕、视觉证据、中文讲义、知识原子和学习关口的编译，落到本地 SQLite 课程运行时，再由 Web Lite 课堂和可选 Hermes Lite 工具前台读取。
 
-[技术档案](https://blackzhanzhan.github.io/course2knowledge-lite/) · [技术白皮书](docs/TECHNICAL_WHITEPAPER.md) · [部署说明](docs/DEPLOYMENT.md) · [测试说明](docs/TESTING.md)
+[技术档案](https://blackzhanzhan.github.io/course2knowledge-lite/) · [技术白皮书](https://blackzhanzhan.github.io/course2knowledge-lite/technical-whitepaper/) · [部署说明](https://blackzhanzhan.github.io/course2knowledge-lite/deployment/) · [测试说明](https://blackzhanzhan.github.io/course2knowledge-lite/testing/)
 
 ![Course2Knowledge Lite 总体架构](docs/assets/readme/technical-dossier-architecture.png)
 
@@ -90,7 +90,7 @@ http://127.0.0.1:3014/
 course2knowledge-lite web --store-root tmp/release-web-store
 ```
 
-部署现实说明：这个项目目前仍是个人维护的原创架构，重点是把“课程编译成本地知识运行时”这条链路跑通，而不是提供一套成熟的一键云部署方案。如果你在不同系统、Python 环境、网络条件或 B 站登录态上遇到部署问题，建议把错误日志、系统环境、启动命令和当前配置整理出来，让 AI 辅助你逐步排查。更多细节见 [部署说明](docs/DEPLOYMENT.md)。
+部署现实说明：这个项目目前仍是个人维护的原创架构，重点是把“课程编译成本地知识运行时”这条链路跑通，而不是提供一套成熟的一键云部署方案。如果你在不同系统、Python 环境、网络条件或 B 站登录态上遇到部署问题，建议把错误日志、系统环境、启动命令和当前配置整理出来，让 AI 辅助你逐步排查。更多细节见 [部署说明](https://blackzhanzhan.github.io/course2knowledge-lite/deployment/)。
 
 导入测试 URL 示例：
 
@@ -185,11 +185,11 @@ git diff --check
 ## 文档入口
 
 - [GitHub Pages 技术档案](https://blackzhanzhan.github.io/course2knowledge-lite/)
-- [技术白皮书](docs/TECHNICAL_WHITEPAPER.md)
-- [架构说明](docs/ARCHITECTURE.md)
-- [数据模型](docs/DATA_MODEL.md)
-- [Web Lite](docs/WEB_LITE.md)
-- [Feishu/Hermes Lite](docs/FEISHU_LITE.md)
-- [Bilibili Import](docs/BILIBILI_IMPORT.md)
-- [部署说明](docs/DEPLOYMENT.md)
-- [测试说明](docs/TESTING.md)
+- [技术白皮书](https://blackzhanzhan.github.io/course2knowledge-lite/technical-whitepaper/)
+- [架构说明](https://blackzhanzhan.github.io/course2knowledge-lite/architecture/)
+- [数据模型](https://blackzhanzhan.github.io/course2knowledge-lite/data-model/)
+- [Web Lite](https://blackzhanzhan.github.io/course2knowledge-lite/web-lite/)
+- [Feishu/Hermes Lite](https://blackzhanzhan.github.io/course2knowledge-lite/feishu-lite/)
+- [Bilibili Import](https://blackzhanzhan.github.io/course2knowledge-lite/bilibili-import/)
+- [部署说明](https://blackzhanzhan.github.io/course2knowledge-lite/deployment/)
+- [测试说明](https://blackzhanzhan.github.io/course2knowledge-lite/testing/)

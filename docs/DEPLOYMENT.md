@@ -1,3 +1,8 @@
+---
+layout: technical
+title: 部署说明
+permalink: /deployment/
+---
 # Deployment
 
 Course2Knowledge Lite is designed to be deployed in the simplest possible way:
@@ -163,7 +168,7 @@ node --check apps/web/static/app.js
 git diff --check
 ```
 
-Then run the path and sensitive scans described in `docs/TESTING.md`. Test
+Then run the path and sensitive scans described in `/course2knowledge-lite/testing/`. Test
 fixtures may contain fake cookie names or sentinel values; real cookie values,
 API keys, and machine-specific workspace paths must not appear in committed
 release files.
