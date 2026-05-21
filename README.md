@@ -252,7 +252,9 @@ Course2Knowledge Lite 暂不包含：
 
 ## 入口文档
 
+- [GitHub Pages 技术档案](docs/index.html)
 - [产品边界](docs/PRODUCT_BOUNDARY.md)
+- [技术白皮书](docs/TECHNICAL_WHITEPAPER.md)
 - [架构说明](docs/ARCHITECTURE.md)
 - [数据模型](docs/DATA_MODEL.md)
 - [Web Lite](docs/WEB_LITE.md)
