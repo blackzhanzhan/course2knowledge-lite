@@ -354,65 +354,120 @@ p {
   font-weight: 760;
 }
 
-.flow-diagram {
+.architecture-map {
   display: grid;
-  gap: 10px;
-  margin-top: 24px;
-  max-width: 820px;
-  border-left: 2px solid var(--line-strong);
-  padding-left: 18px;
+  grid-template-columns: minmax(150px, 0.9fr) 28px minmax(150px, 0.8fr) 28px minmax(260px, 1.5fr) 28px minmax(210px, 1.1fr);
+  gap: 0;
+  align-items: stretch;
+  margin-top: 28px;
+  max-width: 1040px;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+  padding: 18px 0;
 }
 
-.flow-node,
-.flow-split,
-.flow-branches div {
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  padding: 12px 0;
-  text-align: left;
+.arch-lane {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lane-label {
+  margin: 0 0 2px;
+  color: var(--quiet);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.arch-node {
+  min-width: 0;
+  border-left: 2px solid var(--line-strong);
+  padding: 9px 14px 10px;
+}
+
+.arch-node strong {
+  display: block;
+  color: var(--ink);
   font-family: var(--mono);
   font-size: 14px;
+  line-height: 1.35;
 }
 
-.flow-node.source {
-  border-color: #d684a2;
+.arch-node span {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
-.flow-node.temp {
-  border-color: var(--warn);
+.arch-node-temp {
+  border-left-color: #bd7b18;
 }
 
-.flow-node.gate {
-  border-color: #7c4dff;
+.arch-node-gate {
+  border-left-color: #6f5bd6;
 }
 
-.flow-node.runtime {
-  color: var(--accent-2);
-  font-weight: 760;
+.arch-node-runtime {
+  border-left-color: var(--accent-2);
 }
 
-.flow-arrow {
-  color: var(--quiet);
-  text-align: left;
-  font-family: var(--mono);
+.arch-node-frontdesk {
+  border-left-color: var(--accent);
 }
 
-.flow-split,
-.flow-branches {
+.arch-connector {
+  position: relative;
+  min-width: 28px;
+}
+
+.arch-connector::before {
+  content: "";
+  position: absolute;
+  top: 54px;
+  right: 7px;
+  left: 7px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.arch-connector::after {
+  content: "";
+  position: absolute;
+  top: 49px;
+  right: 5px;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid var(--line-strong);
+  border-right: 1px solid var(--line-strong);
+  transform: rotate(45deg);
+}
+
+.arch-lane-compile {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.arch-lane-compile .lane-label {
+  grid-column: 1 / -1;
+}
+
+.arch-lane-runtime {
+  border-left: 1px solid var(--line);
+  padding-left: 16px;
+}
+
+.arch-branches {
+  grid-column: 7;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.flow-split div {
-  border: 1px solid var(--line);
-  border-width: 0 0 1px;
-  padding: 10px 0;
-}
-
-.flow-branches {
-  margin-top: 4px;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line-strong);
 }
 
 .principles {
@@ -573,6 +628,41 @@ summary {
     grid-template-columns: 1fr;
   }
 
+  .architecture-map {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .arch-connector {
+    height: 18px;
+  }
+
+  .arch-connector::before {
+    top: 0;
+    bottom: 0;
+    left: 20px;
+    width: 0;
+    border-top: 0;
+    border-left: 1px solid var(--line-strong);
+  }
+
+  .arch-connector::after {
+    top: auto;
+    bottom: 1px;
+    left: 15px;
+    right: auto;
+    transform: rotate(135deg);
+  }
+
+  .arch-lane-runtime {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .arch-branches {
+    grid-column: auto;
+  }
+
   .toc {
     position: static;
     display: grid;
@@ -608,8 +698,9 @@ summary {
   .two-column,
   .doc-grid,
   .code-map,
-  .flow-split,
-  .flow-branches {
+  .architecture-map,
+  .arch-lane-compile,
+  .arch-branches {
     grid-template-columns: 1fr;
   }
 

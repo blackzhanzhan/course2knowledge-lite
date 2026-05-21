@@ -130,26 +130,74 @@
         <section id="architecture" class="section">
           <p class="eyebrow">Architecture</p>
           <h2>总体架构：课程先被编译，再被前台使用。</h2>
-          <div class="flow-diagram" aria-label="Course2Knowledge Lite 总体架构">
-            <div class="flow-node source">Bilibili URL</div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-node">Import Adapter</div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-node temp">Temporary SQLite Store</div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-split">
-              <div>Transcript Evidence</div>
-              <div>Visual Evidence</div>
-              <div>Lecture Dossier</div>
-              <div>Knowledge Atoms / Gates</div>
+          <div class="architecture-map" aria-label="Course2Knowledge Lite 总体架构">
+            <div class="arch-lane arch-lane-source">
+              <p class="lane-label">Source</p>
+              <div class="arch-node">
+                <strong>Bilibili Course URL</strong>
+                <span>合集、系列课、普通视频、多 P 视频</span>
+              </div>
+              <div class="arch-node">
+                <strong>Import Adapter</strong>
+                <span>展开 lecture，探测字幕与登录态</span>
+              </div>
             </div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-node gate">Readiness + Promotion Gate</div>
-            <div class="flow-arrow">↓</div>
-            <div class="flow-node runtime">Production SQLite Course Runtime</div>
-            <div class="flow-branches">
-              <div>Web Lite Classroom</div>
-              <div>Hermes Lite Tools</div>
+
+            <div class="arch-connector" aria-hidden="true"></div>
+
+            <div class="arch-lane arch-lane-staging">
+              <p class="lane-label">Staging</p>
+              <div class="arch-node arch-node-temp">
+                <strong>Temporary SQLite Store</strong>
+                <span>先落临时库，避免半成品污染正式课程</span>
+              </div>
+            </div>
+
+            <div class="arch-connector" aria-hidden="true"></div>
+
+            <div class="arch-lane arch-lane-compile">
+              <p class="lane-label">Compiler</p>
+              <div class="arch-node">
+                <strong>Transcript Evidence</strong>
+                <span>时间戳字幕片段，作为引用证据</span>
+              </div>
+              <div class="arch-node">
+                <strong>Visual Evidence</strong>
+                <span>课程绑定关键帧或公开视觉材料</span>
+              </div>
+              <div class="arch-node">
+                <strong>Lecture Dossier</strong>
+                <span>中文讲义、结构化摘要、课程上下文</span>
+              </div>
+              <div class="arch-node">
+                <strong>Knowledge Atoms / Gates</strong>
+                <span>学习节点和关口，不是一次性摘要</span>
+              </div>
+            </div>
+
+            <div class="arch-connector" aria-hidden="true"></div>
+
+            <div class="arch-lane arch-lane-runtime">
+              <p class="lane-label">Runtime Authority</p>
+              <div class="arch-node arch-node-gate">
+                <strong>Readiness + Promotion Gate</strong>
+                <span>字幕、讲义、原子、关口缺失时阻断晋升</span>
+              </div>
+              <div class="arch-node arch-node-runtime">
+                <strong>Production SQLite Course Runtime</strong>
+                <span>本地写入权威，统一服务 Web 与 Hermes</span>
+              </div>
+            </div>
+
+            <div class="arch-branches" aria-label="前台投影">
+              <div class="arch-node arch-node-frontdesk">
+                <strong>Web Lite Classroom</strong>
+                <span>互动学习、课程管理、课程笔记</span>
+              </div>
+              <div class="arch-node arch-node-frontdesk">
+                <strong>Hermes Lite Tools</strong>
+                <span>可选聊天工具前台，调用同一 store</span>
+              </div>
             </div>
           </div>
 
