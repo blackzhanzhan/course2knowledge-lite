@@ -3,6 +3,19 @@
 Course2Knowledge Lite is designed to be deployed in the simplest possible way:
 install the package, run the Web workspace, and sync the public Hermes profile.
 
+## 部署现实边界与 AI 辅助
+
+Course2Knowledge Lite 目前是个人维护的公开版本，架构原创性较高：它不是传统 LMS、普通 RAG demo、笔记软件或通用 Agent 框架，而是把在线视频课程编译成本地 SQLite 课程知识运行时。因此，项目会优先保证本地单机链路、数据边界和可检查性，暂时不承诺成熟的一键云部署方案。
+
+如果部署不顺利，请优先把问题缩小到可诊断材料：
+
+- 操作系统、Python 版本、安装方式和启动命令；
+- 终端错误日志或浏览器控制台错误；
+- 使用的 store root、端口、B 站 URL 类型和是否需要登录态字幕；
+- 是否设置了模型 API key，以及是否使用了二维码登录或 cookie 导入。
+
+把这些信息交给 AI 辅助排查通常会更高效：让它先判断是环境依赖、端口占用、B 站字幕权限、模型配置、SQLite store 状态，还是 Web 前台资源问题；再按最小复现命令一步一步验证。这个建议不是把部署责任推给使用者，而是因为当前项目仍处于个人维护和架构探索阶段，AI 辅助能显著降低不同机器环境带来的排障成本。
+
 ## Recommended Path
 
 1. Install Python 3.11 or newer.
