@@ -115,6 +115,174 @@ The demo SQLite store is runtime data, not release source. Do not commit it to
 git. Upload it to the server as an operational artifact and keep real cookies,
 API keys, Hermes private sessions, and local author data out of the repository.
 
+## VPS 成功部署复盘
+
+This section records the deployment shape that was actually used for the public
+demo. It is intentionally operational: follow it when you need to reproduce or
+repair the live resume demo, then adapt it to your own server.
+
+Public entry:
+
+```text
+http://47.237.191.43:3014/
+```
+
+Repository and runtime locations:
+
+```text
+/opt/course2knowledge-lite
+/opt/course2knowledge-lite/.venv
+/opt/course2knowledge-lite/data/course-store
+/etc/course2knowledge-lite/web.env
+/etc/course2knowledge-lite/hermes.env
+```
+
+The public demo uses two systemd services:
+
+```text
+course2knowledge-lite-web
+course2knowledge-lite-hermes
+```
+
+The Web service should expose only the classroom port:
+
+```ini
+[Unit]
+Description=Course2Knowledge Lite Web Public Demo
+After=network-online.target course2knowledge-lite-hermes.service
+Wants=network-online.target course2knowledge-lite-hermes.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/course2knowledge-lite
+EnvironmentFile=/etc/course2knowledge-lite/web.env
+ExecStart=/opt/course2knowledge-lite/.venv/bin/course2knowledge-lite web --host 0.0.0.0 --port 3014 --store-root /opt/course2knowledge-lite/data/course-store --public-demo
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+The Hermes gateway should stay bound to localhost and read secrets from its env
+file, not from the repository:
+
+```ini
+[Unit]
+Description=Course2Knowledge Lite Hermes Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/course2knowledge-lite
+EnvironmentFile=/etc/course2knowledge-lite/hermes.env
+ExecStart=/opt/hermes-agent/venv/bin/hermes --profile course2knowledge-lite gateway run --replace --accept-hooks
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Suggested public-demo Web env:
+
+```bash
+COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO=1
+COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY=4
+COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_CHAT_TTL_SECONDS=21600
+HERMES_WEB_GATEWAY_URL=http://127.0.0.1:8642/v1/chat/completions
+```
+
+Do not put provider API keys in git, README snippets, screenshots, or issue
+reports. Keep them in `/etc/course2knowledge-lite/hermes.env` or another
+server-local secret store.
+
+### Update and restart checklist
+
+The important lesson from the successful deployment is that `git pull` alone is
+not enough. A stale systemd process can keep serving old code after the
+repository has already moved forward. Use this order:
+
+```bash
+cd /opt/course2knowledge-lite
+git fetch origin codex/decouple-hermes-lite
+git checkout codex/decouple-hermes-lite
+git pull --ff-only origin codex/decouple-hermes-lite
+.venv/bin/python -m pip install -e .
+systemctl daemon-reload
+systemctl restart course2knowledge-lite-hermes
+systemctl restart course2knowledge-lite-web
+```
+
+Then verify the process is really new:
+
+```bash
+git rev-parse --short HEAD
+systemctl is-active course2knowledge-lite-web course2knowledge-lite-hermes
+ss -ltnp '( sport = :3014 or sport = :8642 )'
+```
+
+Expected port boundary:
+
+- Web Lite: `0.0.0.0:3014`
+- Hermes gateway: `127.0.0.1:8642`
+
+### Public demo acceptance checklist
+
+After every server update, verify these behaviors before sharing the URL:
+
+```bash
+curl -s http://127.0.0.1:3014/api/runtime
+curl -s http://127.0.0.1:3014/api/courses
+```
+
+The runtime response should report public demo mode. The course list should
+show the prepared demo course data.
+
+Then run one real SSE chat turn with an explicit visitor id. The exact prompt
+can be small; the purpose is to prove the Web service, SQLite chat store, and
+Hermes gateway are connected:
+
+```bash
+curl -N http://127.0.0.1:3014/api/chat/stream \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "course_id": "course_3ac02d64d5ff",
+    "lecture_sequence": 65,
+    "message": "我想从零开始理解 cache 的局部性是什么",
+    "visitor_session_id": "deploy_check_a"
+  }'
+```
+
+Visitor isolation check:
+
+```bash
+curl -s 'http://127.0.0.1:3014/api/chat/history?course_id=course_3ac02d64d5ff&visitor_session_id=deploy_check_a'
+curl -s 'http://127.0.0.1:3014/api/chat/history?course_id=course_3ac02d64d5ff&visitor_session_id=deploy_check_b'
+```
+
+The first visitor should see only its own thread; the second visitor should not
+inherit it.
+
+End-session cleanup check:
+
+```bash
+curl -s http://127.0.0.1:3014/api/chat/session/end \
+  -H 'Content-Type: application/json' \
+  -d '{"course_id":"course_3ac02d64d5ff","visitor_session_id":"deploy_check_a"}'
+```
+
+After this call, `deploy_check_a` history should be empty while courses, notes,
+knowledge atoms, transcripts, and visual evidence remain intact.
+
+If concurrent visitors exceed `COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY`, the
+chat API should return HTTP 429 with a clear message:
+
+```text
+当前访客较多，Hermes 正在处理其他同学的对话，请稍后再试。
+```
+
 ## Bilibili Login State
 
 Some Bilibili subtitles require a logged-in browser session. The Web import

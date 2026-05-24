@@ -100,6 +100,64 @@ course2knowledge-lite web \
   --public-demo
 ```
 
+## 公网成功部署教程
+
+这次已经在一台 Linux VPS 上跑通了公开演示形态，公网入口是：
+
+```text
+http://47.237.191.43:3014/
+```
+
+推荐部署边界是：Web Lite 对公网开放 `3014`，Hermes gateway 只监听服务器本机 `127.0.0.1:8642`，两者读取同一份 `/opt/course2knowledge-lite/data/course-store` SQLite 课程运行时。服务名建议固定为：
+
+- `course2knowledge-lite-web`：公开 Web Lite 课堂。
+- `course2knowledge-lite-hermes`：本机 Hermes gateway。
+
+Web 服务的核心启动命令：
+
+```bash
+/opt/course2knowledge-lite/.venv/bin/course2knowledge-lite web \
+  --host 0.0.0.0 \
+  --port 3014 \
+  --store-root /opt/course2knowledge-lite/data/course-store \
+  --public-demo
+```
+
+Hermes 服务的核心启动命令：
+
+```bash
+/opt/hermes-agent/venv/bin/hermes \
+  --profile course2knowledge-lite \
+  gateway run \
+  --replace \
+  --accept-hooks
+```
+
+代码更新后不要只 `git pull`。这次部署验证踩到的关键坑是：仓库 HEAD 更新不等于 systemd 正在运行新代码。正确顺序是：
+
+```bash
+cd /opt/course2knowledge-lite
+git fetch origin codex/decouple-hermes-lite
+git checkout codex/decouple-hermes-lite
+git pull --ff-only origin codex/decouple-hermes-lite
+.venv/bin/python -m pip install -e .
+systemctl restart course2knowledge-lite-hermes
+systemctl restart course2knowledge-lite-web
+systemctl status course2knowledge-lite-web --no-pager
+systemctl status course2knowledge-lite-hermes --no-pager
+```
+
+重启后必须做三类验收：
+
+- 代码验收：`git rev-parse --short HEAD` 必须等于刚推送的 GitHub commit。
+- 进程验收：`ss -ltnp '( sport = :3014 or sport = :8642 )'` 应看到 Web 监听 `0.0.0.0:3014`，Hermes 监听 `127.0.0.1:8642`。
+- 产品验收：访问 `/api/runtime`、`/api/courses`，再用带 `visitor_session_id` 的 `/api/chat/stream` 走一次真实 Hermes SSE 对话，并调用 `/api/chat/session/end` 确认只清空当前访客聊天。
+
+公开演示模式已经处理两个简历展示场景里很重要的细节：
+
+- 每个浏览器会话都有独立访客聊天通道，互相看不到历史记录；点击“结束体验”会清空当前访客聊天，但不会删除课程、讲义、知识原子或视觉证据。
+- VPS 并发能力有限时，聊天流会被限流；超限返回明确的中文提示：“当前访客较多，Hermes 正在处理其他同学的对话，请稍后再试。”
+
 部署现实说明：这个项目目前仍是个人维护的原创架构，重点是把“课程编译成本地知识运行时”这条链路跑通，而不是提供一套成熟的一键云部署方案。如果你在不同系统、Python 环境、网络条件或 B 站登录态上遇到部署问题，建议把错误日志、系统环境、启动命令和当前配置整理出来，让 AI 辅助你逐步排查。更多细节见 [部署说明](docs/DEPLOYMENT.md)。
 
 导入测试 URL 示例：
@@ -186,7 +244,7 @@ git diff --check
 
 当前公共发布线曾在干净发布目录中通过：
 
-- `python -m unittest discover -s tests`：118 tests OK。
+- `python -m unittest discover -s tests`：124 tests OK。
 - `python -m unittest tests.test_deployment`：3 tests OK。
 - wheel build：passed。
 - Web JS 与 docs JS syntax check：passed。
