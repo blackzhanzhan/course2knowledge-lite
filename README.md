@@ -4,7 +4,7 @@
 
 Course2Knowledge Lite 不是 LMS、普通 RAG demo、笔记软件、视频下载器，也不是通用 Agent 框架。它把一门 B 站视频课当作证据源，经过字幕、视觉证据、中文讲义、知识原子和学习关口的编译，落到本地 SQLite 课程运行时，再由 Web Lite 课堂和可选 Hermes Lite 工具前台读取。
 
-[技术档案](https://blackzhanzhan.github.io/course2knowledge-lite/) · [技术白皮书](docs/TECHNICAL_WHITEPAPER.md) · [部署说明](docs/DEPLOYMENT.md) · [测试说明](docs/TESTING.md)
+[技术档案](https://blackzhanzhan.github.io/course2knowledge-lite/) · [技术白皮书](docs/TECHNICAL_WHITEPAPER.md) · [部署说明](docs/DEPLOYMENT.md) · [部署 FAQ](docs/DEPLOYMENT_FAQ.md) · [测试说明](docs/TESTING.md)
 
 ![Course2Knowledge Lite 总体架构](docs/assets/readme/technical-dossier-architecture.png)
 
@@ -90,9 +90,113 @@ http://127.0.0.1:3014/
 course2knowledge-lite web --store-root tmp/release-web-store
 ```
 
-如果要验证它不是只能本地跑的玩具，可以继续阅读 [部署说明](docs/DEPLOYMENT.md)。部署文档记录了 systemd 服务、Hermes gateway、本地 SQLite store、访客会话隔离、429 限流提示、更新重启和验收清单，说明这套链路如何落成一个可复现的服务形态。
+## 服务化部署
 
-部署现实说明：这个项目目前仍是个人维护的原创架构，重点是把“课程编译成本地知识运行时”这条链路跑通，而不是提供一套成熟的一键云部署方案。如果你在不同系统、Python 环境、网络条件或 B 站登录态上遇到部署问题，建议把错误日志、系统环境、启动命令和当前配置整理出来，让 AI 辅助你逐步排查。更多工程化细节见 [部署说明](docs/DEPLOYMENT.md)。
+如果要验证它不是只能本地跑的玩具，可以把 Web Lite、SQLite 课程 store 和 Hermes gateway 组成一个可复现的服务化运行形态。更完整的 systemd、验收和排障细节见 [部署说明](docs/DEPLOYMENT.md)，真实踩坑记录见 [部署 FAQ](docs/DEPLOYMENT_FAQ.md)。
+
+前置条件：
+
+- Linux 服务器或本机 Linux 环境，建议使用 systemd 管理长期进程。
+- Python 3.11+、`venv`、`pip`、`git`、`curl`。
+- Node.js LTS 环境，用于 `node --check apps/web/static/app.js`、`node --check docs/site.js` 等前端/文档静态检查。Web 服务本身不是 Node 常驻服务。
+- 可用的 Hermes agent/gateway 环境。Web Lite 默认通过 `HERMES_WEB_GATEWAY_URL=http://127.0.0.1:8642/v1/chat/completions` 调用 Hermes。
+- 一份已准备好的 SQLite 课程 store。真实 B 站导入还需要网络访问；部分字幕需要扫码登录或 cookie。
+- 模型供应商密钥只放在服务器本地环境文件里，不写入仓库、README、截图或 issue。
+
+最小服务化部署路径：
+
+```bash
+git clone https://github.com/blackzhanzhan/course2knowledge-lite.git /opt/course2knowledge-lite
+cd /opt/course2knowledge-lite
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -e .
+```
+
+先做基础检查：
+
+```bash
+.venv/bin/course2knowledge-lite --help
+node --check apps/web/static/app.js
+node --check docs/site.js
+```
+
+同步 Hermes Lite profile，并做一次工具面 smoke：
+
+```bash
+.venv/bin/course2knowledge-lite sync-profile --apply --create-profile
+.venv/bin/course2knowledge-lite smoke-profile --profile-root <profile-root>
+```
+
+启动 Hermes gateway。下面的命令假设 Hermes 已单独安装在 `/opt/hermes-agent/venv`，实际路径按你的机器调整：
+
+```bash
+/opt/hermes-agent/venv/bin/hermes \
+  --profile course2knowledge-lite \
+  gateway run \
+  --replace \
+  --accept-hooks
+```
+
+启动 Web Lite。`--public-demo` 是历史参数名，实际含义是“只读体验模式”：关闭导入、删除、Cookie、笔记、书签和进度写入，只保留课程浏览、笔记阅读和 Hermes 学习对话。这个模式不要求把访问地址写进仓库文档。
+
+```bash
+HERMES_WEB_GATEWAY_URL=http://127.0.0.1:8642/v1/chat/completions \
+.venv/bin/course2knowledge-lite web \
+  --host 0.0.0.0 \
+  --port 3014 \
+  --store-root /opt/course2knowledge-lite/data/course-store \
+  --public-demo
+```
+
+建议把 Web 与 Hermes 分成两个 systemd 服务：
+
+- `course2knowledge-lite-web`：开放 Web Lite 课堂端口。
+- `course2knowledge-lite-hermes`：只在服务器本机监听 Hermes gateway。
+
+期望端口边界：
+
+```text
+Web Lite       0.0.0.0:3014
+Hermes gateway 127.0.0.1:8642
+```
+
+每次更新后不要只 `git pull`，还要重新安装 editable 包并重启服务：
+
+```bash
+cd /opt/course2knowledge-lite
+git fetch origin codex/decouple-hermes-lite
+git checkout codex/decouple-hermes-lite
+git pull --ff-only origin codex/decouple-hermes-lite
+.venv/bin/python -m pip install -e .
+systemctl restart course2knowledge-lite-hermes
+systemctl restart course2knowledge-lite-web
+```
+
+验收顺序：
+
+```bash
+git rev-parse --short HEAD
+systemctl is-active course2knowledge-lite-web course2knowledge-lite-hermes
+ss -ltnp '( sport = :3014 or sport = :8642 )'
+curl -s http://127.0.0.1:3014/api/runtime
+curl -s http://127.0.0.1:3014/api/courses
+```
+
+再用一个真实 SSE 聊天请求确认 Web、SQLite chat store 和 Hermes gateway 已串起来。`course_id` 与 `lecture_sequence` 按你的课程 store 替换：
+
+```bash
+curl -N http://127.0.0.1:3014/api/chat/stream \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "course_id": "<course-id>",
+    "lecture_sequence": 1,
+    "message": "我想从零开始学习这一讲",
+    "visitor_session_id": "deploy_check"
+  }'
+```
+
+部署现实说明：这个项目目前仍是个人维护的原创架构，重点是把“课程编译成本地知识运行时”这条链路跑通，而不是提供一套成熟的一键云部署方案。如果你在不同系统、Python 环境、Node.js 环境、Hermes gateway、网络条件或 B 站登录态上遇到部署问题，建议把错误日志、系统环境、启动命令和当前配置整理出来，让 AI 辅助你逐步排查。更多工程化细节见 [部署说明](docs/DEPLOYMENT.md) 与 [部署 FAQ](docs/DEPLOYMENT_FAQ.md)。
 
 导入测试 URL 示例：
 
@@ -194,4 +298,5 @@ git diff --check
 - [Feishu/Hermes Lite](docs/FEISHU_LITE.md)
 - [Bilibili Import](docs/BILIBILI_IMPORT.md)
 - [部署说明](docs/DEPLOYMENT.md)
+- [部署 FAQ](docs/DEPLOYMENT_FAQ.md)
 - [测试说明](docs/TESTING.md)
