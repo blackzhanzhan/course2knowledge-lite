@@ -121,10 +121,11 @@ This section records the deployment shape that was actually used for the public
 demo. It is intentionally operational: follow it when you need to reproduce or
 repair the live resume demo, then adapt it to your own server.
 
-Public entry:
+Public entry template. Keep a personal resume demo URL outside the public
+repository unless you intentionally want it indexed:
 
 ```text
-http://47.237.191.43:3014/
+http://<your-vps-ip>:3014/
 ```
 
 Repository and runtime locations:

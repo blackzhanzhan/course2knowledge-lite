@@ -102,10 +102,10 @@ course2knowledge-lite web \
 
 ## 公网成功部署教程
 
-这次已经在一台 Linux VPS 上跑通了公开演示形态，公网入口是：
+这次已经在一台 Linux VPS 上跑通了公开演示形态。公开 README 不直接暴露个人简历 demo 地址；如果你要复现，可以把下面的占位地址替换成自己的服务器 IP 或域名：
 
 ```text
-http://47.237.191.43:3014/
+http://<your-vps-ip>:3014/
 ```
 
 推荐部署边界是：Web Lite 对公网开放 `3014`，Hermes gateway 只监听服务器本机 `127.0.0.1:8642`，两者读取同一份 `/opt/course2knowledge-lite/data/course-store` SQLite 课程运行时。服务名建议固定为：
