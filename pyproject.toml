@@ -61,6 +61,7 @@ include = ["course2knowledge_lite*", "course2knowledge_lite_bilibili*", "course2
 ]
 "course2knowledge_lite_runtime/packages/course-store/src/course2knowledge_lite_store" = [
   "packages/course-store/src/course2knowledge_lite_store/__init__.py",
+  "packages/course-store/src/course2knowledge_lite_store/chat.py",
   "packages/course-store/src/course2knowledge_lite_store/content.py",
   "packages/course-store/src/course2knowledge_lite_store/lecture_dossier.py",
   "packages/course-store/src/course2knowledge_lite_store/models.py",

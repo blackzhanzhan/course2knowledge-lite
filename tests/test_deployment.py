@@ -73,8 +73,14 @@ class DeploymentTests(unittest.TestCase):
         self.assertIn("knowledge_cards_generate", sync_payload["enabled_tools"])
         self.assertIn("sample_qa_status", smoke_payload)
         self.assertIn("sample_progress_status", smoke_payload)
+        self.assertIn("sample_note_status", smoke_payload)
         self.assertIn("course2knowledge-lite", sync_result.stdout)
         self.assertIn("course2knowledge-lite", smoke_result.stdout)
+
+    def test_runtime_data_files_include_lite_chat_core(self) -> None:
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+        self.assertIn("course2knowledge_lite_store/chat.py", pyproject)
 
 
 def _run_installed_command(repo_root: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
