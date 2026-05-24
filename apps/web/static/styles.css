@@ -338,6 +338,11 @@ textarea {
   font-weight: 760;
 }
 
+#end-session-button {
+  align-self: end;
+  white-space: nowrap;
+}
+
 .chat-panel {
   display: grid;
   grid-template-rows: auto minmax(520px, calc(100vh - 250px)) auto;

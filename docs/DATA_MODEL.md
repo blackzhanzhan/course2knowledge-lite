@@ -361,6 +361,9 @@ Event：
 - chat 是学习交互入口，不是课程数据权威。
 - 工具调用、流式 delta、错误和证据事件可以进入 event。
 - 不应发布真实生产聊天导出。
+- 公网 public demo 中，访客聊天使用 `web:visitor:<visitor_session_id>` 形式的临时 channel，与普通 `web` channel 和其他访客隔离。
+- 访客点击“结束体验”或会话过期时，只允许删除该 visitor channel 下的 chat thread/message/event；课程、讲义、知识原子、视觉证据和导入产物不得被清理。
+- 访客 session 是演示隔离边界，不是账户系统，也不代表学习者身份或长期学习档案。
 
 ## 16. 排除实体
 

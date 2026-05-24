@@ -93,6 +93,24 @@ bookmark writes, progress writes, and knowledge-card regeneration. Visitors can
 still select a course, read generated notes, inspect transcript evidence, and
 chat through the configured Hermes gateway.
 
+Each public-demo browser session gets a temporary visitor chat channel. This
+prevents one resume reviewer or student from seeing another visitor's chat
+history. The "结束体验" button clears only that visitor's chat thread/message/event
+records; the prepared course, notes, knowledge atoms, transcript evidence, and
+visual evidence stay intact. A best-effort page-close beacon and a server-side
+TTL cleanup are also present as fallbacks.
+
+Chat stream concurrency is intentionally bounded for small VPS deployments. The
+default limit is 4 concurrent chat streams and can be changed with:
+
+```bash
+export COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY=4
+export COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_CHAT_TTL_SECONDS=21600
+```
+
+When the limit is reached, the Web classroom returns a clear visitor-facing
+message instead of silently creating a broken chat.
+
 The demo SQLite store is runtime data, not release source. Do not commit it to
 git. Upload it to the server as an operational artifact and keep real cookies,
 API keys, Hermes private sessions, and local author data out of the repository.

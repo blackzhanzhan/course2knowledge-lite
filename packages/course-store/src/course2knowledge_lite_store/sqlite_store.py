@@ -1499,6 +1499,42 @@ class SQLiteCourseStore:
             rows = conn.execute(sql, params).fetchall()
         return [_dict(row) for row in rows]
 
+    def delete_chat_threads(
+        self,
+        *,
+        course_id: str = "",
+        channel: str = "",
+        channel_prefix: str = "",
+        updated_before: str = "",
+    ) -> dict[str, Any]:
+        params: list[Any] = []
+        filters: list[str] = []
+        if course_id:
+            filters.append("course_id = ?")
+            params.append(course_id)
+        if channel:
+            filters.append("channel = ?")
+            params.append(channel)
+        if channel_prefix:
+            filters.append("channel LIKE ?")
+            params.append(f"{channel_prefix}%")
+        if updated_before:
+            filters.append("updated_at < ?")
+            params.append(updated_before)
+        if not filters:
+            raise ValueError("delete_chat_threads requires at least one filter")
+        where = " AND ".join(filters)
+        with self._connect() as conn:
+            rows = conn.execute(f"SELECT thread_id FROM chat_threads WHERE {where}", params).fetchall()
+            thread_ids = [str(row["thread_id"]) for row in rows]
+            if thread_ids:
+                placeholders = ",".join("?" for _ in thread_ids)
+                conn.execute(f"DELETE FROM chat_threads WHERE thread_id IN ({placeholders})", thread_ids)
+        return {
+            "deleted_thread_count": len(thread_ids),
+            "deleted_thread_ids": thread_ids,
+        }
+
     def append_chat_message(
         self,
         thread_id: str,

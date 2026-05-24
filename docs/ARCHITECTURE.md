@@ -218,6 +218,10 @@ Hermes Lite 是可选工具前台：
   -> chat message + event persistence
 ```
 
+公网 public demo 会在 Web 前台生成浏览器会话级 `visitor_session_id`。Web API 将它映射为 `web:visitor:<visitor_session_id>` chat channel，让不同访客的聊天历史互相不可见。访客点击“结束体验”、关闭页面的 beacon 成功到达，或 TTL 清理触发时，只清理该 visitor channel 下的聊天线程、消息和事件。
+
+聊天流式请求有一个轻量并发闸门，默认最多 4 个并发 chat stream，可通过 `COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY` 调整。超限时前台显示“当前访客较多，Hermes 正在处理其他同学的对话，请稍后再试。”，而不是创建空线程或让页面假死。
+
 ### 讲义和知识节点
 
 ```text

@@ -1430,6 +1430,139 @@ class WebLiteTests(unittest.TestCase):
         self.assertEqual(counts[old_thread["thread_id"]], 2)
         self.assertEqual(counts[latest_thread["thread_id"]], 1)
 
+    def test_public_demo_chat_history_is_visitor_scoped_and_end_session_cleans_only_that_visitor(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store, course_id = _store_with_transcript(temp_dir)
+            visitor_a_thread = store.create_chat_thread(
+                course_id,
+                title="visitor a",
+                channel="web:visitor:visitor_a",
+            )
+            store.append_chat_message(str(visitor_a_thread["thread_id"]), "user", "visitor a question")
+            visitor_b_thread = store.create_chat_thread(
+                course_id,
+                title="visitor b",
+                channel="web:visitor:visitor_b",
+            )
+            store.append_chat_message(str(visitor_b_thread["thread_id"]), "user", "visitor b question")
+            shared_thread = store.create_chat_thread(course_id, title="old shared", channel="web")
+            store.append_chat_message(str(shared_thread["thread_id"]), "user", "old shared question")
+
+            previous_public_demo = web_server.Course2KnowledgeWebHandler.public_demo
+            web_server.Course2KnowledgeWebHandler.public_demo = True
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                visitor_a_history = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    f"/api/chat/history?course_id={course_id}&visitor_session_id=visitor_a",
+                )
+                visitor_b_history = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    f"/api/chat/history?course_id={course_id}&visitor_session_id=visitor_b",
+                )
+                cross_read = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    (
+                        f"/api/chat/history?course_id={course_id}"
+                        f"&visitor_session_id=visitor_a&thread_id={visitor_b_thread['thread_id']}"
+                    ),
+                    expected_status=400,
+                )
+                ended = _request_json(
+                    host,
+                    port,
+                    "POST",
+                    "/api/chat/session/end",
+                    {"course_id": course_id, "visitor_session_id": "visitor_a"},
+                )
+                visitor_a_after_end = _request_json(
+                    host,
+                    port,
+                    "GET",
+                    f"/api/chat/history?course_id={course_id}&visitor_session_id=visitor_a",
+                )
+            finally:
+                web_server.Course2KnowledgeWebHandler.public_demo = previous_public_demo
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+            persisted = SQLiteCourseStore(temp_dir)
+            remaining_visitor_b_threads = persisted.list_chat_threads(
+                course_id=course_id,
+                channel="web:visitor:visitor_b",
+            )
+            remaining_shared_threads = persisted.list_chat_threads(course_id=course_id, channel="web")
+
+        self.assertEqual([item["thread_id"] for item in visitor_a_history["threads"]], [visitor_a_thread["thread_id"]])
+        self.assertEqual([item["thread_id"] for item in visitor_b_history["threads"]], [visitor_b_thread["thread_id"]])
+        self.assertEqual(visitor_a_history["messages"][0]["content"], "visitor a question")
+        self.assertEqual(visitor_b_history["messages"][0]["content"], "visitor b question")
+        self.assertEqual(cross_read["status"], "failed")
+        self.assertEqual(ended["deleted_thread_count"], 1)
+        self.assertEqual(visitor_a_after_end["threads"], [])
+        self.assertEqual(remaining_visitor_b_threads[0]["thread_id"], visitor_b_thread["thread_id"])
+        self.assertEqual(remaining_shared_threads[0]["thread_id"], shared_thread["thread_id"])
+
+    def test_web_chat_stream_concurrency_limit_returns_429_without_creating_empty_thread(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _store, course_id = _store_with_transcript(temp_dir)
+            previous_chat_semaphore = web_server._CHAT_SEMAPHORE
+            previous_chat_capacity = web_server._CHAT_SEMAPHORE_CAPACITY
+            previous_chat_limit_env = web_server.os.environ.get(web_server.CHAT_CONCURRENCY_ENV)
+            web_server.os.environ[web_server.CHAT_CONCURRENCY_ENV] = "1"
+            web_server._CHAT_SEMAPHORE = threading.BoundedSemaphore(1)
+            web_server._CHAT_SEMAPHORE_CAPACITY = 1
+            self.assertTrue(web_server._CHAT_SEMAPHORE.acquire(blocking=False))
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            host, port = server.server_address
+            try:
+                rejected = _request_json(
+                    host,
+                    port,
+                    "POST",
+                    "/api/chat/stream",
+                    {"course_id": course_id, "message": "hello"},
+                    expected_status=429,
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+                try:
+                    web_server._CHAT_SEMAPHORE.release()
+                except ValueError:
+                    pass
+                web_server._CHAT_SEMAPHORE = previous_chat_semaphore
+                web_server._CHAT_SEMAPHORE_CAPACITY = previous_chat_capacity
+                if previous_chat_limit_env is None:
+                    web_server.os.environ.pop(web_server.CHAT_CONCURRENCY_ENV, None)
+                else:
+                    web_server.os.environ[web_server.CHAT_CONCURRENCY_ENV] = previous_chat_limit_env
+
+            persisted = SQLiteCourseStore(temp_dir)
+
+        self.assertEqual(rejected["error_type"], "TooManyChatRequests")
+        self.assertIn("当前访客较多", rejected["error"])
+        self.assertEqual(persisted.list_chat_threads(course_id=course_id, channel="web"), [])
+
     def test_web_chat_stream_persists_teaching_control_event(self) -> None:
         web_server = load_web_server_module()
 

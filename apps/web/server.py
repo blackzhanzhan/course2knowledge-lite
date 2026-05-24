@@ -27,7 +27,12 @@ DEFAULT_STORE_ROOT = REPO_ROOT / "data" / "course-store"
 DEFAULT_IMPORT_LECTURE_WORKERS = 10
 DEFAULT_IMPORT_DOSSIER_CHUNK_WORKERS = 8
 DEFAULT_IMPORT_DOSSIER_REQUEST_CONCURRENCY = 80
+DEFAULT_CHAT_CONCURRENCY = 4
+DEFAULT_PUBLIC_DEMO_CHAT_TTL_SECONDS = 60 * 60 * 6
 PUBLIC_DEMO_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO"
+CHAT_CONCURRENCY_ENV = "COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY"
+PUBLIC_DEMO_CHAT_TTL_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_CHAT_TTL_SECONDS"
+PUBLIC_DEMO_VISITOR_CHANNEL_PREFIX = "web:visitor:"
 BILIBILI_AUTH_FILE = REPO_ROOT / ".codex" / "auth" / "bilibili.json"
 BILIBILI_QR_GENERATE_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate"
 BILIBILI_QR_POLL_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll"
@@ -93,6 +98,9 @@ _BILIBILI_QR_LOCK = threading.Lock()
 _BILIBILI_AUTH_LOCK = threading.Lock()
 _IMPORT_TEMP_STORES: dict[str, Path] = {}
 _IMPORT_TEMP_STORES_LOCK = threading.Lock()
+_CHAT_SEMAPHORE_LOCK = threading.Lock()
+_CHAT_SEMAPHORE: threading.BoundedSemaphore | None = None
+_CHAT_SEMAPHORE_CAPACITY = 0
 
 
 class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
@@ -103,6 +111,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         try:
             if parsed.path == "/":
+                _cleanup_expired_public_demo_chat_sessions(SQLiteCourseStore(self.store_root))
                 self._send_static("index.html")
             elif parsed.path.startswith("/static/"):
                 self._send_static(parsed.path.removeprefix("/static/"))
@@ -262,7 +271,15 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
                 thread_id = _optional_param(params, "thread_id")
-                self._send_json(_chat_history_payload(SQLiteCourseStore(self.store_root), course_id=course_id, thread_id=thread_id))
+                visitor_session_id = _optional_param(params, "visitor_session_id")
+                self._send_json(
+                    _chat_history_payload(
+                        SQLiteCourseStore(self.store_root),
+                        course_id=course_id,
+                        thread_id=thread_id,
+                        channel=_chat_channel_for_request(visitor_session_id=visitor_session_id),
+                    )
+                )
             elif parsed.path == "/api/bilibili/cookie":
                 self._send_json({"status": "completed", "auth": _bilibili_cookie_status()})
             elif parsed.path == "/api/bilibili/login/qrcode/status":
@@ -348,25 +365,75 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 lecture_id = str(payload.get("lecture_id", "") or "").strip()
                 lecture_sequence = str(payload.get("lecture_sequence", "") or "").strip()
                 message = _required_body(payload, "message")
-                channel = str(payload.get("channel", "web") or "web").strip()
-                thread = _chat_thread_for_stream(
-                    store,
-                    course_id=course_id,
-                    message=message,
-                    thread_id=str(payload.get("thread_id", "") or "").strip(),
-                    channel=channel,
+                channel = _chat_channel_for_request(
+                    visitor_session_id=str(payload.get("visitor_session_id", "") or "").strip(),
+                    requested_channel=str(payload.get("channel", "web") or "web").strip(),
                 )
-                if _is_visual_request(message):
-                    selected_lecture = _select_context_lecture(
-                        store.read_lectures(course_id),
+                acquired_chat_slot = _acquire_chat_slot()
+                if not acquired_chat_slot:
+                    self._send_json(
+                        {
+                            "status": "failed",
+                            "error_type": "TooManyChatRequests",
+                            "error": "当前访客较多，Hermes 正在处理其他同学的对话，请稍后再试。",
+                        },
+                        status=429,
+                    )
+                    return
+                try:
+                    thread = _chat_thread_for_stream(
+                        store,
+                        course_id=course_id,
+                        message=message,
+                        thread_id=str(payload.get("thread_id", "") or "").strip(),
+                        channel=channel,
+                    )
+                    if _is_visual_request(message):
+                        selected_lecture = _select_context_lecture(
+                            store.read_lectures(course_id),
+                            lecture_id=lecture_id,
+                            lecture_sequence=lecture_sequence,
+                        )
+                        events = _build_visual_sse_events(
+                            store=store,
+                            course_id=course_id,
+                            lecture_id=str(selected_lecture.get("lecture_id") or lecture_id),
+                            message=message,
+                        )
+                        persistent_events = _persist_hermes_stream_events(
+                            store,
+                            thread=thread,
+                            user_message=message,
+                            events=events,
+                        )
+                        self._send_sse_stream(persistent_events)
+                        return
+                    if stream_web_hermes_sse_events is None:
+                        raise RuntimeError("Hermes Web frontdesk adapter is unavailable")
+                    binding = store.get_web_course_binding(course_id)
+                    binding["child_course_title"] = str(course.get("title", "") or "")
+                    course_context = _build_web_course_context(
+                        store=store,
+                        course_id=course_id,
+                        course=course,
                         lecture_id=lecture_id,
                         lecture_sequence=lecture_sequence,
                     )
-                    events = _build_visual_sse_events(
-                        store=store,
-                        course_id=course_id,
-                        lecture_id=str(selected_lecture.get("lecture_id") or lecture_id),
+                    history_messages = store.list_chat_messages(str(thread.get("thread_id") or ""))
+                    history_events = store.list_chat_events(str(thread.get("thread_id") or ""))
+                    chat_messages_for_control = [
+                        *history_messages,
+                        {"role": "user", "content": message},
+                    ]
+                    events = stream_web_hermes_sse_events(
                         message=message,
+                        thread_id=str(thread.get("thread_id") or ""),
+                        channel=channel,
+                        web_course_id=course_id,
+                        course_binding=binding,
+                        course_context=course_context,
+                        chat_messages=chat_messages_for_control,
+                        chat_events=history_events,
                     )
                     persistent_events = _persist_hermes_stream_events(
                         store,
@@ -375,41 +442,8 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                         events=events,
                     )
                     self._send_sse_stream(persistent_events)
-                    return
-                if stream_web_hermes_sse_events is None:
-                    raise RuntimeError("Hermes Web frontdesk adapter is unavailable")
-                binding = store.get_web_course_binding(course_id)
-                binding["child_course_title"] = str(course.get("title", "") or "")
-                course_context = _build_web_course_context(
-                    store=store,
-                    course_id=course_id,
-                    course=course,
-                    lecture_id=lecture_id,
-                    lecture_sequence=lecture_sequence,
-                )
-                history_messages = store.list_chat_messages(str(thread.get("thread_id") or ""))
-                history_events = store.list_chat_events(str(thread.get("thread_id") or ""))
-                chat_messages_for_control = [
-                    *history_messages,
-                    {"role": "user", "content": message},
-                ]
-                events = stream_web_hermes_sse_events(
-                    message=message,
-                    thread_id=str(thread.get("thread_id") or ""),
-                    channel=channel,
-                    web_course_id=course_id,
-                    course_binding=binding,
-                    course_context=course_context,
-                    chat_messages=chat_messages_for_control,
-                    chat_events=history_events,
-                )
-                persistent_events = _persist_hermes_stream_events(
-                    store,
-                    thread=thread,
-                    user_message=message,
-                    events=events,
-                )
-                self._send_sse_stream(persistent_events)
+                finally:
+                    _release_chat_slot()
             elif parsed.path == "/api/import":
                 _require_mutable_endpoint("importing courses")
                 source_url = _required_body(payload, "source_url")
@@ -541,6 +575,14 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     lite_map_mode=_bool_body(payload.get("lite_map_mode"), default=False),
                 )
                 self._send_json({"status": "accepted", "run_id": retry_run["run_id"], "run": retry_run}, status=202)
+            elif parsed.path == "/api/chat/session/end":
+                visitor_session_id = _required_body(payload, "visitor_session_id")
+                result = _delete_visitor_chat_session(
+                    SQLiteCourseStore(self.store_root),
+                    visitor_session_id=visitor_session_id,
+                    course_id=str(payload.get("course_id", "") or "").strip(),
+                )
+                self._send_json({"status": "completed", **result})
             else:
                 self.send_error(404, "Not found")
         except Exception as exc:  # noqa: BLE001
@@ -655,6 +697,86 @@ def _bool_env(name: str) -> bool:
 def _require_mutable_endpoint(action: str) -> None:
     if _is_public_demo():
         raise PermissionError(f"public demo mode is read-only; {action} is disabled")
+
+
+def _positive_int_env(name: str, *, default: int) -> int:
+    raw_value = str(os.environ.get(name, "") or "").strip()
+    if not raw_value:
+        return default
+    try:
+        return max(1, int(raw_value))
+    except ValueError:
+        return default
+
+
+def _chat_concurrency_limit() -> int:
+    return _positive_int_env(CHAT_CONCURRENCY_ENV, default=DEFAULT_CHAT_CONCURRENCY)
+
+
+def _public_demo_chat_ttl_seconds() -> int:
+    return _positive_int_env(PUBLIC_DEMO_CHAT_TTL_ENV, default=DEFAULT_PUBLIC_DEMO_CHAT_TTL_SECONDS)
+
+
+def _chat_semaphore() -> threading.BoundedSemaphore:
+    global _CHAT_SEMAPHORE, _CHAT_SEMAPHORE_CAPACITY
+    capacity = _chat_concurrency_limit()
+    with _CHAT_SEMAPHORE_LOCK:
+        if _CHAT_SEMAPHORE is None or _CHAT_SEMAPHORE_CAPACITY != capacity:
+            _CHAT_SEMAPHORE = threading.BoundedSemaphore(capacity)
+            _CHAT_SEMAPHORE_CAPACITY = capacity
+        return _CHAT_SEMAPHORE
+
+
+def _acquire_chat_slot() -> bool:
+    return _chat_semaphore().acquire(blocking=False)
+
+
+def _release_chat_slot() -> None:
+    try:
+        _chat_semaphore().release()
+    except ValueError:
+        return
+
+
+def _clean_visitor_session_id(raw_value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_-]", "", str(raw_value or "").strip())[:64]
+    if not cleaned:
+        raise ValueError("visitor_session_id is required")
+    return cleaned
+
+
+def _visitor_chat_channel(visitor_session_id: str) -> str:
+    return f"{PUBLIC_DEMO_VISITOR_CHANNEL_PREFIX}{_clean_visitor_session_id(visitor_session_id)}"
+
+
+def _chat_channel_for_request(*, visitor_session_id: str = "", requested_channel: str = "web") -> str:
+    if _is_public_demo():
+        return _visitor_chat_channel(visitor_session_id)
+    return str(requested_channel or "web").strip() or "web"
+
+
+def _delete_visitor_chat_session(
+    store: SQLiteCourseStore,
+    *,
+    visitor_session_id: str,
+    course_id: str = "",
+) -> dict[str, Any]:
+    return store.delete_chat_threads(
+        course_id=course_id,
+        channel=_visitor_chat_channel(visitor_session_id),
+    )
+
+
+def _cleanup_expired_public_demo_chat_sessions(store: SQLiteCourseStore) -> dict[str, Any]:
+    if not _is_public_demo():
+        return {"deleted_thread_count": 0, "deleted_thread_ids": []}
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(seconds=_public_demo_chat_ttl_seconds())
+    ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return store.delete_chat_threads(
+        channel_prefix=PUBLIC_DEMO_VISITOR_CHANNEL_PREFIX,
+        updated_before=cutoff,
+    )
 
 
 def _content_type_for_path(path: Path) -> str:
@@ -1707,8 +1829,14 @@ def _persist_hermes_stream_events(
             )
 
 
-def _chat_history_payload(store: SQLiteCourseStore, *, course_id: str, thread_id: str = "") -> dict[str, Any]:
-    threads = store.list_chat_threads(course_id=course_id, channel="web")
+def _chat_history_payload(
+    store: SQLiteCourseStore,
+    *,
+    course_id: str,
+    thread_id: str = "",
+    channel: str = "web",
+) -> dict[str, Any]:
+    threads = store.list_chat_threads(course_id=course_id, channel=channel)
     for thread in threads:
         thread["message_count"] = len(store.list_chat_messages(str(thread.get("thread_id") or "")))
     selected_thread = {}
@@ -1716,6 +1844,8 @@ def _chat_history_payload(store: SQLiteCourseStore, *, course_id: str, thread_id
         selected_thread = store.read_chat_thread(thread_id)
         if str(selected_thread.get("course_id") or "") != course_id:
             raise ValueError(f"chat thread does not belong to course: {thread_id}")
+        if str(selected_thread.get("channel") or "") != channel:
+            raise ValueError(f"chat thread does not belong to visitor session: {thread_id}")
     elif threads:
         selected_thread = dict(threads[0])
     messages = store.list_chat_messages(str(selected_thread.get("thread_id") or "")) if selected_thread else []

@@ -10,6 +10,8 @@ const state = {
   chatThreads: [],
   chatThreadId: "",
   chatBusy: false,
+  chatTurnId: 0,
+  visitorSessionId: "",
   importPollTimer: null,
   qrLoginId: "",
   qrLoginStatus: "",
@@ -58,6 +60,7 @@ const els = {
   chatLog: document.querySelector("#chat-log"),
   chatThreadSelect: document.querySelector("#chat-thread-select"),
   chatSendButton: document.querySelector("#chat-send-button"),
+  endSessionButton: document.querySelector("#end-session-button"),
   atomProgressSummary: document.querySelector("#atom-progress-summary"),
   atomStateList: document.querySelector("#atom-state-list"),
   learningSignalList: document.querySelector("#learning-signal-list"),
@@ -142,6 +145,31 @@ function secondsLabel(value) {
   const minutes = Math.floor(total / 60);
   const seconds = Math.floor(total % 60);
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function ensureVisitorSessionId() {
+  if (state.visitorSessionId) {
+    return state.visitorSessionId;
+  }
+  const storageKey = "course2knowledge_lite_visitor_session_id";
+  const existing = window.sessionStorage?.getItem(storageKey) || "";
+  if (existing) {
+    state.visitorSessionId = existing;
+    return existing;
+  }
+  const randomPart =
+    window.crypto?.randomUUID?.().replaceAll("-", "") ||
+    `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+  state.visitorSessionId = `v_${randomPart.slice(0, 32)}`;
+  window.sessionStorage?.setItem(storageKey, state.visitorSessionId);
+  return state.visitorSessionId;
+}
+
+function resetVisitorSessionId() {
+  const storageKey = "course2knowledge_lite_visitor_session_id";
+  window.sessionStorage?.removeItem(storageKey);
+  state.visitorSessionId = "";
+  return ensureVisitorSessionId();
 }
 
 async function getJson(url) {
@@ -234,6 +262,9 @@ function applyRuntimeMode() {
   }
   if (els.importReceipt && disabled && !els.importReceipt.innerHTML.trim()) {
     els.importReceipt.innerHTML = renderPublicDemoReadonlyCard();
+  }
+  if (els.endSessionButton) {
+    els.endSessionButton.hidden = !disabled;
   }
   if (els.courseList) {
     renderCourses();
@@ -403,7 +434,10 @@ async function loadChatHistory(threadId = "") {
     return;
   }
   const threadQuery = threadId ? `&thread_id=${encodeURIComponent(threadId)}` : "";
-  const payload = await getJson(`/api/chat/history?course_id=${encodeURIComponent(state.courseId)}${threadQuery}`);
+  const visitorQuery = `&visitor_session_id=${encodeURIComponent(ensureVisitorSessionId())}`;
+  const payload = await getJson(
+    `/api/chat/history?course_id=${encodeURIComponent(state.courseId)}${threadQuery}${visitorQuery}`,
+  );
   const thread = payload.thread || {};
   state.chatThreads = Array.isArray(payload.threads) ? payload.threads : [];
   const messages = Array.isArray(payload.messages) ? payload.messages : [];
@@ -1772,6 +1806,8 @@ async function runChat() {
     return;
   }
   state.chatBusy = true;
+  const turnId = state.chatTurnId + 1;
+  state.chatTurnId = turnId;
   els.chatSendButton.disabled = true;
   appendChatBubble("user", message);
   els.chatInput.value = "";
@@ -1792,6 +1828,7 @@ async function runChat() {
         lecture_sequence: state.lectureSequence,
         message,
         thread_id: state.chatThreadId,
+        visitor_session_id: ensureVisitorSessionId(),
         channel: "web",
       },
       (event) => {
@@ -1821,7 +1858,7 @@ async function runChat() {
     renderChatEvents(events, { bodyWrap, eventsWrap, preserveBody: Boolean(assistantText) });
     const threadState = events.find((event) => event.event === "thread_state")?.data || {};
     state.chatThreadId = threadState.thread?.thread_id || state.chatThreadId;
-    await refreshChatThreads();
+    await refreshAfterChatTurn(turnId);
     setStatus("Chat ready");
   } catch (error) {
     bodyWrap.innerHTML = `<p class="blocked">${escapeHtml(error.message)}</p>`;
@@ -1838,7 +1875,11 @@ async function refreshChatThreads() {
     return;
   }
   try {
-    const payload = await getJson(`/api/chat/history?course_id=${encodeURIComponent(state.courseId)}`);
+    const payload = await getJson(
+      `/api/chat/history?course_id=${encodeURIComponent(state.courseId)}&visitor_session_id=${encodeURIComponent(
+        ensureVisitorSessionId(),
+      )}`,
+    );
     state.chatThreads = Array.isArray(payload.threads) ? payload.threads : [];
     if (!state.chatThreadId) {
       state.chatThreadId = payload.thread?.thread_id || "";
@@ -1846,6 +1887,55 @@ async function refreshChatThreads() {
     renderChatThreadSelect();
   } catch (_error) {
     // Chat history is support state; keep the live reply visible if refresh fails.
+  }
+}
+
+async function refreshAfterChatTurn(turnId) {
+  if (turnId !== state.chatTurnId) {
+    return;
+  }
+  await Promise.allSettled([refreshChatThreads(), loadLearningState(), loadCards()]);
+}
+
+async function endVisitorSession({ silent = false } = {}) {
+  if (!state.visitorSessionId) {
+    resetVisitorSessionId();
+    return;
+  }
+  const endedSessionId = state.visitorSessionId;
+  try {
+    await sendJson("/api/chat/session/end", {
+      visitor_session_id: endedSessionId,
+      course_id: state.courseId,
+    });
+  } catch (_error) {
+    if (!silent) {
+      setStatus("Load failed");
+    }
+  }
+  resetVisitorSessionId();
+  state.chatThreads = [];
+  state.chatThreadId = "";
+  state.currentHermesAtoms = [];
+  els.chatLog.innerHTML = "";
+  renderChatThreadSelect();
+  renderChatEmptyState();
+  renderAtomStates();
+  if (!silent) {
+    setStatus("本次体验已清空");
+  }
+}
+
+function sendEndSessionBeacon() {
+  if (!state.visitorSessionId) {
+    return;
+  }
+  const payload = JSON.stringify({
+    visitor_session_id: state.visitorSessionId,
+    course_id: state.courseId,
+  });
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon("/api/chat/session/end", new Blob([payload], { type: "application/json" }));
   }
 }
 
@@ -1905,7 +1995,16 @@ async function postSseStream(url, payload, onEvent) {
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error((await response.text()) || `Request failed: ${response.status}`);
+    const rawError = await response.text();
+    try {
+      const payload = JSON.parse(rawError || "{}");
+      throw new Error(payload.error || `Request failed: ${response.status}`);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(rawError || `Request failed: ${response.status}`);
+      }
+      throw error;
+    }
   }
   if (!response.body) {
     for (const event of parseSse(await response.text())) {
@@ -2229,6 +2328,12 @@ els.clearStoredCookieButton?.addEventListener("click", () => {
 });
 els.refreshButton.addEventListener("click", loadCourses);
 els.chatSendButton.addEventListener("click", runChat);
+els.endSessionButton?.addEventListener("click", () => {
+  endVisitorSession().catch((error) => {
+    els.chatLog.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+    setStatus("Load failed");
+  });
+});
 els.lessonAdvanceButton.addEventListener("click", () => {
   advanceToNextLecture().catch((error) => {
     setStatus("Load failed");
@@ -2269,7 +2374,9 @@ els.courseSelect.addEventListener("change", () => selectCourse(els.courseSelect.
 els.notesCourseSelect.addEventListener("change", () => selectCourse(els.notesCourseSelect.value));
 els.lectureSelect.addEventListener("change", () => selectLecture(els.lectureSelect.value));
 els.notesLectureSelect.addEventListener("change", () => selectLecture(els.notesLectureSelect.value));
+window.addEventListener("pagehide", sendEndSessionBeacon);
 
+ensureVisitorSessionId();
 setView("interaction");
 renderChatEmptyState();
 renderMarkdownUnavailable();
