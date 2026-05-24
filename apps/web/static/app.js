@@ -131,6 +131,8 @@ const progressCopy = {
   read: "已读",
 };
 
+const publicDemoPreferredLectureKeywords = ["cache", "高速缓冲存储器"];
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -138,6 +140,36 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function displaySourceUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "local store";
+  }
+  try {
+    const url = new URL(raw);
+    for (const key of [...url.searchParams.keys()]) {
+      if (key === "vd_source" || key === "spm_id_from" || key.startsWith("utm_") || key.startsWith("spm")) {
+        url.searchParams.delete(key);
+      }
+    }
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return raw.replace(/([?&])(vd_source|spm_id_from|utm_[^=&]+|spm[^=&]*)=[^&]*/gi, "$1").replace(/[?&]$/, "");
+  }
+}
+
+function publicDemoDefaultLectureSequence(lectures) {
+  if (!isPublicDemo() || !Array.isArray(lectures) || !lectures.length) {
+    return Number(lectures?.[0]?.sequence || 1);
+  }
+  const preferred = lectures.find((lecture) => {
+    const title = String(lecture.title || "").toLowerCase();
+    return publicDemoPreferredLectureKeywords.some((keyword) => title.includes(keyword.toLowerCase()));
+  });
+  return Number(preferred?.sequence || lectures[0]?.sequence || 1);
 }
 
 function secondsLabel(value) {
@@ -397,7 +429,7 @@ async function selectCourse(courseId) {
   renderAtomStates();
   const payload = await getJson(`/api/lectures?course_id=${encodeURIComponent(courseId)}`);
   state.lectures = payload.lectures || [];
-  state.lectureSequence = Number(state.lectures[0]?.sequence || 1);
+  state.lectureSequence = publicDemoDefaultLectureSequence(state.lectures);
   renderLectureSelects();
   await loadCoverage();
   await loadReadiness();
@@ -1280,6 +1312,12 @@ function renderSelectedCourseSummary() {
   const coverage = state.coverage || {};
   const readiness = state.readiness || {};
   const bindingLabel = bindingStatusLabel(course.web_hermes_binding_status);
+  const transcriptReadyCount = Number(course.lecture_transcript_count || 0);
+  const lectureCount = Number(course.lecture_count || 0);
+  const missingTranscriptCount = Math.max(lectureCount - transcriptReadyCount, 0);
+  const transcriptHint = missingTranscriptCount
+    ? `<p class="field-hint">${missingTranscriptCount} 讲暂无可用字幕；公开 demo 仍保留完整目录，并使用有转写课时展示主链路。</p>`
+    : "";
   els.selectedCourseSummary.innerHTML = `
     <div class="summary-line">
       <span>课程名称</span>
@@ -1287,12 +1325,13 @@ function renderSelectedCourseSummary() {
     </div>
     <div class="summary-line">
       <span>来源</span>
-      <strong>${escapeHtml(course.source_url || "local store")}</strong>
+      <strong>${escapeHtml(displaySourceUrl(course.source_url))}</strong>
     </div>
     <div class="summary-line">
       <span>课时状态</span>
-      <strong>${Number(course.lecture_transcript_count || 0)} / ${Number(course.lecture_count || 0)} 有转写</strong>
+      <strong>${transcriptReadyCount} / ${lectureCount} 有转写</strong>
     </div>
+    ${transcriptHint}
     <div class="summary-line">
       <span>导入 Ready Gate</span>
       <strong>${Number(readiness.ready_lecture_count || 0)} / ${Number(

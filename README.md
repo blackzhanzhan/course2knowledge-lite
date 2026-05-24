@@ -6,6 +6,8 @@ Course2Knowledge Lite 不是 LMS、普通 RAG demo、笔记软件、视频下载
 
 [技术档案](https://blackzhanzhan.github.io/course2knowledge-lite/) · [技术白皮书](docs/TECHNICAL_WHITEPAPER.md) · [部署说明](docs/DEPLOYMENT.md) · [测试说明](docs/TESTING.md)
 
+在线演示地址不写入公开仓库；如果你是从简历或面试材料进入，请使用材料里单独提供的 demo 地址。公开演示默认打开一门“计算机组成原理微课堂”示例课程，并预选 cache 代表课时，便于直接体验聊天、知识原子和课程笔记。
+
 ![Course2Knowledge Lite 总体架构](docs/assets/readme/technical-dossier-architecture.png)
 
 ## 它解决什么问题
@@ -63,6 +65,8 @@ Bilibili Course URL
 - 在 Web Lite 中进行课程导入、课程选择、聊天带学、知识节点查看、笔记阅读、书签和阅读进度记录。
 - 通过 Hermes Lite 工具前台访问同一份本地课程 store。
 - 将聊天线程、消息和事件持久化到 SQLite。
+
+公开 demo 当前示例课程包含 154 个课时，其中 153 个课时有可用转写。缺失的 1 讲保留在目录里作为真实数据边界展示；主要聊天、笔记、知识原子和证据链路使用有转写课时演示。
 
 ## 快速开始
 
