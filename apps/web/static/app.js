@@ -23,6 +23,7 @@ const state = {
   currentProgressStatus: "not_started",
   currentHermesAtoms: [],
   publicDemo: false,
+  courseStoreLoading: true,
 };
 
 const els = {
@@ -116,7 +117,7 @@ const statusCopy = {
   "Note saved": "笔记已保存",
   "Bookmark saved": "书签已保存",
   "Load failed": "加载失败",
-  "Public demo is read-only": "公开演示只读，已关闭导入、删除和本地写入",
+  "Public demo is read-only": "只读体验已关闭导入、删除和本地写入",
 };
 
 const atomStateCopy = {
@@ -235,13 +236,13 @@ function isPublicDemo() {
 }
 
 function publicDemoNotice() {
-  return "公开演示模式只开放课程浏览、课堂笔记和学习对话；导入、删除、Cookie、笔记、书签和进度写入已关闭。";
+  return "当前模式只开放课程浏览、课堂笔记和学习对话；导入、删除、Cookie、笔记、书签和进度写入已关闭。";
 }
 
 function renderPublicDemoReadonlyCard() {
   return `
-    <section class="readonly-demo-card" aria-label="公开演示只读边界">
-      <strong>公开演示只读</strong>
+    <section class="readonly-demo-card" aria-label="只读体验边界">
+      <strong>只读体验</strong>
       <p>${publicDemoNotice()}</p>
     </section>
   `;
@@ -290,7 +291,7 @@ function applyRuntimeMode() {
     control.setAttribute("aria-disabled", String(disabled));
   }
   if (els.bilibiliCookieStatus && disabled) {
-    els.bilibiliCookieStatus.textContent = "公开演示已关闭 B 站登录态读取与写入。";
+    els.bilibiliCookieStatus.textContent = "当前模式已关闭 B 站登录态读取与写入。";
   }
   if (els.importReceipt && disabled && !els.importReceipt.innerHTML.trim()) {
     els.importReceipt.innerHTML = renderPublicDemoReadonlyCard();
@@ -301,6 +302,27 @@ function applyRuntimeMode() {
   if (els.courseList) {
     renderCourses();
   }
+}
+
+function renderCourseLoadingState() {
+  state.courseStoreLoading = true;
+  els.courseSelect.innerHTML = '<option value="">正在读取课程...</option>';
+  els.notesCourseSelect.innerHTML = '<option value="">正在读取课程...</option>';
+  els.lectureSelect.innerHTML = '<option value="">正在读取课时...</option>';
+  els.notesLectureSelect.innerHTML = '<option value="">正在读取课时...</option>';
+  els.courseList.innerHTML = '<div class="empty">正在打开本地课程库...</div>';
+  els.coveragePanel.innerHTML = '<div class="empty">正在检查转写覆盖...</div>';
+  els.selectedCourseSummary.innerHTML = '<div class="empty">正在读取课程结构和导入状态...</div>';
+  els.lectureAdminList.innerHTML = '<div class="empty">正在展开课时目录...</div>';
+  els.cardsList.innerHTML = '<div class="empty">正在读取知识原子...</div>';
+  els.segments.innerHTML = '<div class="empty">正在打开当前课时证据...</div>';
+  els.notesList.innerHTML = '<div class="empty">正在读取课程笔记...</div>';
+  els.bookmarksList.innerHTML = "";
+  els.courseMeta.textContent = "正在打开课程库";
+  els.lectureTitle.textContent = isPublicDemo() ? "正在加载示例课程" : "正在加载课程";
+  renderMarkdownUnavailable();
+  renderAtomStates();
+  renderChatEmptyState();
 }
 
 function selectedCourse() {
@@ -343,6 +365,7 @@ function setView(view) {
 }
 
 function clearCourseSurface() {
+  state.courseStoreLoading = false;
   state.lectures = [];
   state.courseId = "";
   state.lectureId = "";
@@ -373,10 +396,18 @@ function clearCourseSurface() {
 }
 
 async function loadCourses() {
+  renderCourseLoadingState();
   setStatus("Reading local course store");
-  const payload = await getJson("/api/courses");
+  let payload;
+  try {
+    payload = await getJson("/api/courses");
+  } catch (error) {
+    state.courseStoreLoading = false;
+    throw error;
+  }
   state.courses = payload.courses || [];
   if (!state.courses.length) {
+    state.courseStoreLoading = false;
     clearCourseSurface();
     setStatus("No courses");
     return;
@@ -420,6 +451,7 @@ async function selectCourse(courseId) {
     clearCourseSurface();
     return;
   }
+  const wasLoadingStore = state.courseStoreLoading;
   state.courseId = courseId;
   state.transientAtomSignals.clear();
   state.cards = [];
@@ -427,18 +459,25 @@ async function selectCourse(courseId) {
   renderCourseSelects();
   renderCourses();
   renderAtomStates();
-  const payload = await getJson(`/api/lectures?course_id=${encodeURIComponent(courseId)}`);
-  state.lectures = payload.lectures || [];
-  state.lectureSequence = publicDemoDefaultLectureSequence(state.lectures);
-  renderLectureSelects();
-  await loadCoverage();
-  await loadReadiness();
-  renderSelectedCourseSummary();
-  renderLectureAdminList();
-  await loadCourseCards();
-  await loadReader();
-  await loadLearningState();
-  await loadChatHistory();
+  try {
+    const payload = await getJson(`/api/lectures?course_id=${encodeURIComponent(courseId)}`);
+    state.lectures = payload.lectures || [];
+    state.lectureSequence = publicDemoDefaultLectureSequence(state.lectures);
+    renderLectureSelects();
+    await loadCoverage();
+    await loadReadiness();
+    renderSelectedCourseSummary();
+    renderLectureAdminList();
+    await loadCourseCards();
+    await loadReader();
+    await loadLearningState();
+    await loadChatHistory();
+  } finally {
+    if (wasLoadingStore) {
+      state.courseStoreLoading = false;
+      renderChatEmptyState();
+    }
+  }
 }
 
 async function selectLecture(sequence) {
@@ -524,7 +563,7 @@ function chatThreadLabel(thread, fallbackIndex) {
 }
 
 async function importCollection() {
-  if (guardPublicDemoWrite("公开演示不支持导入课程；当前页面使用已准备好的示例课程数据。")) {
+  if (guardPublicDemoWrite("当前模式不支持导入课程；页面使用已准备好的课程数据。")) {
     return;
   }
   const sourceUrl = els.importUrl.value.trim();
@@ -596,7 +635,7 @@ async function importCollection() {
 }
 
 async function pasteBilibiliCookieFromClipboard() {
-  if (guardPublicDemoWrite("公开演示不读取或发送 B 站 Cookie。")) {
+  if (guardPublicDemoWrite("当前模式不读取或发送 B 站 Cookie。")) {
     return;
   }
   if (!els.bilibiliCookie || !navigator.clipboard?.readText) {
@@ -613,7 +652,7 @@ async function pasteBilibiliCookieFromClipboard() {
 }
 
 function clearBilibiliCookieInput() {
-  if (guardPublicDemoWrite("公开演示没有可清空的临时 Cookie。")) {
+  if (guardPublicDemoWrite("当前模式没有可清空的临时 Cookie。")) {
     return;
   }
   if (els.bilibiliCookie) {
@@ -627,7 +666,7 @@ async function loadBilibiliCookieStatus() {
     return;
   }
   if (isPublicDemo()) {
-    els.bilibiliCookieStatus.textContent = "公开演示已关闭 B 站登录态读取与写入。";
+    els.bilibiliCookieStatus.textContent = "当前模式已关闭 B 站登录态读取与写入。";
     return;
   }
   try {
@@ -652,7 +691,7 @@ function renderBilibiliCookieStatus(auth) {
 }
 
 async function clearStoredBilibiliCookie() {
-  if (guardPublicDemoWrite("公开演示不允许修改本机保存的 B 站登录态。")) {
+  if (guardPublicDemoWrite("当前模式不允许修改本机保存的 B 站登录态。")) {
     return;
   }
   const payload = await sendJson("/api/bilibili/cookie/clear", {});
@@ -663,7 +702,7 @@ async function clearStoredBilibiliCookie() {
 }
 
 async function startBilibiliQrLogin() {
-  if (guardPublicDemoWrite("公开演示不支持扫码登录。")) {
+  if (guardPublicDemoWrite("当前模式不支持扫码登录。")) {
     return;
   }
   if (!els.qrLoginPanel) {
@@ -743,7 +782,7 @@ function renderQrLoginPanel(payload) {
 }
 
 async function clearBilibiliQrLogin() {
-  if (guardPublicDemoWrite("公开演示没有可清空的扫码登录状态。")) {
+  if (guardPublicDemoWrite("当前模式没有可清空的扫码登录状态。")) {
     return;
   }
   const loginId = state.qrLoginId;
@@ -1213,7 +1252,7 @@ function renderCourses() {
     .map(
       (course) => {
         const courseAction = isPublicDemo()
-          ? '<span class="readonly-pill" title="公开演示不允许删除课程">只读</span>'
+          ? '<span class="readonly-pill" title="当前模式不允许删除课程">只读</span>'
           : `<button class="ghost-button delete-course-button" type="button" data-course-id="${escapeHtml(
               course.course_id,
             )}" title="删除课程">删除</button>`;
@@ -1247,7 +1286,7 @@ function renderCourses() {
 }
 
 async function deleteCourse(courseId) {
-  if (guardPublicDemoWrite("公开演示不允许删除课程。")) {
+  if (guardPublicDemoWrite("当前模式不允许删除课程。")) {
     return;
   }
   const course = state.courses.find((item) => item.course_id === courseId);
@@ -1316,7 +1355,7 @@ function renderSelectedCourseSummary() {
   const lectureCount = Number(course.lecture_count || 0);
   const missingTranscriptCount = Math.max(lectureCount - transcriptReadyCount, 0);
   const transcriptHint = missingTranscriptCount
-    ? `<p class="field-hint">${missingTranscriptCount} 讲暂无可用字幕；公开 demo 仍保留完整目录，并使用有转写课时展示主链路。</p>`
+    ? `<p class="field-hint">${missingTranscriptCount} 讲暂无可用字幕；课程目录仍保留完整边界，并使用有转写课时展示主链路。</p>`
     : "";
   els.selectedCourseSummary.innerHTML = `
     <div class="summary-line">
@@ -1551,6 +1590,12 @@ function renderAtomStates() {
   const cards = state.cards || [];
   state.currentHermesAtoms = [];
   renderLearningSignals(null);
+  if (state.courseStoreLoading) {
+    els.atomProgressSummary.textContent = "正在读取知识节点";
+    els.atomStateList.innerHTML = '<div class="empty">课程库打开后，这里会显示当前课时的知识节点状态。</div>';
+    renderLessonAdvance();
+    return;
+  }
   if (!cards.length) {
     els.atomProgressSummary.textContent = "当前课时暂无知识节点";
     els.atomStateList.innerHTML = '<div class="empty">生成知识节点后，这里会显示本节候选知识点。</div>';
@@ -1600,7 +1645,7 @@ function markAtomsFromText(text) {
 }
 
 async function generateCards() {
-  if (guardPublicDemoWrite("公开演示不允许重新生成知识节点。")) {
+  if (guardPublicDemoWrite("当前模式不允许重新生成知识节点。")) {
     return;
   }
   if (!state.courseId || !state.lectureId) {
@@ -1624,6 +1669,16 @@ async function generateCards() {
 function renderMarkdownUnavailable() {
   const course = selectedCourse();
   const lecture = selectedLecture();
+  if (state.courseStoreLoading) {
+    els.markdownNotes.innerHTML = `
+      <article class="markdown-empty">
+        <p class="item-title">正在读取课程笔记</p>
+        <p class="item-meta">本地 SQLite 课程运行时正在打开。</p>
+        <p>课程加载完成后，这里会显示当前课时的中文讲义、视觉证据和本地笔记。</p>
+      </article>
+    `;
+    return;
+  }
   els.markdownNotes.innerHTML = `
     <article class="markdown-empty">
       <p class="item-title">Markdown / Obsidian 内容未接入或未生成</p>
@@ -1777,7 +1832,7 @@ function renderBookmarks(bookmarks) {
 }
 
 async function saveNote() {
-  if (guardPublicDemoWrite("公开演示不允许保存本地笔记。")) {
+  if (guardPublicDemoWrite("当前模式不允许保存本地笔记。")) {
     return;
   }
   if (!state.courseId || !state.lectureId) {
@@ -1799,7 +1854,7 @@ async function saveNote() {
 }
 
 async function createBookmark(targetType, targetId) {
-  if (guardPublicDemoWrite("公开演示不允许保存书签。")) {
+  if (guardPublicDemoWrite("当前模式不允许保存书签。")) {
     return;
   }
   if (!state.courseId || !targetId) {
@@ -1815,7 +1870,7 @@ async function createBookmark(targetType, targetId) {
 }
 
 async function setProgress() {
-  if (guardPublicDemoWrite("公开演示不允许写入阅读进度。")) {
+  if (guardPublicDemoWrite("当前模式不允许写入阅读进度。")) {
     return;
   }
   if (!state.courseId || !state.lectureId) {
@@ -2347,6 +2402,15 @@ function renderChatEmptyState() {
   if (!els.chatLog || els.chatLog.querySelector(".chat-message")) {
     return;
   }
+  if (state.courseStoreLoading) {
+    els.chatLog.innerHTML = `
+      <div class="empty">
+        <p>正在连接本地课程库，课程和课时准备好后可以直接开始学习。</p>
+        <p class="citation">稍后可直接输入：开始学习当前课程。</p>
+      </div>
+    `;
+    return;
+  }
   els.chatLog.innerHTML = `
     <div class="empty">
       <p>导入或选择任意 B 站课程后，这里会接入 Hermes 教学前台，围绕当前课程带你一步一步学。</p>
@@ -2417,8 +2481,7 @@ window.addEventListener("pagehide", sendEndSessionBeacon);
 
 ensureVisitorSessionId();
 setView("interaction");
-renderChatEmptyState();
-renderMarkdownUnavailable();
+renderCourseLoadingState();
 
 loadRuntimeMode()
   .then(async () => {
