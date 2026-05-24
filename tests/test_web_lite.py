@@ -361,6 +361,52 @@ class WebLiteTests(unittest.TestCase):
         self.assertEqual(len(courses["courses"]), 1)
         self.assertEqual(courses["courses"][0]["lecture_count"], 2)
 
+    def test_public_demo_runtime_is_readonly_but_browsing_still_works(self) -> None:
+        web_server = load_web_server_module()
+
+        previous_public_demo = web_server.Course2KnowledgeWebHandler.public_demo
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                _store_with_transcript(temp_dir)
+                web_server.Course2KnowledgeWebHandler.public_demo = True
+                web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+                server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                host, port = server.server_address
+                try:
+                    runtime = _request_json(host, port, "GET", "/api/runtime")
+                    courses = _request_json(host, port, "GET", "/api/courses")
+                    blocked_import = _request_json(
+                        host,
+                        port,
+                        "POST",
+                        "/api/import",
+                        {"source_url": "https://space.bilibili.com/1112988584/lists/7726472?type=season"},
+                        expected_status=400,
+                    )
+                    blocked_delete = _request_json(
+                        host,
+                        port,
+                        "DELETE",
+                        f"/api/courses?course_id={courses['courses'][0]['course_id']}",
+                        expected_status=400,
+                    )
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=5)
+        finally:
+            web_server.Course2KnowledgeWebHandler.public_demo = previous_public_demo
+
+        self.assertTrue(runtime["runtime"]["public_demo"])
+        self.assertFalse(runtime["runtime"]["mutable_course_store"])
+        self.assertEqual(len(courses["courses"]), 1)
+        self.assertEqual(blocked_import["status"], "failed")
+        self.assertEqual(blocked_delete["status"], "failed")
+        self.assertIn("public demo mode is read-only", blocked_import["error"])
+        self.assertIn("public demo mode is read-only", blocked_delete["error"])
+
     def test_web_static_text_assets_include_utf8_charset(self) -> None:
         web_server = load_web_server_module()
 
@@ -1640,6 +1686,14 @@ class WebLiteTests(unittest.TestCase):
         self.assertIn("importTimeline", app_js)
         self.assertIn("restoreLatestImportStatus", app_js)
         self.assertIn("/api/import/status", app_js)
+        self.assertIn("/api/runtime", app_js)
+        self.assertIn("is-public-demo", app_js)
+        self.assertIn("renderPublicDemoReadonlyCard", app_js)
+        self.assertIn("Public demo is read-only", app_js)
+        self.assertIn("readonly-demo-card", app_js)
+        self.assertIn("readonly-pill", app_js)
+        self.assertIn(".readonly-demo-card", styles)
+        self.assertIn(".readonly-pill", styles)
         self.assertIn("导入进度", app_js)
         self.assertIn("正在生成笔记、知识原子和关口", app_js)
         self.assertIn("入库保护阻断", app_js)

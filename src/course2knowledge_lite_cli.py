@@ -22,6 +22,7 @@ def _build_parser() -> argparse.ArgumentParser:
     web.add_argument("--host", default="127.0.0.1")
     web.add_argument("--port", type=int, default=3014)
     web.add_argument("--store-root", default=str(_repo_root() / "data" / "course-store"))
+    web.add_argument("--public-demo", action="store_true", help="Run a read-only public demo surface")
 
     sync = subparsers.add_parser("sync-profile", help="Sync the public Hermes Lite profile")
     sync.add_argument("--profile", default="course2knowledge-lite")
@@ -57,7 +58,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "web":
         from public_release.course2knowledge_lite_apps_web_server import main as web_main
 
-        return web_main(["--host", args.host, "--port", str(args.port), "--store-root", args.store_root])
+        web_args = ["--host", args.host, "--port", str(args.port), "--store-root", args.store_root]
+        if args.public_demo:
+            web_args.append("--public-demo")
+        return web_main(web_args)
     if args.command == "sync-profile":
         from public_release.course2knowledge_lite_sync_hermes_profile import sync_profile
 

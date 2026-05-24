@@ -90,6 +90,16 @@ http://127.0.0.1:3014/
 course2knowledge-lite web --store-root tmp/release-web-store
 ```
 
+公开演示部署可以关闭课程导入、删除、B 站登录态、笔记、书签和进度写入，只保留课程浏览、讲义阅读和 Hermes 学习对话：
+
+```bash
+course2knowledge-lite web \
+  --host 0.0.0.0 \
+  --port 3014 \
+  --store-root data/course-store \
+  --public-demo
+```
+
 部署现实说明：这个项目目前仍是个人维护的原创架构，重点是把“课程编译成本地知识运行时”这条链路跑通，而不是提供一套成熟的一键云部署方案。如果你在不同系统、Python 环境、网络条件或 B 站登录态上遇到部署问题，建议把错误日志、系统环境、启动命令和当前配置整理出来，让 AI 辅助你逐步排查。更多细节见 [部署说明](docs/DEPLOYMENT.md)。
 
 导入测试 URL 示例：

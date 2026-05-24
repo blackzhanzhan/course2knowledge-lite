@@ -74,6 +74,29 @@ The smoke test registers the synced Hermes plugin and verifies import status,
 Q&A, knowledge cards, `learning_guide_get`, visual evidence media replies,
 notes, and reading progress against a temporary public course store.
 
+## Public Demo Mode
+
+For a resume or portfolio deployment, publish a prepared demo course store and
+run Web Lite in read-only mode:
+
+```bash
+course2knowledge-lite web \
+  --host 0.0.0.0 \
+  --port 3014 \
+  --store-root /opt/course2knowledge-lite/data/course-store \
+  --public-demo
+```
+
+Public demo mode keeps the useful interactive surface online while disabling
+course import, course deletion, Bilibili QR/cookie actions, note writes,
+bookmark writes, progress writes, and knowledge-card regeneration. Visitors can
+still select a course, read generated notes, inspect transcript evidence, and
+chat through the configured Hermes gateway.
+
+The demo SQLite store is runtime data, not release source. Do not commit it to
+git. Upload it to the server as an operational artifact and keep real cookies,
+API keys, Hermes private sessions, and local author data out of the repository.
+
 ## Bilibili Login State
 
 Some Bilibili subtitles require a logged-in browser session. The Web import

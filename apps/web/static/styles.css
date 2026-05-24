@@ -54,6 +54,13 @@ button:disabled {
   opacity: 0.65;
 }
 
+body.is-public-demo button:disabled,
+body.is-public-demo input:disabled,
+body.is-public-demo select:disabled,
+body.is-public-demo textarea:disabled {
+  cursor: not-allowed;
+}
+
 input,
 select,
 textarea {
@@ -890,6 +897,36 @@ textarea {
   border-color: var(--blue);
   background: var(--blue-soft);
   color: #1d4ed8;
+}
+
+.readonly-demo-card {
+  border: 1px solid #b9d2f8;
+  border-radius: 8px;
+  background: var(--blue-soft);
+  padding: 12px 14px;
+}
+
+.readonly-demo-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.readonly-demo-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.readonly-pill {
+  align-self: start;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fbfcfe;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+  padding: 5px 10px;
+  white-space: nowrap;
 }
 
 .segment p,

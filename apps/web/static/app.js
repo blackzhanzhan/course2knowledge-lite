@@ -20,6 +20,7 @@ const state = {
   transientAtomSignals: new Set(),
   currentProgressStatus: "not_started",
   currentHermesAtoms: [],
+  publicDemo: false,
 };
 
 const els = {
@@ -112,6 +113,7 @@ const statusCopy = {
   "Note saved": "笔记已保存",
   "Bookmark saved": "书签已保存",
   "Load failed": "加载失败",
+  "Public demo is read-only": "公开演示只读，已关闭导入、删除和本地写入",
 };
 
 const atomStateCopy = {
@@ -166,6 +168,76 @@ async function sendJson(url, payload, { method = "POST" } = {}) {
 
 function setStatus(text) {
   els.status.textContent = statusCopy[text] || text;
+}
+
+function isPublicDemo() {
+  return Boolean(state.publicDemo);
+}
+
+function publicDemoNotice() {
+  return "公开演示模式只开放课程浏览、课堂笔记和学习对话；导入、删除、Cookie、笔记、书签和进度写入已关闭。";
+}
+
+function renderPublicDemoReadonlyCard() {
+  return `
+    <section class="readonly-demo-card" aria-label="公开演示只读边界">
+      <strong>公开演示只读</strong>
+      <p>${publicDemoNotice()}</p>
+    </section>
+  `;
+}
+
+function guardPublicDemoWrite(target) {
+  if (!isPublicDemo()) {
+    return false;
+  }
+  const message = target || publicDemoNotice();
+  setStatus("Public demo is read-only");
+  if (els.importReceipt) {
+    els.importReceipt.innerHTML = `<p class="blocked">${escapeHtml(message)}</p>`;
+  }
+  return true;
+}
+
+async function loadRuntimeMode() {
+  const payload = await getJson("/api/runtime");
+  const runtime = payload.runtime || {};
+  state.publicDemo = Boolean(runtime.public_demo);
+  applyRuntimeMode();
+  return runtime;
+}
+
+function applyRuntimeMode() {
+  document.body.classList.toggle("is-public-demo", isPublicDemo());
+  const disabled = isPublicDemo();
+  const mutableControls = [
+    els.importButton,
+    els.importUrl,
+    els.bilibiliCookie,
+    els.rememberBilibiliCookie,
+    els.pasteCookieButton,
+    els.qrLoginButton,
+    els.clearQrLoginButton,
+    els.clearCookieButton,
+    els.clearStoredCookieButton,
+    els.noteInput,
+    els.noteButton,
+    els.cardsButton,
+    els.progressSelect,
+  ].filter(Boolean);
+  for (const control of mutableControls) {
+    control.disabled = disabled;
+    control.setAttribute("aria-disabled", String(disabled));
+  }
+  if (els.bilibiliCookieStatus && disabled) {
+    els.bilibiliCookieStatus.textContent = "公开演示已关闭 B 站登录态读取与写入。";
+  }
+  if (els.importReceipt && disabled && !els.importReceipt.innerHTML.trim()) {
+    els.importReceipt.innerHTML = renderPublicDemoReadonlyCard();
+  }
+  if (els.courseList) {
+    renderCourses();
+  }
 }
 
 function selectedCourse() {
@@ -386,6 +458,9 @@ function chatThreadLabel(thread, fallbackIndex) {
 }
 
 async function importCollection() {
+  if (guardPublicDemoWrite("公开演示不支持导入课程；当前页面使用已准备好的示例课程数据。")) {
+    return;
+  }
   const sourceUrl = els.importUrl.value.trim();
   if (!sourceUrl) {
     els.importReceipt.textContent = "粘贴一个 Bilibili 合集链接。";
@@ -455,6 +530,9 @@ async function importCollection() {
 }
 
 async function pasteBilibiliCookieFromClipboard() {
+  if (guardPublicDemoWrite("公开演示不读取或发送 B 站 Cookie。")) {
+    return;
+  }
   if (!els.bilibiliCookie || !navigator.clipboard?.readText) {
     els.importReceipt.innerHTML = '<p class="blocked">当前浏览器不支持从剪贴板读取，请手动粘贴 Cookie。</p>';
     return;
@@ -469,6 +547,9 @@ async function pasteBilibiliCookieFromClipboard() {
 }
 
 function clearBilibiliCookieInput() {
+  if (guardPublicDemoWrite("公开演示没有可清空的临时 Cookie。")) {
+    return;
+  }
   if (els.bilibiliCookie) {
     els.bilibiliCookie.value = "";
   }
@@ -477,6 +558,10 @@ function clearBilibiliCookieInput() {
 
 async function loadBilibiliCookieStatus() {
   if (!els.bilibiliCookieStatus) {
+    return;
+  }
+  if (isPublicDemo()) {
+    els.bilibiliCookieStatus.textContent = "公开演示已关闭 B 站登录态读取与写入。";
     return;
   }
   try {
@@ -501,6 +586,9 @@ function renderBilibiliCookieStatus(auth) {
 }
 
 async function clearStoredBilibiliCookie() {
+  if (guardPublicDemoWrite("公开演示不允许修改本机保存的 B 站登录态。")) {
+    return;
+  }
   const payload = await sendJson("/api/bilibili/cookie/clear", {});
   renderBilibiliCookieStatus(payload.auth || {});
   if (els.importReceipt) {
@@ -509,6 +597,9 @@ async function clearStoredBilibiliCookie() {
 }
 
 async function startBilibiliQrLogin() {
+  if (guardPublicDemoWrite("公开演示不支持扫码登录。")) {
+    return;
+  }
   if (!els.qrLoginPanel) {
     return;
   }
@@ -586,6 +677,9 @@ function renderQrLoginPanel(payload) {
 }
 
 async function clearBilibiliQrLogin() {
+  if (guardPublicDemoWrite("公开演示没有可清空的扫码登录状态。")) {
+    return;
+  }
   const loginId = state.qrLoginId;
   if (loginId) {
     try {
@@ -1051,7 +1145,13 @@ function renderCourses() {
   }
   els.courseList.innerHTML = state.courses
     .map(
-      (course) => `
+      (course) => {
+        const courseAction = isPublicDemo()
+          ? '<span class="readonly-pill" title="公开演示不允许删除课程">只读</span>'
+          : `<button class="ghost-button delete-course-button" type="button" data-course-id="${escapeHtml(
+              course.course_id,
+            )}" title="删除课程">删除</button>`;
+        return `
         <article class="course-item ${course.course_id === state.courseId ? "is-active" : ""}" data-course-id="${escapeHtml(
           course.course_id,
         )}">
@@ -1063,11 +1163,10 @@ function renderCourses() {
             <p class="item-meta">Hermes：${escapeHtml(bindingStatusLabel(course.web_hermes_binding_status))}</p>
             <p class="citation">${escapeHtml(course.course_id)}</p>
           </div>
-          <button class="ghost-button delete-course-button" type="button" data-course-id="${escapeHtml(
-            course.course_id,
-          )}" title="删除课程">删除</button>
+          ${courseAction}
         </article>
-      `,
+      `;
+      },
     )
     .join("");
   for (const item of els.courseList.querySelectorAll(".course-item")) {
@@ -1082,6 +1181,9 @@ function renderCourses() {
 }
 
 async function deleteCourse(courseId) {
+  if (guardPublicDemoWrite("公开演示不允许删除课程。")) {
+    return;
+  }
   const course = state.courses.find((item) => item.course_id === courseId);
   if (!courseId || !window.confirm(`删除课程「${course?.title || courseId}」？本地 SQLite 中的课时、笔记、知识节点也会一起删除。`)) {
     return;
@@ -1252,18 +1354,23 @@ async function loadReader() {
   }
   els.segments.innerHTML = (payload.segments || [])
     .map(
-      (segment) => `
+      (segment) => {
+        const bookmarkAction = isPublicDemo()
+          ? '<span class="readonly-pill">只读</span>'
+          : `<button class="ghost-button bookmark-segment" type="button" data-segment-id="${escapeHtml(
+              segment.segment_id,
+            )}" title="收藏片段">收藏</button>`;
+        return `
         <article class="segment">
           <div class="segment-head">
             <p class="segment-title">${secondsLabel(segment.start_seconds)}-${secondsLabel(segment.end_seconds)}</p>
-            <button class="ghost-button bookmark-segment" type="button" data-segment-id="${escapeHtml(
-              segment.segment_id,
-            )}" title="收藏片段">收藏</button>
+            ${bookmarkAction}
           </div>
           <p>${escapeHtml(segment.text)}</p>
           <p class="citation">${escapeHtml(segment.segment_id)}</p>
         </article>
-      `,
+      `;
+      },
     )
     .join("");
   for (const button of els.segments.querySelectorAll(".bookmark-segment")) {
@@ -1332,19 +1439,24 @@ function renderCourseCards() {
   }
   els.cardsList.innerHTML = state.courseCards
     .map(
-      (card) => `
+      (card) => {
+        const bookmarkAction = isPublicDemo()
+          ? '<span class="readonly-pill">只读</span>'
+          : `<button class="ghost-button bookmark-card" type="button" data-card-id="${escapeHtml(
+              card.card_id,
+            )}" title="收藏知识原子">收藏</button>`;
+        return `
         <article class="knowledge-card">
           <div class="segment-head">
             <p class="segment-title">${escapeHtml(card.title || card.card_id)}</p>
-            <button class="ghost-button bookmark-card" type="button" data-card-id="${escapeHtml(
-              card.card_id,
-            )}" title="收藏知识原子">收藏</button>
+            ${bookmarkAction}
           </div>
           <p>${escapeHtml(card.body)}</p>
           <p class="citation">${escapeHtml(card.lecture_id)} / ${escapeHtml((card.source_segment_ids || []).join(", "))}</p>
           <p class="tags">${(card.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</p>
         </article>
-      `,
+      `;
+      },
     )
     .join("");
   for (const button of els.cardsList.querySelectorAll(".bookmark-card")) {
@@ -1415,6 +1527,9 @@ function markAtomsFromText(text) {
 }
 
 async function generateCards() {
+  if (guardPublicDemoWrite("公开演示不允许重新生成知识节点。")) {
+    return;
+  }
   if (!state.courseId || !state.lectureId) {
     return;
   }
@@ -1589,6 +1704,9 @@ function renderBookmarks(bookmarks) {
 }
 
 async function saveNote() {
+  if (guardPublicDemoWrite("公开演示不允许保存本地笔记。")) {
+    return;
+  }
   if (!state.courseId || !state.lectureId) {
     return;
   }
@@ -1608,6 +1726,9 @@ async function saveNote() {
 }
 
 async function createBookmark(targetType, targetId) {
+  if (guardPublicDemoWrite("公开演示不允许保存书签。")) {
+    return;
+  }
   if (!state.courseId || !targetId) {
     return;
   }
@@ -1621,6 +1742,9 @@ async function createBookmark(targetType, targetId) {
 }
 
 async function setProgress() {
+  if (guardPublicDemoWrite("公开演示不允许写入阅读进度。")) {
+    return;
+  }
   if (!state.courseId || !state.lectureId) {
     return;
   }
@@ -2149,12 +2273,18 @@ els.notesLectureSelect.addEventListener("change", () => selectLecture(els.notesL
 setView("interaction");
 renderChatEmptyState();
 renderMarkdownUnavailable();
-loadBilibiliCookieStatus().catch(() => {});
 
-loadCourses().catch((error) => {
-  els.segments.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
-  setStatus("Load failed");
-});
-restoreLatestImportStatus().catch(() => {
-  // Import history is supporting context; course browsing should still load if it is unavailable.
-});
+loadRuntimeMode()
+  .then(async () => {
+    if (!isPublicDemo()) {
+      await loadBilibiliCookieStatus();
+    }
+    await loadCourses();
+    if (!isPublicDemo()) {
+      await restoreLatestImportStatus();
+    }
+  })
+  .catch((error) => {
+    els.segments.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+    setStatus("Load failed");
+  });

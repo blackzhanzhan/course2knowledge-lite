@@ -27,6 +27,7 @@ DEFAULT_STORE_ROOT = REPO_ROOT / "data" / "course-store"
 DEFAULT_IMPORT_LECTURE_WORKERS = 10
 DEFAULT_IMPORT_DOSSIER_CHUNK_WORKERS = 8
 DEFAULT_IMPORT_DOSSIER_REQUEST_CONCURRENCY = 80
+PUBLIC_DEMO_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO"
 BILIBILI_AUTH_FILE = REPO_ROOT / ".codex" / "auth" / "bilibili.json"
 BILIBILI_QR_GENERATE_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate"
 BILIBILI_QR_POLL_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll"
@@ -96,6 +97,7 @@ _IMPORT_TEMP_STORES_LOCK = threading.Lock()
 
 class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
     store_root = DEFAULT_STORE_ROOT
+    public_demo = False
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -108,6 +110,16 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 self._send_docs_asset(parsed.path.removeprefix("/docs/assets/"))
             elif parsed.path == "/api/courses":
                 self._send_json({"courses": _list_courses(self.store_root)})
+            elif parsed.path == "/api/runtime":
+                self._send_json(
+                    {
+                        "status": "completed",
+                        "runtime": {
+                            "public_demo": _is_public_demo(),
+                            "mutable_course_store": not _is_public_demo(),
+                        },
+                    }
+                )
             elif parsed.path == "/api/lectures":
                 params = parse_qs(parsed.query)
                 course_id = _required_param(params, "course_id")
@@ -268,6 +280,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
             payload = self._read_json_body()
             store = SQLiteCourseStore(self.store_root)
             if parsed.path == "/api/notes":
+                _require_mutable_endpoint("saving notes")
                 course_id = _required_body(payload, "course_id")
                 note = store.create_note(
                     course_id,
@@ -276,11 +289,14 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json({"status": "completed", "note": note}, status=201)
             elif parsed.path == "/api/bilibili/login/qrcode":
+                _require_mutable_endpoint("Bilibili QR login")
                 self._send_json(_start_bilibili_qr_login(), status=201)
             elif parsed.path == "/api/bilibili/login/qrcode/clear":
+                _require_mutable_endpoint("Bilibili QR login")
                 login_id = _required_body(payload, "login_id")
                 self._send_json(_clear_bilibili_qr_login(login_id))
             elif parsed.path == "/api/bilibili/cookie/save":
+                _require_mutable_endpoint("Bilibili cookie storage")
                 bilibili_cookie = str(payload.get("bilibili_cookie", "") or "").strip()
                 qr_login_id = str(payload.get("bilibili_qr_login_id", "") or "").strip()
                 if qr_login_id and not bilibili_cookie:
@@ -290,9 +306,11 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 _save_persisted_bilibili_cookie(bilibili_cookie)
                 self._send_json({"status": "completed", "auth": _bilibili_cookie_status()}, status=201)
             elif parsed.path == "/api/bilibili/cookie/clear":
+                _require_mutable_endpoint("Bilibili cookie storage")
                 _clear_persisted_bilibili_cookie()
                 self._send_json({"status": "completed", "auth": _bilibili_cookie_status()})
             elif parsed.path == "/api/bookmarks":
+                _require_mutable_endpoint("saving bookmarks")
                 bookmark = store.create_bookmark(
                     _required_body(payload, "course_id"),
                     _required_body(payload, "target_type"),
@@ -300,6 +318,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json({"status": "completed", "bookmark": bookmark}, status=201)
             elif parsed.path == "/api/progress":
+                _require_mutable_endpoint("saving reading progress")
                 progress = store.set_reading_progress(
                     _required_body(payload, "course_id"),
                     _required_body(payload, "lecture_id"),
@@ -307,6 +326,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json({"status": "completed", "progress": progress}, status=201)
             elif parsed.path == "/api/cards/generate":
+                _require_mutable_endpoint("generating knowledge cards")
                 result = store.generate_knowledge_cards(
                     _required_body(payload, "course_id"),
                     lecture_id=str(payload.get("lecture_id", "") or "").strip(),
@@ -391,6 +411,7 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 )
                 self._send_sse_stream(persistent_events)
             elif parsed.path == "/api/import":
+                _require_mutable_endpoint("importing courses")
                 source_url = _required_body(payload, "source_url")
                 bilibili_cookie = str(payload.get("bilibili_cookie", "") or "").strip()
                 qr_login_id = str(payload.get("bilibili_qr_login_id", "") or "").strip()
@@ -472,10 +493,12 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     status=201,
                 )
             elif parsed.path == "/api/import/cancel":
+                _require_mutable_endpoint("import management")
                 run_id = _required_body(payload, "run_id")
                 run = _cancel_import_run_everywhere(self.store_root, run_id)
                 self._send_json({"status": "completed", "run": run})
             elif parsed.path == "/api/import/retry-failed":
+                _require_mutable_endpoint("import management")
                 run_id = _required_body(payload, "run_id")
                 previous_run = store.read_import_run(run_id)
                 course_id = str(previous_run.get("course_id") or "").strip()
@@ -529,12 +552,15 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
             params = parse_qs(parsed.query)
             store = SQLiteCourseStore(self.store_root)
             if parsed.path == "/api/courses":
+                _require_mutable_endpoint("deleting courses")
                 result = store.delete_course(_required_param(params, "course_id"))
                 self._send_json({"status": "completed", **result})
             elif parsed.path == "/api/notes":
+                _require_mutable_endpoint("deleting notes")
                 result = store.delete_note(_required_param(params, "course_id"), _required_param(params, "note_id"))
                 self._send_json({"status": "completed", **result})
             elif parsed.path == "/api/bookmarks":
+                _require_mutable_endpoint("deleting bookmarks")
                 result = store.delete_bookmark(
                     _required_param(params, "course_id"),
                     _required_param(params, "bookmark_id"),
@@ -616,6 +642,19 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
 
 def _list_courses(store_root: Path) -> list[dict[str, Any]]:
     return SQLiteCourseStore(store_root).list_courses()
+
+
+def _is_public_demo() -> bool:
+    return bool(Course2KnowledgeWebHandler.public_demo or _bool_env(PUBLIC_DEMO_ENV))
+
+
+def _bool_env(name: str) -> bool:
+    return str(os.environ.get(name, "")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _require_mutable_endpoint(action: str) -> None:
+    if _is_public_demo():
+        raise PermissionError(f"public demo mode is read-only; {action} is disabled")
 
 
 def _content_type_for_path(path: Path) -> str:
@@ -2029,6 +2068,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=3014)
     parser.add_argument("--store-root", default=str(DEFAULT_STORE_ROOT))
+    parser.add_argument("--public-demo", action="store_true", help="Run a read-only public demo surface.")
     return parser.parse_args(argv)
 
 
@@ -2036,6 +2076,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     handler = Course2KnowledgeWebHandler
     handler.store_root = Path(args.store_root).expanduser().resolve()
+    handler.public_demo = bool(args.public_demo or _bool_env(PUBLIC_DEMO_ENV))
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(
         json.dumps(
@@ -2043,6 +2084,7 @@ def main(argv: list[str] | None = None) -> int:
                 "status": "serving",
                 "url": f"http://{args.host}:{args.port}",
                 "store_root": str(handler.store_root),
+                "public_demo": handler.public_demo,
             },
             ensure_ascii=False,
         ),
