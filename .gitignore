@@ -24,6 +24,10 @@ build/
 data/*
 !data/.gitkeep
 tmp/
+docs/assets/generated-keyframes/
+*.sqlite
+*.sqlite3
+*.db
 *.log
 
 # Secrets
@@ -31,3 +35,4 @@ tmp/
 .env.*
 *.secret
 *.token
+.codex/auth/*.json

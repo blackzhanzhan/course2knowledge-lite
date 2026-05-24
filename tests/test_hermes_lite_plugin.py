@@ -98,6 +98,28 @@ class HermesLitePluginTests(unittest.TestCase):
             parameters = ctx.tools[tool_name]["schema"]["parameters"]
             self.assertNotIn("course_id", parameters.get("required", []), tool_name)
 
+    def test_studio_office_teaching_route_is_child_local_and_public_safe(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+
+        module.register(ctx)
+
+        raw = ctx.tools["studio_office_teaching_route"]["handler"](
+            {
+                "node_id": "atom_demo",
+                "scene_mode": "learning",
+                "user_intent": "我想继续学习这一讲",
+            }
+        )
+        payload = json.loads(raw)
+        route_payload = payload["payload"]
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["tool"], "studio_office_teaching_route")
+        self.assertEqual(route_payload["status"], "route_ready")
+        self.assertEqual(route_payload["frontdesk_contract"]["data_store_authority"], "child_local_sqlite")
+        self.assertFalse(route_payload["frontdesk_contract"]["private_mother_state_allowed"])
+        self.assertIn("lite_route_intake", route_payload["route_policy"]["canonical_chain"])
+
     def test_import_status_tool_reads_local_store(self) -> None:
         module = load_plugin_module()
         ctx = FakeHermesContext()
@@ -517,7 +539,11 @@ class HermesLitePluginTests(unittest.TestCase):
                     )
                 ],
             )
-            store.generate_knowledge_cards(skeleton.course.course_id)
+            store.generate_knowledge_cards(
+                skeleton.course.course_id,
+                compile_mode="fallback",
+                compile_provider=None,
+            )
             progress_before = store.list_reading_progress(course_id=skeleton.course.course_id)
             raw = ctx.tools["learning_guide_get"]["handler"](
                 {
@@ -638,7 +664,11 @@ class HermesLitePluginTests(unittest.TestCase):
                     )
                 ],
             )
-            card = store.generate_knowledge_cards(skeleton.course.course_id)["cards"][0]
+            card = store.generate_knowledge_cards(
+                skeleton.course.course_id,
+                compile_mode="fallback",
+                compile_provider=None,
+            )["cards"][0]
             store.write_visual_evidence_records(
                 skeleton.course.course_id,
                 [
@@ -673,6 +703,140 @@ class HermesLitePluginTests(unittest.TestCase):
         self.assertIn("RAG grounds answers", payload["gateway_reply"])
         self.assertEqual(payload["gateway_reply"].count("MEDIA:"), 1)
         self.assertTrue(Path(payload["media_path"]).exists())
+
+    def test_visual_evidence_tool_prefers_generated_keyframe_for_lecture_request(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = build_course_skeleton(
+                title="AI interview course",
+                source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BV00000001",
+                        "title": "RAG and Agent",
+                        "source_url": "https://www.bilibili.com/video/BV00000001",
+                    }
+                ],
+                now="2026-05-14T00:00:00Z",
+            )
+            store = SQLiteCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            lecture = skeleton.lectures[0]
+            segment_id = f"{lecture.lecture_id}::manual::00001"
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=segment_id,
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0.0,
+                        end_seconds=6.0,
+                        text="RAG retrieves course evidence before an Agent plans tool calls.",
+                    )
+                ],
+            )
+            store.write_visual_evidence_records(
+                skeleton.course.course_id,
+                [
+                    VisualEvidenceRecord(
+                        visual_id="visual_demo",
+                        course_id=skeleton.course.course_id,
+                        lecture_id=lecture.lecture_id,
+                        segment_id=segment_id,
+                        card_id="",
+                        title="Demo visual",
+                        explanation="demo",
+                        image_path="docs/assets/visual-evidence/rag-agent-flow.png",
+                        source_url=lecture.source_url,
+                        provenance="demo_visual",
+                        created_at="2026-05-15T00:00:00Z",
+                    ),
+                    VisualEvidenceRecord(
+                        visual_id="keyframe_generated",
+                        course_id=skeleton.course.course_id,
+                        lecture_id=lecture.lecture_id,
+                        segment_id=segment_id,
+                        card_id="",
+                        title="关键截图 1",
+                        explanation="真实关键帧说明",
+                        image_path="docs/assets/visual-evidence/rag-quality-loop.png",
+                        source_url=lecture.source_url,
+                        provenance="generated_keyframe anchor=anc_test",
+                        created_at="2026-05-15T00:00:00Z",
+                    ),
+                ],
+            )
+            raw = ctx.tools["course_visual_evidence_send"]["handler"](
+                {
+                    "store_root": temp_dir,
+                    "lecture_id": lecture.lecture_id,
+                    "query": "关键截图",
+                }
+            )
+
+        payload = json.loads(raw)
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["visual_evidence"]["visual_id"], "keyframe_generated")
+        self.assertIn("generated_keyframe", payload["visual_evidence"]["provenance"])
+        self.assertEqual(payload["gateway_reply"].count("MEDIA:"), 1)
+
+    def test_visual_evidence_tool_blocks_demo_visual_for_lecture_key_screenshot_request(self) -> None:
+        module = load_plugin_module()
+        ctx = FakeHermesContext()
+        module.register(ctx)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = build_course_skeleton(
+                title="AI interview course",
+                source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BV00000001",
+                        "title": "RAG and Agent",
+                        "source_url": "https://www.bilibili.com/video/BV00000001",
+                    }
+                ],
+                now="2026-05-14T00:00:00Z",
+            )
+            store = SQLiteCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            lecture = skeleton.lectures[0]
+            store.write_visual_evidence_records(
+                skeleton.course.course_id,
+                [
+                    VisualEvidenceRecord(
+                        visual_id="visual_demo",
+                        course_id=skeleton.course.course_id,
+                        lecture_id=lecture.lecture_id,
+                        segment_id="",
+                        card_id="",
+                        title="Demo visual",
+                        explanation="demo",
+                        image_path="docs/assets/visual-evidence/rag-agent-flow.png",
+                        source_url=lecture.source_url,
+                        provenance="demo_visual",
+                        created_at="2026-05-15T00:00:00Z",
+                    )
+                ],
+            )
+            raw = ctx.tools["course_visual_evidence_send"]["handler"](
+                {
+                    "store_root": temp_dir,
+                    "lecture_id": lecture.lecture_id,
+                    "query": "关键截图",
+                }
+            )
+
+        payload = json.loads(raw)
+        self.assertEqual(payload["status"], "failed")
+        self.assertIn("generated keyframe", payload["error"])
+        self.assertIn("demo visuals cannot be sent as course screenshots", payload["error"])
 
     def test_visual_evidence_tool_rejects_raw_image_path_argument(self) -> None:
         module = load_plugin_module()

@@ -5,6 +5,8 @@ agent:
 platform_toolsets:
   feishu:
     - course2knowledge-lite
+  api_server:
+    - course2knowledge-lite
 
 plugins:
   enabled:
@@ -24,4 +26,3 @@ display:
   interim_assistant_messages: true
   background_process_notifications: all
   busy_input_mode: queue
-

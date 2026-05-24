@@ -39,7 +39,47 @@ class BilibiliTimedSubtitle:
     timed_lines: list[dict[str, Any]]
 
 
+def redact_bilibili_cookie(value: Any, cookie: str = "") -> str:
+    redacted = str(value or "")
+    cleaned_cookie = str(cookie or "").strip()
+    env_cookie = os.environ.get("BILIBILI_COOKIE", "").strip()
+    for raw_cookie in {cleaned_cookie, env_cookie}:
+        if not raw_cookie:
+            continue
+        redacted = redacted.replace(raw_cookie, "[REDACTED_BILIBILI_COOKIE]")
+        for part in raw_cookie.split(";"):
+            if "=" not in part:
+                continue
+            key, raw_value = part.split("=", 1)
+            cookie_value = raw_value.strip()
+            if len(cookie_value) >= 4:
+                redacted = redacted.replace(cookie_value, "[REDACTED_BILIBILI_COOKIE_VALUE]")
+            key = key.strip()
+            if key:
+                pattern = re.compile(rf"({re.escape(key)}\s*=\s*)[^;,\s]+", re.IGNORECASE)
+                redacted = pattern.sub(r"\1[REDACTED_BILIBILI_COOKIE_VALUE]", redacted)
+    redacted = re.sub(r"(BILIBILI_COOKIE\s*=\s*)[^;,\s]+", r"\1[REDACTED_BILIBILI_COOKIE]", redacted)
+    return redacted
+
+
+def build_bilibili_json_fetcher(*, cookie: str = "") -> JsonFetcher:
+    cleaned_cookie = str(cookie or "").strip()
+
+    def _fetch(api_url: str, params: Mapping[str, str], referer: str) -> Mapping[str, Any]:
+        try:
+            return _fetch_json_with_cookie(api_url, params, referer, cookie=cleaned_cookie)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(redact_bilibili_cookie(str(exc), cleaned_cookie)) from exc
+
+    setattr(_fetch, "_bilibili_cookie_present", bool(cleaned_cookie))
+    return _fetch
+
+
 def _default_json_fetcher(api_url: str, params: Mapping[str, str], referer: str) -> Mapping[str, Any]:
+    return _fetch_json_with_cookie(api_url, params, referer, cookie=os.environ.get("BILIBILI_COOKIE", "").strip())
+
+
+def _fetch_json_with_cookie(api_url: str, params: Mapping[str, str], referer: str, *, cookie: str = "") -> Mapping[str, Any]:
     encoded_params = urlencode(params)
     request_url = f"{api_url}?{encoded_params}" if encoded_params else api_url
     headers = {
@@ -50,9 +90,9 @@ def _default_json_fetcher(api_url: str, params: Mapping[str, str], referer: str)
         ),
         "Referer": referer or "https://www.bilibili.com/",
     }
-    cookie = os.environ.get("BILIBILI_COOKIE", "").strip()
-    if cookie:
-        headers["Cookie"] = cookie
+    cleaned_cookie = str(cookie or "").strip()
+    if cleaned_cookie:
+        headers["Cookie"] = cleaned_cookie
     request = Request(
         request_url,
         headers=headers,
@@ -273,7 +313,9 @@ def probe_bilibili_subtitle_source(
     fetch_json: JsonFetcher | None = None,
 ) -> dict[str, Any]:
     json_fetcher = fetch_json or _default_json_fetcher
-    cookie_present = bool(os.environ.get("BILIBILI_COOKIE", "").strip())
+    cookie_present = bool(os.environ.get("BILIBILI_COOKIE", "").strip()) or bool(
+        getattr(json_fetcher, "_bilibili_cookie_present", False)
+    )
     result: dict[str, Any] = {
         "source_url": str(source_url or "").strip(),
         "source_platform": "bilibili",

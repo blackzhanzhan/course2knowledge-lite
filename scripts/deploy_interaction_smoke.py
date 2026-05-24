@@ -52,7 +52,7 @@ def run_interaction_smoke(
     lectures = skeleton.lectures
 
     coverage = store.summarize_transcript_coverage(course_id)
-    cards = store.generate_knowledge_cards(course_id)
+    cards = store.generate_knowledge_cards(course_id, compile_mode="fallback", compile_provider=None)
     first_card = cards["cards"][0]
     store.write_visual_evidence_records(
         course_id,

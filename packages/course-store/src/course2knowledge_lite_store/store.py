@@ -9,6 +9,7 @@ import hashlib
 from uuid import uuid4
 
 from .content import build_lecture_reader_payload, search_transcript_segments
+from .lecture_dossier import build_lite_knowledge_atom_specs, build_lite_lecture_dossier, filter_lite_quality_atoms, lite_atom_quality
 from .models import (
     READING_PROGRESS_STATUSES,
     BookmarkRecord,
@@ -21,6 +22,50 @@ from .models import (
 )
 
 _UNSAFE_FILENAME_CHARS = re.compile(r'[\\/:*?"<>|]+')
+_CHINESE_SECTION_PATTERN = re.compile(r"第[一二三四五六七八九十\d]+[段步点讲节][^。！？.!?\n]*(?:[。！？.!?]|$)")
+_ENGLISH_STEP_PATTERN = re.compile(
+    r"(?:^|(?<=[.!?\n]))\s*(?:Step\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)|(?:First|Second|Third|Fourth|Fifth|Finally))\b[^.!?\n]*(?:[.!?]|$)",
+    flags=re.IGNORECASE,
+)
+_STOP_TAGS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "before",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "that",
+    "the",
+    "this",
+    "to",
+    "while",
+    "with",
+    "lecture",
+    "lectures",
+    "segment",
+    "segments",
+    "step",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+}
 
 
 class JsonCourseStore:
@@ -167,8 +212,18 @@ class JsonCourseStore:
         *,
         lecture_id: str = "",
         overwrite: bool = True,
+        compile_mode: str = "model",
+        compile_provider: str | None = "deepseek",
+        api_key: str | None = None,
+        model: str | None = None,
+        max_chunk_workers: int = 1,
+        max_concurrent_requests: int = 1,
+        fast_map_mode: bool = True,
+        split_map_mode: bool = True,
+        fast_reduce_mode: bool = True,
+        lite_map_mode: bool = False,
     ) -> dict[str, Any]:
-        self.read_course(course_id)
+        course = self.read_course(course_id)
         selected_lecture_id = str(lecture_id or "").strip()
         lectures = self.read_lectures(course_id)
         if selected_lecture_id:
@@ -178,10 +233,31 @@ class JsonCourseStore:
         generated_cards: list[dict[str, Any]] = []
         for lecture in lectures:
             current_lecture_id = str(lecture.get("lecture_id") or "")
-            for segment in self.read_transcript_segments_if_exists(course_id, current_lecture_id):
-                generated_cards.append(
-                    self._build_knowledge_card(course_id=course_id, lecture=lecture, segment=segment).to_dict()
+            segments = self.read_transcript_segments_if_exists(course_id, current_lecture_id)
+            lecture_cards = [
+                card.to_dict()
+                for card in self._build_lecture_knowledge_cards(
+                    course_id=course_id,
+                    course=course,
+                    lecture=lecture,
+                    segments=segments,
+                    compile_mode=compile_mode,
+                    compile_provider=compile_provider,
+                    api_key=api_key,
+                    model=model,
+                    max_chunk_workers=max_chunk_workers,
+                    max_concurrent_requests=max_concurrent_requests,
+                    fast_map_mode=fast_map_mode,
+                    split_map_mode=split_map_mode,
+                    fast_reduce_mode=fast_reduce_mode,
+                    lite_map_mode=lite_map_mode,
                 )
+            ]
+            if str(compile_mode or "").strip() == "model" and segments and not lecture_cards:
+                raise RuntimeError(
+                    f"model lecture dossier generated zero knowledge cards for {current_lecture_id}"
+                )
+            generated_cards.extend(lecture_cards)
         if overwrite:
             cards = [
                 card
@@ -229,6 +305,24 @@ class JsonCourseStore:
         normalized = [self._normalize_visual_evidence(course_id, record) for record in records]
         normalized.sort(key=lambda item: (str(item.get("lecture_id") or ""), str(item.get("visual_id") or "")))
         self._write_json(self._visual_evidence_path(course_id), normalized)
+        return str(self._visual_evidence_path(course_id))
+
+    def upsert_visual_evidence_records(
+        self,
+        course_id: str,
+        records: list[VisualEvidenceRecord | dict[str, Any]],
+    ) -> str:
+        self.read_course(course_id)
+        existing_by_id = {
+            str(item.get("visual_id") or ""): dict(item)
+            for item in self.list_visual_evidence(course_id=course_id)
+            if str(item.get("visual_id") or "").strip()
+        }
+        for record in records:
+            normalized = self._normalize_visual_evidence(course_id, record)
+            existing_by_id[str(normalized.get("visual_id") or "")] = normalized
+        merged = sorted(existing_by_id.values(), key=lambda item: (str(item.get("lecture_id") or ""), str(item.get("visual_id") or "")))
+        self._write_json(self._visual_evidence_path(course_id), merged)
         return str(self._visual_evidence_path(course_id))
 
     def list_visual_evidence(
@@ -560,29 +654,112 @@ class JsonCourseStore:
             "created_at": str(payload.get("created_at") or self._utc_now()).strip(),
         }
 
-    def _build_knowledge_card(
+    def _build_knowledge_cards(
         self,
         *,
         course_id: str,
         lecture: dict[str, Any],
         segment: dict[str, Any],
-    ) -> KnowledgeCardRecord:
+    ) -> list[KnowledgeCardRecord]:
         segment_id = str(segment.get("segment_id") or "").strip()
         if not segment_id:
             raise ValueError("segment_id is required to build a knowledge card")
         text = str(segment.get("text") or "").strip()
-        card_id = f"card_{hashlib.sha1(segment_id.encode('utf-8')).hexdigest()[:12]}"
         lecture_title = str(lecture.get("title") or "").strip()
-        title = _card_title(text, fallback=lecture_title or card_id)
-        return KnowledgeCardRecord(
-            card_id=card_id,
-            course_id=course_id,
-            lecture_id=str(lecture.get("lecture_id") or segment.get("lecture_id") or ""),
-            title=title,
-            body=text,
-            source_segment_ids=[segment_id],
-            tags=_card_tags(text),
+        atoms = _knowledge_atom_specs(text, fallback=lecture_title)
+        cards: list[KnowledgeCardRecord] = []
+        for index, atom in enumerate(atoms, start=1):
+            card_seed = f"{segment_id}::{index}::{atom['title']}"
+            card_id = f"card_{hashlib.sha1(card_seed.encode('utf-8')).hexdigest()[:12]}"
+            cards.append(
+                KnowledgeCardRecord(
+                    card_id=card_id,
+                    course_id=course_id,
+                    lecture_id=str(lecture.get("lecture_id") or segment.get("lecture_id") or ""),
+                    title=str(atom["title"]),
+                    body=str(atom["body"]),
+                    source_segment_ids=[segment_id],
+                    tags=list(atom["tags"]),
+                    atom_type=str(atom["atom_type"]),
+                    summary=str(atom["summary"]),
+                    review_questions=list(atom["review_questions"]),
+                    anchor_refs=list(atom["anchor_refs"]),
+                    confidence=float(atom["confidence"]),
+                    status_lite=str(atom["status_lite"]),
+                )
+            )
+        return cards
+
+    def _build_lecture_knowledge_cards(
+        self,
+        *,
+        course_id: str,
+        course: dict[str, Any] | None = None,
+        lecture: dict[str, Any],
+        segments: list[dict[str, Any]],
+        compile_mode: str = "model",
+        compile_provider: str | None = "deepseek",
+        api_key: str | None = None,
+        model: str | None = None,
+        max_chunk_workers: int = 1,
+        max_concurrent_requests: int = 1,
+        fast_map_mode: bool = True,
+        split_map_mode: bool = True,
+        fast_reduce_mode: bool = True,
+        lite_map_mode: bool = False,
+    ) -> list[KnowledgeCardRecord]:
+        if not segments:
+            return []
+        lecture_id = str(lecture.get("lecture_id") or "")
+        dossier = build_lite_lecture_dossier(
+            course=course,
+            lecture=lecture,
+            segments=segments,
+            compile_mode=compile_mode,
+            compile_provider=compile_provider,
+            api_key=api_key,
+            model=model,
+            max_chunk_workers=max_chunk_workers,
+            max_concurrent_requests=max_concurrent_requests,
+            fast_map_mode=fast_map_mode,
+            split_map_mode=split_map_mode,
+            fast_reduce_mode=fast_reduce_mode,
+            lite_map_mode=lite_map_mode,
         )
+        cards: list[KnowledgeCardRecord] = []
+        atoms = _card_atoms_from_dossier(dossier.to_dict())
+        anchor_segment_ids = _anchor_segment_ids_from_dossier(dossier.to_dict(), segments)
+        for index, atom in enumerate(atoms, start=1):
+            source_segment_ids = [str(item) for item in atom.get("source_segment_ids") or [] if str(item).strip()]
+            if not source_segment_ids:
+                source_segment_ids = _segment_ids_for_atom(atom, anchor_segment_ids)
+            if not source_segment_ids and segments:
+                source_segment_ids = [str(segments[min(index - 1, len(segments) - 1)].get("segment_id") or "")]
+            card_seed = f"{lecture_id}::{index}::{atom['canonical_title']}"
+            card_id = f"card_{hashlib.sha1(card_seed.encode('utf-8')).hexdigest()[:12]}"
+            review_questions = [
+                str(item).strip()
+                for item in atom.get("review_questions") or dossier.review_questions[:1]
+                if str(item).strip()
+            ]
+            cards.append(
+                KnowledgeCardRecord(
+                    card_id=card_id,
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                    title=str(atom["canonical_title"]),
+                    body=str(atom["body_markdown"]),
+                    source_segment_ids=source_segment_ids,
+                    tags=list(atom.get("tags") or []),
+                    atom_type=str(atom.get("atom_type") or "concept"),
+                    summary=str(atom.get("summary") or ""),
+                    review_questions=review_questions,
+                    anchor_refs=list(atom.get("anchor_ids") or []),
+                    confidence=float(atom.get("confidence") or 0.78),
+                    status_lite=str(atom.get("status_lite") or atom.get("status") or "locked"),
+                )
+            )
+        return cards
 
     @staticmethod
     def _write_json(path: Path, payload: Any) -> None:
@@ -616,6 +793,58 @@ def _is_generated_card(card: dict[str, Any]) -> bool:
     return str(card.get("card_id") or "").startswith("card_") and bool(card.get("source_segment_ids"))
 
 
+def _card_atoms_from_dossier(dossier: dict[str, Any]) -> list[dict[str, Any]]:
+    atoms = [dict(item) for item in dossier.get("atoms") or [] if isinstance(item, dict)]
+    if str(dossier.get("compile_source") or "") == "model_map_reduce":
+        return [atom for atom in atoms if str(atom.get("canonical_title") or "").strip()]
+    return filter_lite_quality_atoms(atoms)
+
+
+def _anchor_segment_ids_from_dossier(
+    dossier: dict[str, Any],
+    segments: list[dict[str, Any]],
+) -> dict[str, list[str]]:
+    segment_by_line_id = {
+        index: str(segment.get("segment_id") or "")
+        for index, segment in enumerate(segments, start=1)
+        if str(segment.get("segment_id") or "").strip()
+    }
+    mapping: dict[str, list[str]] = {}
+    for anchor in dossier.get("anchors") or []:
+        if not isinstance(anchor, dict):
+            continue
+        anchor_id = str(anchor.get("anchor_id") or "").strip()
+        if not anchor_id:
+            continue
+        source_segment_ids = [
+            str(item).strip()
+            for item in anchor.get("source_segment_ids") or []
+            if str(item).strip()
+        ]
+        for raw_line_id in anchor.get("source_line_ids") or []:
+            try:
+                line_id = int(raw_line_id)
+            except (TypeError, ValueError):
+                continue
+            segment_id = segment_by_line_id.get(line_id, "")
+            if segment_id and segment_id not in source_segment_ids:
+                source_segment_ids.append(segment_id)
+        mapping[anchor_id] = source_segment_ids
+    return mapping
+
+
+def _segment_ids_for_atom(
+    atom: dict[str, Any],
+    anchor_segment_ids: dict[str, list[str]],
+) -> list[str]:
+    result: list[str] = []
+    for anchor_id in [str(item).strip() for item in atom.get("anchor_ids") or [] if str(item).strip()]:
+        for segment_id in anchor_segment_ids.get(anchor_id, []):
+            if segment_id not in result:
+                result.append(segment_id)
+    return result
+
+
 def _card_title(text: str, *, fallback: str) -> str:
     cleaned = str(text or "").strip()
     if not cleaned:
@@ -627,11 +856,94 @@ def _card_title(text: str, *, fallback: str) -> str:
     return title
 
 
+def _knowledge_atom_specs(text: str, *, fallback: str) -> list[dict[str, Any]]:
+    return build_lite_knowledge_atom_specs(text, fallback=fallback)
+
+
+def _atom_units(text: str) -> list[str]:
+    cleaned = _compact_atom_text(text)
+    if not cleaned:
+        return []
+    units = [match.group(0).strip() for match in _CHINESE_SECTION_PATTERN.finditer(cleaned)]
+    if len(units) >= 2:
+        return units
+    units = [match.group(0).strip() for match in _ENGLISH_STEP_PATTERN.finditer(cleaned)]
+    if len(units) >= 2:
+        first_step = _ENGLISH_STEP_PATTERN.search(cleaned)
+        if first_step:
+            prefix = cleaned[: first_step.start()].strip()
+            if prefix:
+                units = [prefix] + units
+        return units
+    sentence_units = [
+        item.strip()
+        for item in re.split(r"(?<=[。！？.!?])\s+|\n+", cleaned)
+        if item.strip()
+    ]
+    if len(sentence_units) >= 2:
+        return sentence_units
+    return [cleaned]
+
+
+def _atom_title(text: str, *, fallback: str) -> str:
+    cleaned = _compact_atom_text(text)
+    if not cleaned:
+        return fallback or "Knowledge atom"
+    title = re.sub(r"^第[一二三四五六七八九十\d]+[段步点讲节]\s*", "", cleaned).strip()
+    title = re.sub(
+        r"^Step\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(?:is|:|-)?\s*",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    ).strip()
+    if not title:
+        title = cleaned
+    if len(title) > 72:
+        title = f"{title[:69].rstrip()}..."
+    return title or fallback or "Knowledge atom"
+
+
+def _compact_atom_text(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text or "").strip())
+
+
+def _atom_summary(text: str) -> str:
+    cleaned = _compact_atom_text(text)
+    if len(cleaned) <= 120:
+        return cleaned
+    return f"{cleaned[:117].rstrip()}..."
+
+
+def _atom_type(text: str) -> str:
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("step", "first", "second", "third", "如何", "怎么", "流程", "步骤")):
+        return "procedure"
+    if any(term in lowered for term in ("difference", "compare", "区别", "对比", "while")):
+        return "contrast"
+    if any(term in lowered for term in ("pitfall", "mistake", "wrong", "误区", "错误")):
+        return "pitfall"
+    return "concept"
+
+
+def _review_question(title: str, body: str) -> str:
+    cleaned_title = _compact_atom_text(title).rstrip("。！？.!?")
+    cleaned_body = _compact_atom_text(body).rstrip("。！？.!?")
+    focus = cleaned_title or cleaned_body or "这个知识点"
+    if len(focus) > 48:
+        focus = f"{focus[:45].rstrip()}..."
+    if re.search(r"[\u4e00-\u9fff]", focus):
+        return f"你能用自己的话说清楚「{focus}」吗？"
+    return f"Can you explain {focus} in your own words?"
+
+
 def _card_tags(text: str) -> list[str]:
     tags: list[str] = []
     for term in re.findall(r"[A-Za-z][A-Za-z0-9_+-]{1,}", str(text or "")):
         normalized = term.strip()
-        if normalized and normalized.lower() not in {item.lower() for item in tags}:
+        lowered = normalized.lower()
+        if lowered in _STOP_TAGS:
+            continue
+        if normalized and lowered not in {item.lower() for item in tags}:
             tags.append(normalized)
         if len(tags) >= 8:
             break

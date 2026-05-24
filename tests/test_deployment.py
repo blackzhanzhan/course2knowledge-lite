@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class DeploymentTests(unittest.TestCase):
+    def test_sandbox_runner_generates_portable_config_without_committed_host_paths(self) -> None:
+        runner = ROOT / "scripts" / "run_sandbox_smoke.ps1"
+        placeholder = ROOT / "scripts" / "Course2KnowledgeLiteSandbox.wsb"
+        runner_text = runner.read_text(encoding="utf-8")
+        placeholder_text = placeholder.read_text(encoding="utf-8")
+
+        self.assertIn("New-Course2KnowledgeLiteSandboxConfig", runner_text)
+        self.assertIn("$GeneratedSandboxConfig", runner_text)
+        self.assertIn("-ResolvedRepoRoot $RepoRoot", runner_text)
+        self.assertIn("portable placeholder", placeholder_text)
+
+        committed = placeholder_text
+        self.assertNotIn(str(ROOT), committed)
+        self.assertNotRegex(committed, r"[A-Z]:\\[^<\n]*learning_os[^<\n]*course2knowledge-lite")
+
     def test_cli_help_exposes_deployment_entrypoints(self) -> None:
         result = _run_installed_command(ROOT, ["--help"])
         self.assertIn("sync-profile", result.stdout)

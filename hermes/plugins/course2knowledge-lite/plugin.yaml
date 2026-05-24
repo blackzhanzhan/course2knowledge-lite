@@ -2,6 +2,7 @@ name: course2knowledge-lite
 version: "0.1.0"
 description: Hermes-native Course2Knowledge Lite public tools
 provides_tools:
+  - studio_office_teaching_route
   - collection_import_start
   - import_status_get
   - lecture_transcript_import

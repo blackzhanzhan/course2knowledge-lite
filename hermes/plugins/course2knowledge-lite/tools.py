@@ -15,10 +15,15 @@ from course2knowledge_lite_bilibili import (
 )
 from course2knowledge_lite_guidance import get_learning_guide
 from course2knowledge_lite_store import LiteChatCore, SQLiteCourseStore
+from course2knowledge_lite_store.office_route import (
+    OFFICE_TEACHING_ROUTE_TOOL,
+    build_office_teaching_route_payload,
+)
 
 
 TOOLSET = "course2knowledge-lite"
 TOOL_NAMES = [
+    OFFICE_TEACHING_ROUTE_TOOL,
     "collection_import_start",
     "import_status_get",
     "lecture_transcript_import",
@@ -90,6 +95,18 @@ def _tool_error(tool_name: str, exc: Exception) -> str:
             "error": str(exc),
         }
     )
+
+
+def _studio_office_teaching_route_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
+    try:
+        payload = build_office_teaching_route_payload(
+            node_id=str(arguments.get("node_id", "") or "").strip(),
+            scene_mode=str(arguments.get("scene_mode", "") or "").strip(),
+            user_intent=str(arguments.get("user_intent", "") or arguments.get("learner_intent", "") or "").strip(),
+        )
+        return _json_response({"status": "completed", "tool": OFFICE_TEACHING_ROUTE_TOOL, "payload": payload})
+    except Exception as exc:  # noqa: BLE001
+        return _tool_error(OFFICE_TEACHING_ROUTE_TOOL, exc)
 
 
 def _collection_import_start_handler(arguments: dict[str, Any], **_registry_kwargs: Any) -> str:
@@ -200,6 +217,15 @@ def _knowledge_cards_generate_handler(arguments: dict[str, Any], **_registry_kwa
             course_id,
             lecture_id=str(arguments.get("lecture_id", "") or "").strip(),
             overwrite=_bool_argument(arguments.get("overwrite"), default=True),
+            compile_mode=str(arguments.get("compile_mode", "model") or "model").strip(),
+            compile_provider=str(arguments.get("compile_provider", "deepseek") or "").strip() or None,
+            model=str(arguments.get("model", "") or "").strip() or None,
+            max_chunk_workers=max(1, int(arguments.get("max_chunk_workers", 1) or 1)),
+            max_concurrent_requests=max(1, int(arguments.get("max_concurrent_requests", 1) or 1)),
+            fast_map_mode=_bool_argument(arguments.get("fast_map_mode"), default=True),
+            split_map_mode=_bool_argument(arguments.get("split_map_mode"), default=True),
+            fast_reduce_mode=_bool_argument(arguments.get("fast_reduce_mode"), default=True),
+            lite_map_mode=_bool_argument(arguments.get("lite_map_mode"), default=False),
         )
         return _json_response({"status": "completed", "tool": "knowledge_cards_generate", **result})
     except Exception as exc:  # noqa: BLE001
@@ -250,12 +276,17 @@ def _course_visual_evidence_send_handler(arguments: dict[str, Any], **_registry_
         if not lecture_id and lecture_sequence not in (None, ""):
             lecture_id = str(store.read_lecture_reader(course_id, lecture_sequence=lecture_sequence)["lecture"]["lecture_id"])
         if str(arguments.get("visual_id", "") or "").strip() or lecture_id:
-            visual = store.select_visual_evidence(
-                course_id=course_id,
-                visual_id=str(arguments.get("visual_id", "") or "").strip(),
-                lecture_id=lecture_id,
-                query=str(arguments.get("query", "") or "").strip(),
-            )
+            visual_id = str(arguments.get("visual_id", "") or "").strip()
+            if visual_id:
+                visual = store.select_visual_evidence(course_id=course_id, visual_id=visual_id)
+            else:
+                visuals = store.list_visual_evidence(course_id=course_id, lecture_id=lecture_id)
+                generated = [item for item in visuals if "generated_keyframe" in str(item.get("provenance") or "")]
+                if not generated:
+                    raise ValueError(
+                        "No generated keyframe visual evidence matched the lecture request; demo visuals cannot be sent as course screenshots"
+                    )
+                visual = dict(generated[0])
             if str(visual.get("title") or "").strip():
                 message = f"show visual image {visual['title']}"
         turn = LiteChatCore(store).run_turn(
@@ -837,6 +868,32 @@ def _reading_progress_get_schema() -> dict[str, Any]:
     }
 
 
+def _studio_office_teaching_route_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "node_id": {
+                "type": ["string", "null"],
+                "description": "Optional public Lite knowledge atom or node hint for this teaching turn.",
+            },
+            "scene_mode": {
+                "type": ["string", "null"],
+                "enum": ["learning", "review", "recap", "assessment", "learn", "teach", "quiz", "test", None],
+                "description": "Teaching route scene. Use learning for normal classroom chat.",
+            },
+            "user_intent": {
+                "type": ["string", "null"],
+                "description": "The learner's current request or answer.",
+            },
+            "learner_intent": {
+                "type": ["string", "null"],
+                "description": "Alias for user_intent.",
+            },
+        },
+        "additionalProperties": False,
+    }
+
+
 def _required_text(arguments: dict[str, Any], name: str) -> str:
     value = str(arguments.get(name, "") or "").strip()
     if not value:
@@ -978,6 +1035,20 @@ def _tool_schema(name: str, description: str, parameters: dict[str, Any]) -> dic
 
 
 def register_course2knowledge_lite_tools(ctx: Any) -> None:
+    ctx.register_tool(
+        name=OFFICE_TEACHING_ROUTE_TOOL,
+        toolset=TOOLSET,
+        schema=_tool_schema(
+            OFFICE_TEACHING_ROUTE_TOOL,
+            (
+                "Route a public Web classroom turn through the child-local Lite teaching offices "
+                "before any student-facing answer is released."
+            ),
+            _studio_office_teaching_route_schema(),
+        ),
+        handler=_studio_office_teaching_route_handler,
+        description="Return the public Lite child-local teaching route contract for a Web classroom turn.",
+    )
     ctx.register_tool(
         name="collection_import_start",
         toolset=TOOLSET,

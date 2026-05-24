@@ -172,7 +172,11 @@ def _guided_store(temp_dir: str) -> tuple[JsonCourseStore, str, list[object]]:
             )
         ],
     )
-    cards = store.generate_knowledge_cards(skeleton.course.course_id)["cards"]
+    cards = store.generate_knowledge_cards(
+        skeleton.course.course_id,
+        compile_mode="fallback",
+        compile_provider=None,
+    )["cards"]
     store.write_visual_evidence_records(
         skeleton.course.course_id,
         [

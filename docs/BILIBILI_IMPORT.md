@@ -26,6 +26,11 @@ Bilibili import is the retained real platform adapter for Course2Knowledge Lite.
 - `completed`
 - `failed`
 
+The Web import API also exposes internal stages such as `collection_expand`,
+`lecture_compile`, `ready_gate`, `merged_new_course`,
+`replaced_same_course`, `promotion_blocked`, and `blocked_probe_subset`.
+These are status explanations, not separate user commands.
+
 ## Evidence Rule
 
 Generated notes and Q&A must cite transcript segments or generated lecture
@@ -49,6 +54,10 @@ The first local store handoff writes those video references as a course skeleton
 - one import status record
 
 Transcript fetching remains a later stage.
+
+The current importer accepts Bilibili collection/list URLs and ordinary video
+URLs. Multi-page videos are expanded into ordered lectures before transcript
+fetching.
 
 ## Transcript Segment Handoff
 
@@ -74,8 +83,38 @@ manual source path, not ASR and not a fallback to a private import pipeline.
 
 Some Bilibili subtitle metadata is visible only to an authenticated browser
 session. Public Lite never stores credentials in the repository. If a course
-requires authenticated subtitles, set `BILIBILI_COOKIE` in the local runtime
-environment and rerun the import.
+requires authenticated subtitles, use one of these local-only routes:
 
-This is still source ingestion only. It does not generate lecture notes,
-knowledge cards, Q&A answers, review items, or learning feedback.
+- scan the QR code in the Web import panel;
+- paste a browser cookie for the current import;
+- choose remember-cookie storage, which writes only to
+  `.codex/auth/bilibili.json` on the local machine;
+- or set `BILIBILI_COOKIE` in the local runtime environment.
+
+APIs and evidence logs must not echo cookie values. They may record sanitized
+signals such as `cookie_present`, `auth_source`, or cookie names.
+
+## Readiness And Promotion
+
+Full imports write into a temporary SQLite store first. Promotion to the local
+production store is guarded:
+
+- a new ready course is merged as an additional course;
+- a same-course reimport replaces only that course when the candidate is not
+  worse than the existing course;
+- candidates with missing transcripts, notes, atoms, or gates are blocked;
+- `max_lectures` probe imports do not auto-promote.
+
+The status card should distinguish a failed import from a successful temporary
+import that was intentionally blocked by promotion protection.
+
+## Notes And Atoms
+
+Transcript-backed imports generate Chinese lecture notes, knowledge atoms,
+review gates, and optional visual-keyframe artifacts when media is available.
+When model credentials are absent, the deterministic fallback remains honest
+about being a fallback and should not be described as full model-quality parity.
+
+This is still child-local course ingestion. It does not write private Learning
+OS planning, mastery, diagnosis, exercise-review, queue-completion, or feedback
+state.

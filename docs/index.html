@@ -3,500 +3,578 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Course2Knowledge Lite</title>
+    <title>Course2Knowledge Lite 技术档案</title>
     <meta
       name="description"
-      content="Course2Knowledge Lite 将 Bilibili 网课合集转成可引用转写证据、本地课程知识库，并提供 Web Lite 与 Feishu/Hermes Lite 双前台。"
+      content="Course2Knowledge Lite 技术档案：把在线视频课程编译成本地 SQLite 课程知识运行时，解释导入管线、数据模型、Web/Hermes 前台、核心代码和发布边界。"
     />
     <link rel="stylesheet" href="site.css" />
   </head>
-  <body data-lang="zh">
-    <header class="site-header">
-      <a class="brand" href="#top" aria-label="Course2Knowledge Lite home">
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Course2Knowledge Lite 技术档案">
         <span>Course2Knowledge</span>
-        <strong>Lite</strong>
+        <strong>Lite 技术档案</strong>
       </a>
-      <nav class="nav" aria-label="Site sections">
-        <a href="#system" data-i18n="nav.system">系统</a>
-        <a href="#demo" data-i18n="nav.demo">演示</a>
-        <a href="#walkthrough" data-i18n="nav.walkthrough">流程</a>
-        <a href="#frontdesks" data-i18n="nav.frontdesks">双前台</a>
-        <a href="#evidence" data-i18n="nav.evidence">案例</a>
-        <a href="#dossier" data-i18n="nav.dossier">文档</a>
-        <a href="#deploy" data-i18n="nav.deploy">部署</a>
+      <nav class="topnav" aria-label="页面目录">
+        <a href="#definition">定义</a>
+        <a href="#architecture">架构</a>
+        <a href="#pipeline">导入</a>
+        <a href="#runtime">运行时</a>
+        <a href="#code-map">代码</a>
+        <a href="#faq">FAQ</a>
       </nav>
-      <div class="language-switcher" aria-label="Language switcher">
-        <button type="button" class="is-active" data-lang="zh">中文</button>
-        <button type="button" data-lang="en">EN</button>
-      </div>
     </header>
 
-    <main id="top">
-      <section id="system" class="hero">
-        <div class="hero-copy">
-          <p class="kicker" data-i18n="hero.kicker">作品展示 + 技术档案</p>
-          <h1 data-i18n="hero.title">不要把知识关在播放器里。</h1>
-          <p class="lead" data-i18n="hero.lead">
-            Course2Knowledge Lite 把 Bilibili 合集拆成可引用的转写证据，组织成本地课程知识库，再同时交给 Web 深读前台和 Feishu/Hermes 问答前台。
+    <main id="top" class="layout">
+      <aside class="toc" aria-label="技术档案目录">
+        <p class="toc-title">目录</p>
+        <a href="#definition">一句话定义</a>
+        <a href="#problem">问题定义</a>
+        <a href="#not">它不是什么</a>
+        <a href="#architecture">系统架构</a>
+        <a href="#runtime">数据运行时</a>
+        <a href="#pipeline">导入管线</a>
+        <a href="#frontdesks">Web 与 Hermes</a>
+        <a href="#code-map">核心代码导读</a>
+        <a href="#call-chains">关键调用链</a>
+        <a href="#evaluation">评估方式</a>
+        <a href="#deployment">运行与部署</a>
+        <a href="#boundary">发布边界</a>
+        <a href="#faq">FAQ</a>
+      </aside>
+
+      <article class="article">
+        <section id="definition" class="section lead-section">
+          <p class="eyebrow">Technical Dossier</p>
+          <h1>把在线视频课程编译成本地课程知识运行时。</h1>
+          <p class="lead">
+            Course2Knowledge Lite 不是 LMS、普通 RAG demo、笔记软件、视频下载器，也不是通用 Agent
+            框架。它把一门 B 站视频课当作证据源，经过字幕、视觉证据、中文讲义、知识原子和学习关口的编译，落到本地
+            SQLite 课程运行时，再由 Web Lite 课堂和可选 Hermes Lite 工具前台读取。
           </p>
-          <div class="hero-metrics" aria-label="Current real demo metrics">
-            <span><strong>30</strong><span data-i18n="metric.lectures">节课已展开</span></span>
-            <span><strong>9</strong><span data-i18n="metric.segments">段转写证据</span></span>
-            <span><strong>2</strong><span data-i18n="metric.frontdesks">个前台入口</span></span>
-            <span><strong>16</strong><span data-i18n="metric.shots">张真实案例图</span></span>
-          </div>
-        </div>
-
-        <div class="system-slice" aria-label="Course2Knowledge Lite system slice">
-          <div class="source-node accent-bilibili">
-            <span data-i18n="slice.source">来源</span>
-            <strong>Bilibili Collection</strong>
-          </div>
-          <div class="flow-arrow" aria-hidden="true">down</div>
-          <div class="source-node accent-evidence">
-            <span data-i18n="slice.evidence">证据层</span>
-            <strong>Transcript Evidence</strong>
-          </div>
-          <div class="flow-arrow" aria-hidden="true">down</div>
-          <div class="source-node accent-store">
-            <span data-i18n="slice.kernel">共享底座</span>
-            <strong>Course Knowledge Store</strong>
-          </div>
-          <div class="frontdesk-branches">
-            <div class="branch-line" aria-hidden="true"></div>
-            <div class="frontdesk-node">
-              <span>Web Lite</span>
-              <strong data-i18n="slice.web">深读 / 搜索 / 标注</strong>
+          <div class="definition-grid" aria-label="核心定义">
+            <div>
+              <span>内核</span>
+              <strong>SQLite Course Runtime</strong>
+              <p>本地写入权威，保存课程、讲次、字幕、讲义、知识原子、关口、视觉证据、笔记、进度和聊天。</p>
             </div>
-            <div class="frontdesk-node accent-feishu">
-              <span>Feishu/Hermes Lite</span>
-              <strong data-i18n="slice.feishu">提问 / 查课 / 引用</strong>
+            <div>
+              <span>输入</span>
+              <strong>Bilibili Course URL</strong>
+              <p>合集、系列课、普通视频和多 P 视频都进入同一条公开导入管线。</p>
+            </div>
+            <div>
+              <span>前台</span>
+              <strong>Web Lite / Hermes Lite</strong>
+              <p>Web 负责可视化课堂，Hermes 负责可选工具调用。两者共享同一份课程 store。</p>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="hero-shots" aria-label="Primary screenshot targets">
-          <figure class="shot-frame is-filled">
-            <img
-              src="assets/demos/shot-01-web-overview.png"
-              alt="Web Lite workspace with course list, transcript reader, search, Q&A, notes, bookmarks, and progress"
-            />
-            <figcaption data-i18n="hero.webShot">
-              SHOT-01 Web Lite 总览。真实本地运行，展示阅读、搜索、问答、笔记、书签和进度。
-            </figcaption>
-          </figure>
-          <figure class="shot-frame is-filled">
-            <img
-              src="assets/demos/shot-03-dual-frontdesk.png"
-              alt="Dual frontdesk evidence showing Web Lite and Hermes Lite smoke over the same course store"
-            />
-            <figcaption data-i18n="hero.dualShot">
-              SHOT-03 双前台边界。Web 是真实前台截图；Hermes 是公开 profile/tool smoke，不冒充生产聊天。
-            </figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section id="demo" class="section demo-video">
-        <div class="section-title demo-heading">
-          <p class="kicker" data-i18n="demo.kicker">公开演示视频</p>
-          <h2 data-i18n="demo.title">一分二十秒，把导入、证据、问答和双前台走一遍。</h2>
-          <p data-i18n="demo.lead">
-            这段视频由公开子仓库的真实截图和本地运行素材剪成：合集导入、课程展开、转写证据、Web 深读、引用问答、知识卡片、Hermes Lite smoke 都来自同一条公开案例链路。
+        <section id="problem" class="section">
+          <p class="eyebrow">Problem</p>
+          <h2>视频课程的问题不是缺少总结，而是知识被困在时间轴里。</h2>
+          <p>
+            一门课程的知识散落在视频顺序、讲者语境、字幕片段、时间戳和画面证据中。只下载视频、转写字幕、让模型总结，或者把字幕直接丢进检索系统，都无法稳定回答：
           </p>
-        </div>
-        <div class="demo-stage" aria-label="Course2Knowledge Lite public demo video">
-          <div class="demo-media">
-            <video
-              controls
-              playsinline
-              preload="metadata"
-              poster="assets/demo-video/poster.png"
-              aria-label="Course2Knowledge Lite public demo video"
-            >
-              <source src="assets/demo-video/course2knowledge-lite-demo.webm" type="video/webm" />
-              <source src="assets/demo-video/course2knowledge-lite-demo.mp4" type="video/mp4" />
-              <a href="assets/demo-video/course2knowledge-lite-demo.mp4" data-i18n="demo.videoFallback">打开演示视频</a>
-            </video>
-          </div>
-          <aside class="demo-rail" aria-label="Demo video evidence summary">
-            <p class="rail-label" data-i18n="demo.railLabel">视频证据</p>
-            <dl class="demo-facts">
-              <div>
-                <dt>81s</dt>
-                <dd data-i18n="demo.fact.duration">短视频成片，无音频，适合放在 GitHub Pages 首屏之后。</dd>
-              </div>
-              <div>
-                <dt>15+</dt>
-                <dd data-i18n="demo.fact.assets">覆盖导入、store、reader、search、Q&A、cards、notes、bookmarks、progress、Hermes smoke。</dd>
-              </div>
-              <div>
-                <dt>0</dt>
-                <dd data-i18n="demo.fact.private">不包含私有运行证据、生产聊天截图、私有日志或个人学习定位。</dd>
-              </div>
-            </dl>
-            <div class="demo-links">
-              <a href="DEMO_VIDEO.md"><span>DEMO_VIDEO</span><strong data-i18n="doc.demoVideo">脚本、分镜与验收规则</strong></a>
-              <a href="DEMO_PRIVACY.md"><span>DEMO_PRIVACY</span><strong data-i18n="doc.demoPrivacy">公开素材脱敏边界</strong></a>
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <section id="walkthrough" class="section walkthrough">
-        <div class="section-title">
-          <p class="kicker" data-i18n="walk.kicker">真实案例链路</p>
-          <h2 data-i18n="walk.title">从一个合集 URL，到两个能用的学习入口。</h2>
-          <p data-i18n="walk.lead">
-            这次案例围绕同一个 Bilibili 合集：导入边界、转写证据、课程库、Web 前台和 Hermes 前台能力都留下了截图证据。页面展示的是实际跑出来的链路，不是概念图。
+          <ul class="check-list">
+            <li>这门课有哪些讲？每一讲的来源和顺序是什么？</li>
+            <li>每讲是否有可用字幕、讲义、知识原子、关口和视觉证据？</li>
+            <li>回答问题时引用的是哪段字幕、哪个时间点、哪条课程证据？</li>
+            <li>一次失败或半成品导入会不会覆盖已经可用的正式课程？</li>
+            <li>网页前台和聊天前台是不是读取同一份本地状态？</li>
+          </ul>
+          <p>
+            Course2Knowledge Lite 的选择是先把课程编译为本地运行时，再在这个运行时上提供阅读、问答、聊天、笔记和状态展示。
           </p>
-        </div>
-        <ol class="process-line" aria-label="Course import to frontdesk process">
-          <li>
-            <span>01</span>
-            <strong data-i18n="step.import.title">导入合集</strong>
-            <p data-i18n="step.import.body">把 Bilibili season URL 作为公开导入边界。</p>
-          </li>
-          <li>
-            <span>02</span>
-            <strong data-i18n="step.expand.title">展开课程</strong>
-            <p data-i18n="step.expand.body">得到有序 lecture、标题、BV/source URL 和 import receipt。</p>
-          </li>
-          <li>
-            <span>03</span>
-            <strong data-i18n="step.evidence.title">沉淀证据</strong>
-            <p data-i18n="step.evidence.body">把 timestamped transcript segments 作为可引用学习证据。</p>
-          </li>
-          <li>
-            <span>04</span>
-            <strong data-i18n="step.store.title">建立课程库</strong>
-            <p data-i18n="step.store.body">持久化 course、lecture、segment、card、note、bookmark 和 progress。</p>
-          </li>
-          <li>
-            <span>05</span>
-            <strong data-i18n="step.web.title">Web 深读</strong>
-            <p data-i18n="step.web.body">在 Web Lite 里阅读、搜索、问答、生成卡片和记录状态。</p>
-          </li>
-          <li>
-            <span>06</span>
-            <strong data-i18n="step.feishu.title">Hermes 前台</strong>
-            <p data-i18n="step.feishu.body">通过公开 Hermes profile 验证同一工具边界可被对话前台调用。</p>
-          </li>
-        </ol>
-      </section>
+        </section>
 
-      <section id="frontdesks" class="section frontdesks">
-        <div class="section-title">
-          <p class="kicker" data-i18n="front.kicker">One Store, Two Frontdesks</p>
-          <h2 data-i18n="front.title">Web 负责看清楚，飞书/Hermes 负责随手问。</h2>
-        </div>
-        <div class="frontdesk-comparison">
-          <article>
-            <div class="comparison-head">
-              <span data-i18n="front.webLabel">可检查的阅读工作台</span>
+        <section id="not" class="section">
+          <p class="eyebrow">Boundary</p>
+          <h2>它不是什么：先把范式误会排除掉。</h2>
+          <div class="comparison-table" role="table" aria-label="与常见范式的区别">
+            <div role="row" class="head">
+              <span role="columnheader">常见范式</span>
+              <span role="columnheader">典型关注点</span>
+              <span role="columnheader">Course2Knowledge Lite 的差异</span>
+            </div>
+            <div role="row">
+              <span>LMS</span>
+              <span>班级、作业、成绩、教务</span>
+              <span>不做机构教务，专注课程证据编译和本地知识运行时。</span>
+            </div>
+            <div role="row">
+              <span>RAG demo</span>
+              <span>分块、检索、回答</span>
+              <span>检索只是下游能力，核心产物是可复用课程运行时。</span>
+            </div>
+            <div role="row">
+              <span>笔记软件</span>
+              <span>人工笔记、链接和知识库</span>
+              <span>笔记是运行时的一类对象，不是课程状态的全部。</span>
+            </div>
+            <div role="row">
+              <span>视频下载器</span>
+              <span>获取视频和字幕</span>
+              <span>重点是生成讲义、知识原子、关口和证据链。</span>
+            </div>
+            <div role="row">
+              <span>Agent 框架</span>
+              <span>工具调用和任务编排</span>
+              <span>Hermes 是可选工具前台；SQLite 课程运行时才是业务权威。</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="architecture" class="section">
+          <p class="eyebrow">Architecture</p>
+          <h2>总体架构：课程先被编译，再被前台使用。</h2>
+          <div class="architecture-map" aria-label="Course2Knowledge Lite 总体架构">
+            <div class="arch-lane arch-lane-source">
+              <p class="lane-label">Source</p>
+              <div class="arch-node">
+                <strong>Bilibili Course URL</strong>
+                <span>合集、系列课、普通视频、多 P 视频</span>
+              </div>
+              <div class="arch-node">
+                <strong>Import Adapter</strong>
+                <span>展开 lecture，探测字幕与登录态</span>
+              </div>
+            </div>
+
+            <div class="arch-connector" aria-hidden="true"></div>
+
+            <div class="arch-lane arch-lane-staging">
+              <p class="lane-label">Staging</p>
+              <div class="arch-node arch-node-temp">
+                <strong>Temporary SQLite Store</strong>
+                <span>先落临时库，避免半成品污染正式课程</span>
+              </div>
+            </div>
+
+            <div class="arch-connector" aria-hidden="true"></div>
+
+            <div class="arch-lane arch-lane-compile">
+              <p class="lane-label">Compiler</p>
+              <div class="arch-node">
+                <strong>Transcript Evidence</strong>
+                <span>时间戳字幕片段，作为引用证据</span>
+              </div>
+              <div class="arch-node">
+                <strong>Visual Evidence</strong>
+                <span>课程绑定关键帧或公开视觉材料</span>
+              </div>
+              <div class="arch-node">
+                <strong>Lecture Dossier</strong>
+                <span>中文讲义、结构化摘要、课程上下文</span>
+              </div>
+              <div class="arch-node">
+                <strong>Knowledge Atoms / Gates</strong>
+                <span>学习节点和关口，不是一次性摘要</span>
+              </div>
+            </div>
+
+            <div class="arch-connector" aria-hidden="true"></div>
+
+            <div class="arch-lane arch-lane-runtime">
+              <p class="lane-label">Runtime Authority</p>
+              <div class="arch-node arch-node-gate">
+                <strong>Readiness + Promotion Gate</strong>
+                <span>字幕、讲义、原子、关口缺失时阻断晋升</span>
+              </div>
+              <div class="arch-node arch-node-runtime">
+                <strong>Production SQLite Course Runtime</strong>
+                <span>本地写入权威，统一服务 Web 与 Hermes</span>
+              </div>
+            </div>
+
+            <div class="arch-branches" aria-label="前台投影">
+              <div class="arch-node arch-node-frontdesk">
+                <strong>Web Lite Classroom</strong>
+                <span>互动学习、课程管理、课程笔记</span>
+              </div>
+              <div class="arch-node arch-node-frontdesk">
+                <strong>Hermes Lite Tools</strong>
+                <span>可选聊天工具前台，调用同一 store</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="principles">
+            <div>
+              <h3>1. 课程是可编译对象</h3>
+              <p>课程不是一组松散视频。系统把 lecture、字幕片段、讲义、知识原子、关口和视觉证据组织成稳定对象。</p>
+            </div>
+            <div>
+              <h3>2. 证据链优先</h3>
+              <p>回答问题必须尽量回到字幕片段、时间戳、来源 URL 或视觉证据。没有证据时应明确说明。</p>
+            </div>
+            <div>
+              <h3>3. 前台只是投影</h3>
+              <p>Web Lite 和 Hermes Lite 都读取同一个本地 store，不各自拥有业务状态。</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="runtime" class="section">
+          <p class="eyebrow">Data Runtime</p>
+          <h2>为什么是 SQLite：它是本地写入权威，不是临时缓存。</h2>
+          <p>
+            早期 JSON 适合作为 seed、fixture、迁移输入或调试导出，但正式运行时需要事务、索引、关系、状态查询和前台共享。Course2Knowledge Lite
+            因此把 SQLite 作为默认写入权威。
+          </p>
+          <div class="entity-grid">
+            <div><strong>Course</strong><span>一门导入课程</span></div>
+            <div><strong>Lecture</strong><span>课程中的一讲或一个视频</span></div>
+            <div><strong>Transcript Segment</strong><span>带时间戳的字幕证据</span></div>
+            <div><strong>Lecture Dossier</strong><span>中文讲义和结构化摘要</span></div>
+            <div><strong>Knowledge Atom</strong><span>概念、定义、解释单元</span></div>
+            <div><strong>Gate</strong><span>学习关口或自检节点</span></div>
+            <div><strong>Visual Evidence</strong><span>绑定课程和讲次的视觉证据</span></div>
+            <div><strong>Note / Bookmark</strong><span>学习者本地标注</span></div>
+            <div><strong>Reading Progress</strong><span>轻量阅读状态</span></div>
+            <div><strong>Chat Thread</strong><span>前台聊天持久化</span></div>
+            <div><strong>Import Status</strong><span>导入阶段、进度和错误解释</span></div>
+          </div>
+        </section>
+
+        <section id="pipeline" class="section">
+          <p class="eyebrow">Import Pipeline</p>
+          <h2>导入不是“抓一下字幕”，而是一条带质量保护的晋升管线。</h2>
+          <ol class="numbered">
+            <li>
+              <strong>课程展开</strong>
+              <p>把合集、系列课、普通视频、多 P 视频展开为有序 lecture，保留标题、BV/source URL 和 sequence。</p>
+            </li>
+            <li>
+              <strong>字幕获取</strong>
+              <p>优先使用可用 B 站字幕；需要登录态时支持二维码登录、单次 cookie、remember-cookie 或本地环境变量。</p>
+            </li>
+            <li>
+              <strong>证据归一化</strong>
+              <p>字幕被归一化为 timestamped transcript segments，成为讲义、问答和引用的证据底座。</p>
+            </li>
+            <li>
+              <strong>课程编译</strong>
+              <p>每讲生成中文讲义、知识原子、学习关口和可选视觉关键帧。</p>
+            </li>
+            <li>
+              <strong>Readiness 检查</strong>
+              <p>检查 transcript、notes、atoms、gates 和必要元数据是否齐备。</p>
+            </li>
+            <li>
+              <strong>Promotion Gate</strong>
+              <p>只有质量可接受的候选课程才能合并或替换生产 SQLite store。</p>
+            </li>
+          </ol>
+          <div class="callout">
+            <strong>关键设计：</strong>
+            <span>导入先写临时 store。缺字幕、缺讲义、缺知识原子、缺关口或探测性导入不会静默覆盖正式课程。</span>
+          </div>
+        </section>
+
+        <section id="frontdesks" class="section">
+          <p class="eyebrow">Frontdesks</p>
+          <h2>Web 是课堂前台，Hermes 是可选工具前台。</h2>
+          <div class="two-column">
+            <div>
               <h3>Web Lite</h3>
+              <p>
+                Web Lite 是主要可视化前台。它不是控制台，而是轻量线上学校界面，围绕三个模块组织：互动模块、课程管理、课程笔记。
+              </p>
+              <ul>
+                <li>互动模块：聊天、当前课程、当前视频、知识节点状态。</li>
+                <li>课程管理：导入、删除、查看视频列表、查看 readiness。</li>
+                <li>课程笔记：讲义、本地笔记、书签、阅读进度。</li>
+              </ul>
             </div>
-            <figure class="shot-frame is-filled">
-              <img
-                src="assets/demos/shot-08-reader-detail.png"
-                alt="Web Lite lecture reader with transcript evidence"
-              />
-              <figcaption data-i18n="front.webCaption">SHOT-08 Reader detail：一个有 transcript 的 lecture 被打开，可见 segment ID 和时间戳。</figcaption>
-            </figure>
-            <ul class="plain-list">
-              <li data-i18n="front.web1">按 lecture 阅读转写证据。</li>
-              <li data-i18n="front.web2">搜索和 Q&A 都显示 citation。</li>
-              <li data-i18n="front.web3">笔记、书签、进度都落在同一个本地 course store。</li>
-            </ul>
-          </article>
-          <article>
-            <div class="comparison-head">
-              <span data-i18n="front.chatLabel">可对话的学习入口</span>
-              <h3>Feishu/Hermes Lite</h3>
+            <div>
+              <h3>Hermes Lite</h3>
+              <p>
+                Hermes Lite 不是业务内核，也不是远程后端。它是可选工具前台，把同一 SQLite store 暴露给聊天界面。
+              </p>
+              <ul>
+                <li>工具调用同一套 package API。</li>
+                <li>不读取母项目私有 profile。</li>
+                <li>不写 mastery、diagnosis、review queue。</li>
+                <li>不依赖外部 Agent 框架。</li>
+              </ul>
             </div>
-            <figure class="shot-frame is-filled">
-              <img
-                src="assets/demos/shot-15-hermes-smoke.png"
-                alt="Hermes Lite profile smoke output with registered public tools"
-              />
-              <figcaption data-i18n="front.chatCaption">SHOT-15 Hermes smoke：公开 profile 和 22 个工具注册通过。真实飞书聊天图仍待安全采集。</figcaption>
-            </figure>
-            <ul class="plain-list">
-              <li data-i18n="front.chat1">不复制一套聊天记忆，仍然读同一个课程库。</li>
-              <li data-i18n="front.chat2">工具层支持查课、搜索、问答、笔记、书签、进度和视觉证据发图。</li>
-              <li data-i18n="front.chat3">当前公开站只展示安全 smoke，不泄露生产聊天身份。</li>
-            </ul>
-          </article>
-        </div>
-      </section>
-
-      <section id="evidence" class="section evidence">
-        <div class="section-title">
-          <p class="kicker" data-i18n="evidence.kicker">真实案例图</p>
-          <h2 data-i18n="evidence.title">16 个证据位，把链路从“能说”变成“能看”。</h2>
-          <p data-i18n="evidence.lead">
-            这些图来自刚才实际启动的 Web Lite、API bundle、本地 store、视觉证据和 Hermes profile smoke。飞书聊天图没有用生产聊天冒充，缺口在页面中明确标注。
-          </p>
-        </div>
-        <div class="evidence-board" aria-label="Showcase shot list">
-          <article class="evidence-row">
-            <span>SHOT-01</span>
-            <strong data-i18n="shot.01.title">Web 总览</strong>
-            <p data-i18n="shot.01.body">真实 Web Lite 页面，展示课程、reader、搜索、Q&A、笔记、书签和进度。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-03</span>
-            <strong data-i18n="shot.03.title">双前台边界</strong>
-            <p data-i18n="shot.03.body">Web 前台截图 + Hermes smoke 证据，证明同一 course store 的两个入口。</p>
-            <em data-i18n="status.safe">safe proof</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-04</span>
-            <strong data-i18n="shot.04.title">导入收据</strong>
-            <p data-i18n="shot.04.body">Bilibili collection URL 被公开 Lite 导入边界接受。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-05</span>
-            <strong data-i18n="shot.05.title">课程展开</strong>
-            <p data-i18n="shot.05.body">30 个 lecture 的 source ID、标题和 URL 被展开记录。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-06</span>
-            <strong data-i18n="shot.06.title">课程库文件</strong>
-            <p data-i18n="shot.06.body">本地 SQLite course store 同时支撑 Web 和 Hermes 工具层。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-07</span>
-            <strong data-i18n="shot.07.title">转写证据</strong>
-            <p data-i18n="shot.07.body">timestamped transcript segments 带稳定 segment ID。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-08</span>
-            <strong data-i18n="shot.08.title">阅读器细节</strong>
-            <p data-i18n="shot.08.body">Web reader 打开一节有 transcript 的课程。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-09</span>
-            <strong data-i18n="shot.09.title">搜索命中</strong>
-            <p data-i18n="shot.09.body">`RAG Agent` 搜索命中 5 条 transcript 证据。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-10</span>
-            <strong data-i18n="shot.10.title">引用问答</strong>
-            <p data-i18n="shot.10.body">Q&A answered，并显示 5 条 citations。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-11</span>
-            <strong data-i18n="shot.11.title">知识卡片</strong>
-            <p data-i18n="shot.11.body">卡片由 transcript segment 生成，并保留 source segment ID。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-12</span>
-            <strong data-i18n="shot.12.title">笔记状态</strong>
-            <p data-i18n="shot.12.body">note 绑定 course 和 lecture，保留在 Lite local store。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-13</span>
-            <strong data-i18n="shot.13.title">书签状态</strong>
-            <p data-i18n="shot.13.body">bookmark 指向 segment/card target。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-14</span>
-            <strong data-i18n="shot.14.title">阅读进度</strong>
-            <p data-i18n="shot.14.body">reading progress 被写入并可被 Web/API 读取。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-15</span>
-            <strong data-i18n="shot.15.title">Hermes smoke</strong>
-            <p data-i18n="shot.15.body">公开 profile sync/smoke 通过，22 个工具注册。</p>
-            <em data-i18n="status.safe">safe proof</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-17</span>
-            <strong data-i18n="shot.17.title">视觉证据发图</strong>
-            <p data-i18n="shot.17.body">Hermes Lite 选择公开课程图，解释后返回唯一 MEDIA 路径。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-          <article class="evidence-row">
-            <span>SHOT-16</span>
-            <strong data-i18n="shot.16.title">移动端 Web</strong>
-            <p data-i18n="shot.16.body">同一 course store 在移动端可读。</p>
-            <em data-i18n="status.real">real</em>
-          </article>
-        </div>
-        <div class="shot-gallery" aria-label="Sixteen real evidence captures">
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-01-web-overview.png" alt="Web Lite overview screenshot" />
-            <figcaption data-i18n="gallery.01">SHOT-01 Web 总览</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-03-dual-frontdesk.png" alt="Dual frontdesk boundary evidence" />
-            <figcaption data-i18n="gallery.03">SHOT-03 双前台边界</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-04-import-receipt.png" alt="Bilibili import receipt evidence" />
-            <figcaption data-i18n="gallery.04">SHOT-04 导入收据</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-05-lecture-expansion.png" alt="Lecture expansion evidence" />
-            <figcaption data-i18n="gallery.05">SHOT-05 课程展开</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-06-course-store-files.png" alt="Course store files evidence" />
-            <figcaption data-i18n="gallery.06">SHOT-06 课程库文件</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-07-transcript-segments.png" alt="Transcript segment evidence" />
-            <figcaption data-i18n="gallery.07">SHOT-07 转写证据</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-08-reader-detail.png" alt="Web Lite reader detail screenshot" />
-            <figcaption data-i18n="gallery.08">SHOT-08 阅读器细节</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-09-search-result.png" alt="Search result screenshot" />
-            <figcaption data-i18n="gallery.09">SHOT-09 搜索命中</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-10-qa-answer.png" alt="Q&A answer with citations screenshot" />
-            <figcaption data-i18n="gallery.10">SHOT-10 引用问答</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-11-knowledge-cards.png" alt="Knowledge cards screenshot" />
-            <figcaption data-i18n="gallery.11">SHOT-11 知识卡片</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-12-notes.png" alt="Notes screenshot" />
-            <figcaption data-i18n="gallery.12">SHOT-12 笔记状态</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-13-bookmarks.png" alt="Bookmarks screenshot" />
-            <figcaption data-i18n="gallery.13">SHOT-13 书签状态</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-14-reading-progress.png" alt="Reading progress evidence" />
-            <figcaption data-i18n="gallery.14">SHOT-14 阅读进度</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-15-hermes-smoke.png" alt="Hermes Lite profile smoke evidence" />
-            <figcaption data-i18n="gallery.15">SHOT-15 Hermes smoke</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/visual-evidence/rag-agent-flow.png" alt="Public visual evidence selected by Hermes Lite" />
-            <figcaption data-i18n="gallery.17">SHOT-17 视觉证据发图</figcaption>
-          </figure>
-          <figure class="gallery-shot is-filled">
-            <img src="assets/demos/shot-16-mobile-web.png" alt="Mobile Web Lite screenshot" />
-            <figcaption data-i18n="gallery.16">SHOT-16 移动端 Web</figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section id="thought" class="section thought">
-        <div class="section-title">
-          <p class="kicker" data-i18n="thought.kicker">产品思想</p>
-          <h2 data-i18n="thought.title">课程不是缺内容，是内容被锁在时间轴里。</h2>
-        </div>
-        <div class="thought-grid">
-          <p data-i18n="thought.body">
-            Course2Knowledge Lite 做的事，是把播放器里的时间线拆成可引用证据，把证据组织成课程知识库，再让学习者通过 Web 和 Feishu/Hermes 两个前台进入同一个知识空间。
-          </p>
-          <div class="thought-stack" aria-label="Product thought stack">
-            <span data-i18n="thought.stack1">Timeline / 时间线</span>
-            <span data-i18n="thought.stack2">Evidence / 证据</span>
-            <span data-i18n="thought.stack3">Knowledge Store / 知识库</span>
-            <span data-i18n="thought.stack4">Inspectable Web / 可检查阅读</span>
-            <span data-i18n="thought.stack5">Conversational Feishu / 可对话前台</span>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="boundary" class="section boundary">
-        <div class="section-title">
-          <p class="kicker" data-i18n="boundary.kicker">公开边界</p>
-          <h2 data-i18n="boundary.title">裁掉闭环，不是裁成玩具。</h2>
-          <p data-i18n="boundary.lead">
-            公开版保留课程知识化的主线，同时移除私有计划、反馈、练题和生产身份相关能力。
+        <section id="code-map" class="section">
+          <p class="eyebrow">Code Map</p>
+          <h2>核心代码导读：从入口、导入、运行时到前台。</h2>
+          <p>
+            下面不是源码复制，而是代码地图。每个路径都指向真实文件，说明它在架构中的职责边界。读者可以从这里开始审查系统，而不必先在仓库里迷路。
           </p>
-        </div>
-        <div class="boundary-table">
-          <div>
-            <h3 data-i18n="boundary.included">Lite 保留</h3>
-            <ul>
-              <li data-i18n="boundary.in1">Bilibili course import boundary</li>
-              <li data-i18n="boundary.in2">Transcript evidence and local course store</li>
-              <li data-i18n="boundary.in3">Lecture reader, search, citation Q&A</li>
-              <li data-i18n="boundary.in4">Knowledge cards from source segments</li>
-              <li data-i18n="boundary.in5">Notes, bookmarks, and reading progress</li>
-              <li data-i18n="boundary.in6">Web Lite and Feishu/Hermes Lite frontdesks</li>
-            </ul>
+          <div class="code-map" aria-label="核心代码导读">
+            <article>
+              <h3>CLI 入口</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/src/course2knowledge_lite/cli.py">src/course2knowledge_lite/cli.py</a>
+              <p>启动 Web、同步 Hermes profile、运行 smoke 的命令入口。</p>
+            </article>
+            <article>
+              <h3>B 站课程展开</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/bilibili-import/src/course2knowledge_lite_bilibili/collection.py">packages/bilibili-import/.../collection.py</a>
+              <p>把合集、系列课、普通视频和多 P 视频展开成有序 lecture。</p>
+            </article>
+            <article>
+              <h3>字幕与登录态</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/bilibili-import/src/course2knowledge_lite_bilibili/subtitles.py">packages/bilibili-import/.../subtitles.py</a>
+              <p>字幕探测、cookie 登录态、二维码登录和脱敏状态。</p>
+            </article>
+            <article>
+              <h3>导入 Handoff</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/bilibili-import/src/course2knowledge_lite_bilibili/handoff.py">packages/bilibili-import/.../handoff.py</a>
+              <p>临时 store、readiness 检查和 promotion gate 的衔接层。</p>
+            </article>
+            <article>
+              <h3>并发策略</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/bilibili-import/src/course2knowledge_lite_bilibili/parallelism.py">packages/bilibili-import/.../parallelism.py</a>
+              <p>解析导入并发度，避免整门课完全串行拖慢。</p>
+            </article>
+            <article>
+              <h3>SQLite 权威源</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/course-store/src/course2knowledge_lite_store/sqlite_store.py">packages/course-store/.../sqlite_store.py</a>
+              <p>表结构、CRUD、本地持久化和运行时查询。</p>
+            </article>
+            <article>
+              <h3>实体模型</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/course-store/src/course2knowledge_lite_store/models.py">packages/course-store/.../models.py</a>
+              <p>course、lecture、atom、gate、visual evidence 等实体模型。</p>
+            </article>
+            <article>
+              <h3>讲义编译入口</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/course-store/src/course2knowledge_lite_store/lecture_dossier.py">packages/course-store/.../lecture_dossier.py</a>
+              <p>中文讲义、知识原子和关口生成入口。</p>
+            </article>
+            <article>
+              <h3>编译核心</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/tree/main/packages/course-store/src/course2knowledge_lite_store/dossier_core">packages/course-store/.../dossier_core/</a>
+              <p>从 transcript evidence 编译课程知识结构的核心实现。</p>
+            </article>
+            <article>
+              <h3>视觉证据</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/course-store/src/course2knowledge_lite_store/multimodal.py">packages/course-store/.../multimodal.py</a>
+              <p>视觉证据、关键帧和 course/lecture 绑定。</p>
+            </article>
+            <article>
+              <h3>聊天持久化</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/packages/course-store/src/course2knowledge_lite_store/chat.py">packages/course-store/.../chat.py</a>
+              <p>thread、message、event 的本地持久化。</p>
+            </article>
+            <article>
+              <h3>Web API</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/apps/web/server.py">apps/web/server.py</a>
+              <p>HTTP API、SSE、导入任务和聊天持久化入口。</p>
+            </article>
+            <article>
+              <h3>Web 前台</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/apps/web/static/app.js">apps/web/static/app.js</a>
+              <p>三模块课堂交互：互动、课程管理、课程笔记。</p>
+            </article>
+            <article>
+              <h3>Hermes 工具层</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/hermes/plugins/course2knowledge-lite/tools.py">hermes/plugins/course2knowledge-lite/tools.py</a>
+              <p>把同一 SQLite store 暴露为 Hermes 原生工具。</p>
+            </article>
+            <article>
+              <h3>部署测试</h3>
+              <a href="https://github.com/blackzhanzhan/course2knowledge-lite/blob/main/tests/test_deployment.py">tests/test_deployment.py</a>
+              <p>发布前安装、profile sync 和 smoke 验证。</p>
+            </article>
           </div>
-          <div>
-            <h3 data-i18n="boundary.removed">公开版移除</h3>
-            <ul>
-              <li data-i18n="boundary.out1">Private planning layer</li>
-              <li data-i18n="boundary.out2">Exercise feedback and visual exercise interpretation</li>
-              <li data-i18n="boundary.out3">Learner scoring and mastery mutation loops</li>
-              <li data-i18n="boundary.out4">Private orchestration and production identifiers</li>
-              <li data-i18n="boundary.out5">Production chat exports and personal study logs</li>
-              <li data-i18n="boundary.out6">Protected closed-loop automation</li>
-            </ul>
+        </section>
+
+        <section id="call-chains" class="section">
+          <p class="eyebrow">Call Chains</p>
+          <h2>关键调用链：从用户动作到本地运行时。</h2>
+          <div class="chains">
+            <div>
+              <h3>Web 导入课程</h3>
+              <pre><code>用户粘贴 B 站课程 URL
+  -> apps/web/server.py
+  -> packages/bilibili-import/.../collection.py
+  -> packages/bilibili-import/.../subtitles.py
+  -> packages/bilibili-import/.../handoff.py
+  -> packages/course-store/.../sqlite_store.py
+  -> apps/web/static/app.js 展示导入状态</code></pre>
+            </div>
+            <div>
+              <h3>聊天前台提问</h3>
+              <pre><code>用户在聊天前台提问
+  -> Hermes Lite tool
+  -> hermes/plugins/course2knowledge-lite/tools.py
+  -> packages/qa 或 packages/guidance
+  -> packages/course-store/.../sqlite_store.py
+  -> 返回带课程证据的回答</code></pre>
+            </div>
+            <div>
+              <h3>一讲视频完成编译</h3>
+              <pre><code>transcript segments
+  -> lecture_dossier.py
+  -> dossier_core/
+  -> knowledge atoms / gates
+  -> readiness
+  -> promotion gate
+  -> production SQLite runtime</code></pre>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="dossier" class="section dossier">
-        <div class="section-title">
-          <p class="kicker" data-i18n="dossier.kicker">技术档案</p>
-          <h2 data-i18n="dossier.title">展示站也是工程文档入口。</h2>
-        </div>
-        <div class="doc-index" aria-label="Technical document index">
-          <a href="DEMO_VIDEO.md"><span>Demo video</span><strong data-i18n="doc.demoVideo">脚本、分镜与验收规则</strong></a>
-          <a href="DEMO_PRIVACY.md"><span>Privacy</span><strong data-i18n="doc.demoPrivacy">公开素材脱敏边界</strong></a>
-          <a href="PRODUCT_BOUNDARY.md"><span>Boundary</span><strong data-i18n="doc.boundary">公开边界与裁剪说明</strong></a>
-          <a href="ARCHITECTURE.md"><span>Architecture</span><strong data-i18n="doc.arch">模块边界与运行流</strong></a>
-          <a href="DATA_MODEL.md"><span>Data model</span><strong data-i18n="doc.data">Course、Lecture、Segment、Card 与状态</strong></a>
-          <a href="BILIBILI_IMPORT.md"><span>Bilibili import</span><strong data-i18n="doc.import">合集展开与导入交接</strong></a>
-          <a href="WEB_LITE.md"><span>Web Lite</span><strong data-i18n="doc.web">可检查的阅读工作台</strong></a>
-          <a href="FEISHU_LITE.md"><span>Feishu Lite</span><strong data-i18n="doc.feishu">对话前台与 Hermes profile</strong></a>
-          <a href="TESTING.md"><span>Testing</span><strong data-i18n="doc.testing">边界测试、smoke 和案例证据</strong></a>
-          <a href="DEPLOYMENT.md"><span>Deployment</span><strong data-i18n="doc.deploy">本地安装与 profile 同步</strong></a>
-        </div>
-      </section>
+        <section id="evaluation" class="section">
+          <p class="eyebrow">Evaluation</p>
+          <h2>评估不靠“效果很好”，而靠可验证指标。</h2>
+          <div class="principles">
+            <div>
+              <h3>导入完整性</h3>
+              <p>课程是否能展开为正确 lecture 序列；每讲是否具备字幕覆盖；是否生成中文讲义、知识原子和关口。</p>
+            </div>
+            <div>
+              <h3>晋升安全</h3>
+              <p>临时 store 是否隔离；半成品是否阻断 promotion；探测导入是否不会覆盖正式课程。</p>
+            </div>
+            <div>
+              <h3>前台一致性</h3>
+              <p>Web Lite 与 Hermes Lite 是否读取同一 SQLite store；笔记、书签、阅读进度和聊天是否持久化。</p>
+            </div>
+            <div>
+              <h3>发布安全</h3>
+              <p>wheel 构建、单测、部署 smoke、前端语法检查和敏感路径扫描是否通过。</p>
+            </div>
+          </div>
+          <pre><code>python -m unittest tests.test_deployment
+python -m unittest discover -s tests
+python -m pip wheel . -w tmp/release-precheck/wheelhouse --no-deps --no-cache-dir
+node --check apps/web/static/app.js
+git diff --check</code></pre>
+        </section>
 
-      <section id="deploy" class="section deploy">
-        <div class="section-title">
-          <p class="kicker" data-i18n="deploy.kicker">本地部署</p>
-          <h2 data-i18n="deploy.title">部署路径要短，因为作品应该容易被检查。</h2>
-        </div>
-        <div class="terminal" aria-label="Deployment commands">
-          <code>pip install -e .</code>
-          <code>course2knowledge-lite web</code>
-          <code>course2knowledge-lite sync-profile --apply --create-profile</code>
-          <code>course2knowledge-lite smoke-profile --profile-root &lt;profile-root&gt;</code>
-        </div>
-      </section>
+        <section id="deployment" class="section">
+          <p class="eyebrow">Run</p>
+          <h2>本地运行入口。</h2>
+          <div class="command-grid">
+            <div>
+              <h3>安装</h3>
+              <pre><code>pip install -e .
+course2knowledge-lite --help</code></pre>
+            </div>
+            <div>
+              <h3>启动 Web Lite</h3>
+              <pre><code>course2knowledge-lite web</code></pre>
+              <p>默认地址：<code>http://127.0.0.1:3014/</code></p>
+            </div>
+            <div>
+              <h3>同步 Hermes Profile</h3>
+              <pre><code>course2knowledge-lite sync-profile --apply --create-profile
+course2knowledge-lite smoke-profile --profile-root %USERPROFILE%\.hermes\profiles\course2knowledge-lite</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="boundary" class="section">
+          <p class="eyebrow">Release Boundary</p>
+          <h2>发布包应该包含什么，不应该包含什么。</h2>
+          <div class="two-column">
+            <div>
+              <h3>应该包含</h3>
+              <ul>
+                <li>Python package 与 wheel。</li>
+                <li>Web runtime assets。</li>
+                <li>Hermes Lite profile template 与 plugin。</li>
+                <li>公开 docs 和安全 demo fixture。</li>
+              </ul>
+            </div>
+            <div>
+              <h3>不应该包含</h3>
+              <ul>
+                <li>本地 SQLite 运行数据。</li>
+                <li><code>tmp/</code> 临时导入 store。</li>
+                <li><code>.codex/auth/</code> 或任何 B 站登录材料。</li>
+                <li>API key、真实 cookie、母项目私有运行时证据。</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" class="section">
+          <p class="eyebrow">FAQ</p>
+          <h2>常见疑问。</h2>
+          <div class="faq-list">
+            <details open>
+              <summary>为什么不用纯 JSON？</summary>
+              <p>JSON 适合 seed、fixture、迁移输入和调试导出，但正式运行时需要事务、查询、关系和多前台共享。SQLite 才是本地写入权威。</p>
+            </details>
+            <details>
+              <summary>为什么不是普通 RAG demo？</summary>
+              <p>RAG 只解释检索与回答。Course2Knowledge Lite 的核心是课程运行时：导入、证据、讲义、知识原子、关口、笔记、进度和聊天都落在同一 store。</p>
+            </details>
+            <details>
+              <summary>为什么要 temp store 和 promotion gate？</summary>
+              <p>因为真实课程导入会失败、缺字幕、缺关键帧或只做探测。临时 store 和 promotion gate 可以防止半成品覆盖正式课程。</p>
+            </details>
+            <details>
+              <summary>Web Lite 和 Hermes Lite 谁是主？</summary>
+              <p>都不是内核。内核是 SQLite 课程运行时。Web 是主要可视化课堂前台，Hermes 是可选工具前台。</p>
+            </details>
+            <details>
+              <summary>Hermes 是不是系统内核？</summary>
+              <p>不是。Hermes Lite 调用同一套 package API 和同一份 SQLite store。它是工具前台，不拥有业务状态。</p>
+            </details>
+            <details>
+              <summary>项目是否依赖外部 Agent 框架？</summary>
+              <p>不依赖。公共 Course2Knowledge Lite 的内核是本地 SQLite 课程运行时；Hermes Lite 只是可选工具前台。</p>
+            </details>
+            <details>
+              <summary>cookie 存在哪里？</summary>
+              <p>一次性 cookie 只用于当前导入。remember-cookie 只保存在本机 <code>.codex/auth/</code>，并被 git 忽略。文档、测试和发布包不能包含真实 cookie。</p>
+            </details>
+            <details>
+              <summary>没有模型 key 能不能跑？</summary>
+              <p>可以跑基础链路和确定性 fallback，但不能把 fallback 描述为模型质量等价。模型生成质量取决于本地配置的 provider。</p>
+            </details>
+            <details>
+              <summary>为什么公共版没有 mastery / diagnosis / review queue？</summary>
+              <p>这些属于母项目私有学习教练闭环。公共 Lite 的边界是课程知识运行时，不复制私有学习状态。</p>
+            </details>
+            <details>
+              <summary>和母项目 Learning OS 是什么关系？</summary>
+              <p>Course2Knowledge Lite 是从母项目能力中整理出的公共子项目。它保留课程到知识运行时的公开链路，剥离私有凭证、私有学习状态和生产聊天证据。</p>
+            </details>
+            <details>
+              <summary>能不能接别的平台？</summary>
+              <p>架构允许未来添加新的 source provider，但当前公共版本唯一真实平台适配器是 B 站。新增平台需要明确公共合同。</p>
+            </details>
+            <details>
+              <summary>如何确认导入质量？</summary>
+              <p>看 import status、transcript coverage、lecture dossier、knowledge atoms、gates、visual evidence 和 promotion 结果，而不是只看“有没有生成几句摘要”。</p>
+            </details>
+          </div>
+        </section>
+
+        <section class="section doc-links">
+          <p class="eyebrow">Further Reading</p>
+          <h2>继续读这些文档。</h2>
+          <div class="doc-grid">
+            <a href="TECHNICAL_WHITEPAPER.md"><strong>技术白皮书</strong><span>完整架构论证</span></a>
+            <a href="ARCHITECTURE.md"><strong>架构说明</strong><span>模块边界和运行流</span></a>
+            <a href="DATA_MODEL.md"><strong>数据模型</strong><span>SQLite 实体和排除实体</span></a>
+            <a href="BILIBILI_IMPORT.md"><strong>Bilibili Import</strong><span>导入状态和 promotion 语义</span></a>
+            <a href="FEISHU_LITE.md"><strong>Feishu/Hermes Lite</strong><span>工具前台边界</span></a>
+            <a href="DEPLOYMENT.md"><strong>部署说明</strong><span>安装、启动、profile smoke</span></a>
+            <a href="TESTING.md"><strong>测试说明</strong><span>发布前验证和敏感扫描</span></a>
+          </div>
+        </section>
+      </article>
     </main>
 
     <footer class="footer">
-      <span>Course2Knowledge Lite</span>
-      <a href="SITE_MAP.md" data-i18n="footer.siteMap">站点地图</a>
-      <a href="SHOWCASE_SHOT_LIST.md" data-i18n="footer.shotList">截图清单</a>
-      <a href="DEPLOYMENT.md" data-i18n="footer.deployment">部署</a>
-      <a href="TESTING.md" data-i18n="footer.testing">测试</a>
+      <p>Course2Knowledge Lite 技术档案。本文档只解释公共子项目，不包含本地运行数据、私有凭证或母项目私有学习状态。</p>
     </footer>
+
     <script src="site.js"></script>
   </body>
 </html>

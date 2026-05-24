@@ -1,8 +1,18 @@
 from .chat import LiteChatCore
 from .content import TranscriptCitation, build_lecture_reader_payload, search_transcript_segments
+from .lecture_dossier import (
+    LiteLectureDossier,
+    build_lite_knowledge_atom_specs,
+    build_lite_lecture_dossier,
+    filter_lite_quality_atoms,
+    is_lite_atom_quality_pass,
+    lite_atom_quality,
+    render_lite_lecture_markdown,
+)
 from .models import (
     CHAT_EVENT_TYPES,
     CHAT_MESSAGE_ROLES,
+    IMPORT_RUN_STATUSES,
     READING_PROGRESS_STATUSES,
     BookmarkRecord,
     ChatEventRecord,
@@ -10,6 +20,9 @@ from .models import (
     ChatThreadRecord,
     CourseRecord,
     CourseSkeleton,
+    ImportArtifactRecord,
+    ImportEventRecord,
+    ImportRunRecord,
     ImportStatusRecord,
     KnowledgeCardRecord,
     LectureRecord,
@@ -17,6 +30,8 @@ from .models import (
     ReadingProgressRecord,
     TranscriptSegmentRecord,
     VisualEvidenceRecord,
+    WEB_COURSE_BINDING_STATUSES,
+    WebCourseBindingRecord,
 )
 from .skeleton import build_course_skeleton
 from .sqlite_store import DEFAULT_SQLITE_FILENAME, SQLiteCourseStore
@@ -33,10 +48,15 @@ __all__ = [
     "CourseRecord",
     "CourseSkeleton",
     "DEFAULT_SQLITE_FILENAME",
+    "IMPORT_RUN_STATUSES",
+    "ImportArtifactRecord",
+    "ImportEventRecord",
+    "ImportRunRecord",
     "ImportStatusRecord",
     "JsonCourseStore",
     "KnowledgeCardRecord",
     "LectureRecord",
+    "LiteLectureDossier",
     "LiteChatCore",
     "NoteRecord",
     "READING_PROGRESS_STATUSES",
@@ -45,9 +65,17 @@ __all__ = [
     "TranscriptCitation",
     "TranscriptSegmentRecord",
     "VisualEvidenceRecord",
+    "WEB_COURSE_BINDING_STATUSES",
+    "WebCourseBindingRecord",
     "build_lecture_reader_payload",
     "build_course_skeleton",
+    "build_lite_knowledge_atom_specs",
+    "build_lite_lecture_dossier",
+    "filter_lite_quality_atoms",
+    "is_lite_atom_quality_pass",
+    "lite_atom_quality",
     "build_manual_transcript_segments",
     "build_transcript_segments",
+    "render_lite_lecture_markdown",
     "search_transcript_segments",
 ]

@@ -224,6 +224,7 @@ class LiteChatCore:
                     "image_path": str(visual.get("image_path") or ""),
                     "title": str(visual.get("title") or ""),
                     "explanation": str(visual.get("explanation") or ""),
+                    "provenance": str(visual.get("provenance") or ""),
                 },
             )
         )
@@ -260,7 +261,14 @@ class LiteChatCore:
         specs = [_event("tool_start", "knowledge_cards_list", {"course_id": course_id})]
         cards = self.store.list_knowledge_cards(course_id=course_id)
         if not cards:
-            generated = self.store.generate_knowledge_cards(course_id)
+            generated = self.store.generate_knowledge_cards(
+                course_id,
+                compile_mode="model",
+                compile_provider="deepseek",
+                fast_map_mode=True,
+                split_map_mode=True,
+                fast_reduce_mode=True,
+            )
             cards = list(generated.get("cards") or [])
         payload = {"course_id": course_id, "card_count": len(cards), "cards": cards[:5]}
         specs.append(_event("tool_result", "knowledge_cards_list", payload))

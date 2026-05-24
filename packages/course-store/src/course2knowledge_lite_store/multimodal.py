@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -181,9 +182,90 @@ def extract_lite_candidate_frames_for_windows(
     return results
 
 
+def select_lite_keyframes(candidate_frames: dict[str, list[str]]) -> dict[str, str]:
+    selected: dict[str, str] = {}
+    for anchor_id, frames in sorted(candidate_frames.items()):
+        normalized = [str(item).strip() for item in frames if str(item).strip()]
+        if not normalized:
+            continue
+        selected[anchor_id] = normalized[len(normalized) // 2]
+    return selected
+
+
+def copy_lite_keyframes_to_public_assets(
+    *,
+    keyframes: dict[str, str],
+    repo_root: str,
+    course_id: str,
+    lecture_id: str,
+) -> dict[str, str]:
+    root = Path(str(repo_root or "").strip()).expanduser().resolve()
+    if not root.exists():
+        raise MultimodalConfigError(f"repo_root is missing: {root}")
+    target_dir = root / "docs" / "assets" / "generated-keyframes" / _safe_anchor_dir(course_id) / _safe_anchor_dir(lecture_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    copied: dict[str, str] = {}
+    for anchor_id, frame_path in sorted(keyframes.items()):
+        source = Path(frame_path).expanduser().resolve()
+        if not source.exists() or not source.is_file():
+            raise MultimodalConfigError(f"selected keyframe is missing: {source}")
+        digest = hashlib.sha1(f"{course_id}\n{lecture_id}\n{anchor_id}\n{source.name}".encode("utf-8")).hexdigest()[:12]
+        suffix = source.suffix.lower() if source.suffix else ".jpg"
+        target = target_dir / f"{_safe_anchor_dir(anchor_id)}_{digest}{suffix}"
+        shutil.copy2(source, target)
+        copied[anchor_id] = target.relative_to(root).as_posix()
+    return copied
+
+
+def build_lite_visual_evidence_records(
+    *,
+    course_id: str,
+    lecture: dict[str, Any],
+    anchors: list[dict[str, Any]],
+    keyframe_paths: dict[str, str],
+    now: str = "",
+) -> list[dict[str, Any]]:
+    lecture_id = str(lecture.get("lecture_id") or "").strip()
+    source_url = str(lecture.get("source_url") or "").strip()
+    records: list[dict[str, Any]] = []
+    anchors_by_id = {str(anchor.get("anchor_id") or "").strip(): dict(anchor) for anchor in anchors if isinstance(anchor, dict)}
+    for index, anchor_id in enumerate(sorted(keyframe_paths), start=1):
+        anchor = anchors_by_id.get(anchor_id, {})
+        source_segment_ids = [str(item).strip() for item in (anchor.get("source_segment_ids") or []) if str(item).strip()]
+        timestamp = str(anchor.get("suggested_screenshot_timestamp") or anchor.get("start_timestamp") or "").strip()
+        title = f"关键截图 {index}"
+        if timestamp:
+            title = f"{title} · {timestamp}"
+        quote = str(anchor.get("evidence_quote") or "").strip()
+        records.append(
+            {
+                "visual_id": f"keyframe_{_stable_short_id(course_id, lecture_id, anchor_id)}",
+                "course_id": course_id,
+                "lecture_id": lecture_id,
+                "segment_id": source_segment_ids[0] if source_segment_ids else "",
+                "card_id": "",
+                "title": title,
+                "explanation": quote or f"来自课程视频 {timestamp} 附近的关键帧。",
+                "image_path": str(keyframe_paths[anchor_id]).replace("\\", "/"),
+                "source_url": source_url,
+                "provenance": (
+                    f"generated_keyframe anchor={anchor_id} timestamp={timestamp} "
+                    f"source_segment={source_segment_ids[0] if source_segment_ids else ''}"
+                ).strip(),
+                "created_at": now,
+            }
+        )
+    return records
+
+
 def _safe_anchor_dir(raw_value: str) -> str:
     cleaned = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in str(raw_value or "").strip())
     return cleaned.strip("._") or "anchor"
+
+
+def _stable_short_id(*parts: str) -> str:
+    seed = "\n".join(str(part or "") for part in parts)
+    return hashlib.sha1(seed.encode("utf-8")).hexdigest()[:12]
 
 
 __all__ = [
@@ -192,9 +274,12 @@ __all__ = [
     "MultimodalDependencyError",
     "MultimodalExtractionError",
     "build_lite_anchor_frame_windows",
+    "build_lite_visual_evidence_records",
+    "copy_lite_keyframes_to_public_assets",
     "extract_lite_candidate_frames_for_windows",
     "format_anchor_timestamp",
     "parse_anchor_timestamp",
     "require_ffmpeg",
     "resolve_lite_source_media",
+    "select_lite_keyframes",
 ]

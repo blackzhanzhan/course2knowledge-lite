@@ -17,6 +17,7 @@ PLUGIN_NAME = "course2knowledge-lite"
 METADATA_FILE = "course2knowledge_lite_repo_root.json"
 DEFAULT_PROFILE = "course2knowledge-lite"
 ENABLED_TOOLS = [
+    "studio_office_teaching_route",
     "collection_import_start",
     "import_status_get",
     "lecture_transcript_import",
@@ -46,7 +47,7 @@ ENABLED_TOOLS = [
 
 BASE_CONFIG: dict[str, Any] = {
     "agent": {"reasoning_effort": "low", "verbose": False},
-    "platform_toolsets": {"feishu": [PLUGIN_NAME]},
+    "platform_toolsets": {"feishu": [PLUGIN_NAME], "api_server": [PLUGIN_NAME]},
     "plugins": {"enabled": [PLUGIN_NAME]},
     "platforms": {
         "feishu": {

@@ -102,7 +102,11 @@ class LiteChatCoreTests(unittest.TestCase):
     def test_visual_turn_emits_media_only_from_visual_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             store, course_id, lecture_id = _chat_store(temp_dir)
-            card = store.generate_knowledge_cards(course_id)["cards"][0]
+            card = store.generate_knowledge_cards(
+                course_id,
+                compile_mode="fallback",
+                compile_provider=None,
+            )["cards"][0]
             store.write_visual_evidence_records(
                 course_id,
                 [

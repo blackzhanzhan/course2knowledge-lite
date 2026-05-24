@@ -13,6 +13,17 @@ python3 -m venv /tmp/course2knowledge-lite-smoke/venv
 /tmp/course2knowledge-lite-smoke/venv/bin/course2knowledge-lite --version
 ```
 
+For a fuller Linux smoke, also run:
+
+```bash
+/tmp/course2knowledge-lite-smoke/venv/bin/course2knowledge-lite web \
+  --host 127.0.0.1 \
+  --port 3190 \
+  --store-root /tmp/course2knowledge-lite-smoke/store
+```
+
+Then check `http://127.0.0.1:3190/api/courses` from the same machine.
+
 The current verified WSL evidence is stored under ignored runtime artifacts:
 
 - `tmp/deploy-smoke-wsl/20260516-0128/wsl-run-artifacts/wsl-summary.json`
@@ -40,9 +51,12 @@ If Windows Sandbox is enabled, open:
 powershell.exe -ExecutionPolicy Bypass -File .\scripts\run_sandbox_smoke.ps1
 ```
 
-The runner opens `scripts/Course2KnowledgeLiteSandbox.wsb`, maps this public
-child repo read-only into the sandbox, and polls
+The runner generates a machine-local Sandbox config at
+`tmp\deploy-smoke-windows\sandbox-config\Course2KnowledgeLiteSandbox.generated.wsb`,
+maps this public child repo read-only into the sandbox, and polls
 `tmp/deploy-smoke-windows/sandbox-output/latest/windows-summary.json`.
+The committed `scripts/Course2KnowledgeLiteSandbox.wsb` is only a portable
+placeholder and must not contain host-specific paths.
 When the summary is detected, the Sandbox window is intentionally left open.
 Close it manually with the window close button after the runner reports success.
 
@@ -62,3 +76,15 @@ artifacts:
 
 - `tmp/deploy-smoke-windows/sandbox-output/latest/windows-summary.json`
 - `tmp/deploy-smoke-windows/sandbox-output/latest/interaction-report.json`
+
+## Release Candidate Evidence
+
+A release candidate should retain, under ignored `tmp/` output or a sanitized
+`dev_repo` evidence packet:
+
+- `python -m unittest tests.test_deployment`
+- `python -m unittest discover -s tests`
+- wheel build file list summary
+- host-path scan summary
+- sensitive scan summary with fake test fixtures separated from real secrets
+- live Web `/api/courses` smoke against a clean store

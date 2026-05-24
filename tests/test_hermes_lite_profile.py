@@ -46,12 +46,12 @@ class HermesLiteProfileTests(unittest.TestCase):
         self.assertIn("knowledge_cards_generate", combined)
         self.assertIn("course_visual_evidence_send", combined)
         self.assertIn("learning_guide_get", combined)
+        self.assertIn("api_server", combined)
         self.assertIn("MULTI-QUESTION HARD RULE", combined)
         self.assertIn("BATCH: received multiple questions; answering in order.", combined)
         self.assertIn("收到多条快速问题，我会按收到顺序逐条回答。", combined)
         blocked_terms = [
             "learning" + "-os-importer",
-            "studio" + "_office_teaching_route",
             "practice" + "_recap",
             "mastery" + "_level",
             "review" + "_stage",
@@ -138,6 +138,7 @@ class HermesLiteProfileTests(unittest.TestCase):
                 "note_update",
                 "reading_progress_get",
                 "reading_progress_set",
+                "studio_office_teaching_route",
             ],
         )
         self.assertEqual(report["sample_tool_status"], "completed")

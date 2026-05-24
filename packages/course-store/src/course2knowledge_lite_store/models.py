@@ -5,7 +5,9 @@ from typing import Any
 
 READING_PROGRESS_STATUSES = {"not_started", "reading", "read"}
 CHAT_MESSAGE_ROLES = {"user", "assistant", "system", "tool"}
-CHAT_EVENT_TYPES = {"message_delta", "tool_start", "tool_result", "media", "done", "error"}
+CHAT_EVENT_TYPES = {"message_delta", "tool_start", "tool_result", "media", "done", "error", "teaching_control"}
+WEB_COURSE_BINDING_STATUSES = {"bound", "unbound", "blocked"}
+IMPORT_RUN_STATUSES = {"queued", "running", "completed", "partial", "failed", "cancelled"}
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,88 @@ class ImportStatusRecord:
 
 
 @dataclass(frozen=True)
+class ImportRunRecord:
+    run_id: str
+    course_id: str
+    source_url: str
+    source_platform: str
+    status: str
+    stage: str
+    total_lectures: int
+    completed_lectures: int
+    failed_lectures: int
+    created_at: str
+    updated_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "course_id": self.course_id,
+            "source_url": self.source_url,
+            "source_platform": self.source_platform,
+            "status": self.status,
+            "stage": self.stage,
+            "total_lectures": self.total_lectures,
+            "completed_lectures": self.completed_lectures,
+            "failed_lectures": self.failed_lectures,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+
+@dataclass(frozen=True)
+class ImportEventRecord:
+    event_id: str
+    run_id: str
+    event_index: int
+    stage: str
+    status: str
+    event_type: str
+    message: str
+    payload: dict[str, Any]
+    created_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "event_id": self.event_id,
+            "run_id": self.run_id,
+            "event_index": self.event_index,
+            "stage": self.stage,
+            "status": self.status,
+            "event_type": self.event_type,
+            "message": self.message,
+            "payload": dict(self.payload),
+            "created_at": self.created_at,
+        }
+
+
+@dataclass(frozen=True)
+class ImportArtifactRecord:
+    artifact_id: str
+    run_id: str
+    course_id: str
+    lecture_id: str
+    artifact_type: str
+    artifact_ref: str
+    status: str
+    payload: dict[str, Any]
+    created_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "artifact_id": self.artifact_id,
+            "run_id": self.run_id,
+            "course_id": self.course_id,
+            "lecture_id": self.lecture_id,
+            "artifact_type": self.artifact_type,
+            "artifact_ref": self.artifact_ref,
+            "status": self.status,
+            "payload": dict(self.payload),
+            "created_at": self.created_at,
+        }
+
+
+@dataclass(frozen=True)
 class TranscriptSegmentRecord:
     segment_id: str
     lecture_id: str
@@ -111,6 +195,12 @@ class KnowledgeCardRecord:
     body: str
     source_segment_ids: list[str]
     tags: list[str]
+    atom_type: str = "concept"
+    summary: str = ""
+    review_questions: list[str] | None = None
+    anchor_refs: list[str] | None = None
+    confidence: float = 0.75
+    status_lite: str = "locked"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -121,6 +211,12 @@ class KnowledgeCardRecord:
             "body": self.body,
             "source_segment_ids": list(self.source_segment_ids),
             "tags": list(self.tags),
+            "atom_type": self.atom_type,
+            "summary": self.summary or self.body,
+            "review_questions": list(self.review_questions or []),
+            "anchor_refs": list(self.anchor_refs or []),
+            "confidence": float(self.confidence),
+            "status_lite": self.status_lite,
         }
 
 
@@ -263,6 +359,28 @@ class ChatEventRecord:
             "tool_name": self.tool_name,
             "payload": dict(self.payload),
             "created_at": self.created_at,
+        }
+
+
+@dataclass(frozen=True)
+class WebCourseBindingRecord:
+    child_course_id: str
+    binding_status: str
+    mother_course_id: str
+    mother_node_scope: str
+    note: str
+    created_at: str
+    updated_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "child_course_id": self.child_course_id,
+            "binding_status": self.binding_status,
+            "mother_course_id": self.mother_course_id,
+            "mother_node_scope": self.mother_node_scope,
+            "note": self.note,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
         }
 
 

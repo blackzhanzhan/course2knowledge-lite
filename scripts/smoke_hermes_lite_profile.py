@@ -12,6 +12,7 @@ from typing import Any
 
 PLUGIN_NAME = "course2knowledge-lite"
 EXPECTED_TOOLS = [
+    "studio_office_teaching_route",
     "collection_import_start",
     "course_transcript_coverage_get",
     "course_question_answer",
@@ -119,7 +120,12 @@ def smoke_profile(profile_root: str | Path) -> dict[str, Any]:
         )
         qa_payload = json.loads(qa_raw)
         cards_raw = ctx.tools["knowledge_cards_generate"]["handler"](
-            {"store_root": temp_dir, "course_id": skeleton.course.course_id}
+            {
+                "store_root": temp_dir,
+                "course_id": skeleton.course.course_id,
+                "compile_mode": "fallback",
+                "compile_provider": "",
+            }
         )
         cards_payload = json.loads(cards_raw)
         card_id = cards_payload["cards"][0]["card_id"]
