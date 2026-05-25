@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "packages" / "course-store" / "src"))
 sys.path.insert(0, str(ROOT / "packages" / "guidance" / "src"))
 
 from course2knowledge_lite_store import (  # noqa: E402
+    KnowledgeCardRecord,
     SQLiteCourseStore,
     TranscriptSegmentRecord,
     VisualEvidenceRecord,
@@ -32,6 +33,12 @@ def load_web_server_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def load_web_hermes_adapter_module():
+    import course2knowledge_lite_store.web_hermes.adapter as adapter
+
+    return adapter
 
 
 class WebLiteTests(unittest.TestCase):
@@ -1174,6 +1181,130 @@ class WebLiteTests(unittest.TestCase):
         self.assertIn("深度学习入门", json.dumps(events, ensure_ascii=False))
         self.assertIn("从零基础开始", events[2]["data"]["payload"]["delta"])
 
+    def test_web_chat_stream_sends_compact_context_and_recent_history_to_hermes(self) -> None:
+        web_server = load_web_server_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skeleton = build_course_skeleton(
+                title="Large systems course",
+                source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                video_refs=[
+                    {
+                        "sequence": index,
+                        "bvid": f"BV{index:08d}",
+                        "title": f"Lecture {index}",
+                        "source_url": f"https://www.bilibili.com/video/BV{index:08d}",
+                    }
+                    for index in range(1, 12)
+                ],
+                now="2026-05-14T00:00:00Z",
+            )
+            store = SQLiteCourseStore(temp_dir)
+            store.write_skeleton(skeleton)
+            target_lecture = skeleton.lectures[5]
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                target_lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=f"{target_lecture.lecture_id}::manual::{index:05d}",
+                        lecture_id=target_lecture.lecture_id,
+                        start_seconds=float(index),
+                        end_seconds=float(index + 1),
+                        text=f"segment {index} explains cache locality and memory access.",
+                    )
+                    for index in range(25)
+                ],
+            )
+            store._replace_knowledge_cards(
+                skeleton.course.course_id,
+                [
+                    KnowledgeCardRecord(
+                        card_id=f"card_{index:02d}",
+                        course_id=skeleton.course.course_id,
+                        lecture_id=target_lecture.lecture_id,
+                        title=f"Cache atom {index}",
+                        body=f"Cache atom body {index}",
+                        source_segment_ids=[],
+                        tags=[],
+                        summary=f"Cache atom summary {index}",
+                        review_questions=[f"Check {index}", f"Follow-up {index}", f"Extra {index}"],
+                    ).to_dict()
+                    for index in range(14)
+                ],
+            )
+            thread = store.create_chat_thread(
+                skeleton.course.course_id,
+                title="long thread",
+                channel="web",
+                thread_id="thread_long_history",
+            )
+            for index in range(14):
+                store.append_chat_message(
+                    str(thread["thread_id"]),
+                    "user" if index % 2 == 0 else "assistant",
+                    f"history message {index}",
+                    now=f"2026-05-14T00:00:{index:02d}Z",
+                )
+            for index in range(30):
+                store.append_chat_event(
+                    str(thread["thread_id"]),
+                    "teaching_control",
+                    {
+                        "current_atom_index": index,
+                        "completed_atom_count": index,
+                        "total_atom_count": 30,
+                        "mastery_signals": {"retrieval": True},
+                    },
+                    now=f"2026-05-14T00:01:{index:02d}Z",
+                )
+            calls = []
+
+            def fake_stream(**kwargs: object) -> list[dict[str, object]]:
+                calls.append(kwargs)
+                return [
+                    {"event": "route_ready", "id": "", "data": {"payload": {"route": "live_hermes_gateway"}}},
+                    {"event": "message_delta", "id": "", "data": {"payload": {"delta": "Compact reply."}}},
+                    {"event": "done", "id": "", "data": {"payload": {"status": "completed"}}},
+                    {"event": "thread_state", "id": "web_hermes_compact", "data": {"status": "completed"}},
+                ]
+
+            previous_stream = web_server.stream_web_hermes_sse_events
+            web_server.stream_web_hermes_sse_events = fake_stream
+            server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+            web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+            thread_runner = threading.Thread(target=server.serve_forever, daemon=True)
+            thread_runner.start()
+            host, port = server.server_address
+            try:
+                _request_sse(
+                    host,
+                    port,
+                    "/api/chat/stream",
+                    {
+                        "course_id": skeleton.course.course_id,
+                        "thread_id": "thread_long_history",
+                        "lecture_sequence": 6,
+                        "message": "continue",
+                    },
+                )
+            finally:
+                web_server.stream_web_hermes_sse_events = previous_stream
+                server.shutdown()
+                server.server_close()
+                thread_runner.join(timeout=5)
+
+        context = calls[0]["course_context"]
+        self.assertLess(len(context["lectures"]), len(skeleton.lectures))
+        self.assertEqual([lecture["sequence"] for lecture in context["lectures"]], [4, 5, 6, 7, 8])
+        self.assertEqual(len(context["reader"]["segments"]), web_server.CHAT_CONTEXT_READER_SEGMENT_LIMIT)
+        self.assertEqual(context["reader"]["segment_count"], 25)
+        self.assertEqual(len(context["knowledge_cards"]), web_server.CHAT_CONTEXT_KNOWLEDGE_CARD_LIMIT)
+        self.assertEqual(len(calls[0]["chat_messages"]), web_server.CHAT_CONTEXT_HISTORY_MESSAGE_LIMIT + 1)
+        self.assertEqual(calls[0]["chat_messages"][-1]["content"], "continue")
+        self.assertLessEqual(len(calls[0]["chat_events"]), web_server.CHAT_CONTEXT_HISTORY_EVENT_LIMIT)
+        self.assertEqual(calls[0]["chat_events"][-1]["payload"]["current_atom_index"], 29)
+
     def test_web_chat_stream_passes_bound_course_mapping_to_hermes_adapter(self) -> None:
         web_server = load_web_server_module()
 
@@ -1703,6 +1834,63 @@ class WebLiteTests(unittest.TestCase):
         self.assertNotIn("course_id", events[-1]["data"]["thread"])
         self.assertNotIn("api-stale-gateway-session", json.dumps(events[-1], ensure_ascii=False))
 
+    def test_web_hermes_stream_emits_student_safe_runtime_metrics(self) -> None:
+        adapter = load_web_hermes_adapter_module()
+
+        def fake_gateway(**_kwargs: object) -> list[dict[str, object]]:
+            return [
+                {
+                    "type": "tool_progress",
+                    "payload": {"tool": "studio_office_teaching_route", "status": "completed"},
+                },
+                {"type": "delta", "delta": "Metric-safe reply."},
+                {"type": "done", "session_id": "gateway-thread", "had_text": True},
+            ]
+
+        previous_gateway = adapter.stream_hermes_gateway
+        adapter.stream_hermes_gateway = fake_gateway
+        try:
+            events = list(
+                adapter.stream_web_hermes_sse_events(
+                    message="start learning",
+                    thread_id="local-thread",
+                    channel="web",
+                    web_course_id="course_public",
+                    course_binding={"binding_status": "unbound", "child_course_title": "Public course"},
+                    course_context={
+                        "course": {"title": "Public course"},
+                        "lecture": {"title": "Lecture one"},
+                        "knowledge_cards": [
+                            {
+                                "title": "Cache locality",
+                                "summary": "Cache favors nearby repeated memory access.",
+                                "body": "Cache locality means nearby data is likely reused soon.",
+                            }
+                        ],
+                    },
+                    chat_messages=[{"role": "user", "content": "start learning"}],
+                    chat_events=[],
+                )
+            )
+        finally:
+            adapter.stream_hermes_gateway = previous_gateway
+
+        metric_events = [event for event in events if event["event"] == "runtime_metric"]
+        self.assertGreaterEqual(len(metric_events), 3)
+        self.assertIn("message_delta", [event["event"] for event in events])
+        self.assertEqual(events[-1]["event"], "thread_state")
+        metric_payload = metric_events[-1]["data"]["payload"]
+        self.assertEqual(metric_payload["stage"], "stream_done")
+        self.assertGreater(metric_payload["prompt_chars"], 0)
+        self.assertGreater(metric_payload["teaching_packet_chars"], 0)
+        self.assertGreaterEqual(metric_payload["route_ms"], 0)
+        self.assertGreaterEqual(metric_payload["first_delta_ms"], 0)
+        serialized = json.dumps(metric_events, ensure_ascii=False)
+        self.assertNotIn("course_id", serialized)
+        self.assertNotIn("node_id", serialized)
+        self.assertNotIn("thread_id", serialized)
+        self.assertNotIn("queue_id", serialized)
+
     def test_web_chat_stream_rejects_missing_hermes_adapter(self) -> None:
         web_server = load_web_server_module()
 
@@ -1867,6 +2055,9 @@ class WebLiteTests(unittest.TestCase):
         self.assertIn("renderChatThreadSelect", app_js)
         self.assertIn("chatThreadLabel", app_js)
         self.assertIn("refreshChatThreads", app_js)
+        self.assertIn("runtime_metric", app_js)
+        self.assertIn("renderChatWaitingState", app_js)
+        self.assertIn("appendRuntimeMetricEvent", app_js)
         self.assertIn("loadChatHistory(thread.thread_id)", app_js)
         self.assertIn("renderAtomStates", app_js)
         self.assertIn("renderHermesTeachingState", app_js)
@@ -1912,6 +2103,8 @@ class WebLiteTests(unittest.TestCase):
         self.assertIn(".thread-select-label", styles)
         self.assertIn(".chat-actions", styles)
         self.assertIn(".chat-message", styles)
+        self.assertIn(".chat-waiting", styles)
+        self.assertIn(".chat-event.is-runtime_metric", styles)
         self.assertIn(".interaction-layout", styles)
         self.assertIn(".side-stack", styles)
         self.assertIn(".atom-item", styles)

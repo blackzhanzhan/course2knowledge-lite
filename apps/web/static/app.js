@@ -1909,6 +1909,7 @@ async function runChat() {
   const eventsWrap = assistantBubble.querySelector(".chat-events");
   const bodyWrap = assistantBubble.querySelector(".chat-body");
   bodyWrap.innerHTML = '<p class="muted">正在连接 Hermes...</p>';
+  renderChatWaitingState(bodyWrap, "正在连接 Hermes 教学前台");
   setStatus("Chat is running");
   try {
     const events = [];
@@ -1937,10 +1938,19 @@ async function runChat() {
         }
         if (event.event === "tool_chain" && event.data?.payload) {
           appendToolChainEvent(eventsWrap, event.data.payload);
+          updateChatWaitingFromTool(bodyWrap, event.data.payload, assistantText);
           return;
         }
         if (event.event === "teaching_state" && event.data?.payload) {
           renderHermesTeachingState(event.data.payload);
+          if (!assistantText) {
+            renderChatWaitingState(bodyWrap, "Hermes 已拿到课程状态，正在执行真实教学路由");
+          }
+          return;
+        }
+        if (event.event === "runtime_metric" && event.data?.payload) {
+          appendRuntimeMetricEvent(eventsWrap, event.data.payload);
+          updateChatWaitingFromRuntimeMetric(bodyWrap, event.data.payload, assistantText);
           return;
         }
         if (event.event === "error" && event.data?.payload?.message && !assistantText) {
@@ -2298,6 +2308,62 @@ function appendToolChainEvent(eventsWrap, payload) {
   item.title = detail;
   item.textContent = `${label} · ${status}`;
   eventsWrap.appendChild(item);
+}
+
+function appendRuntimeMetricEvent(eventsWrap, payload) {
+  if (!eventsWrap || !payload || payload.stage !== "stream_done") {
+    return;
+  }
+  const item = document.createElement("span");
+  item.className = "chat-event is-runtime_metric";
+  item.title = `prompt ${Number(payload.prompt_chars || 0)} chars`;
+  item.textContent = `耗时 路由 ${formatMetricSeconds(payload.route_ms)} · 首字 ${formatMetricSeconds(payload.first_delta_ms)}`;
+  eventsWrap.appendChild(item);
+}
+
+function updateChatWaitingFromTool(bodyWrap, payload, assistantText) {
+  if (assistantText) {
+    return;
+  }
+  const label = payload.label || "Hermes 工具链";
+  const status = String(payload.status || "");
+  if (status.includes("完成")) {
+    renderChatWaitingState(bodyWrap, `${label}已完成，正在等待 Hermes 组织第一句话`);
+    return;
+  }
+  renderChatWaitingState(bodyWrap, `${label}运行中，Hermes 正在真实调用教学路由`);
+}
+
+function updateChatWaitingFromRuntimeMetric(bodyWrap, payload, assistantText) {
+  if (assistantText || !payload) {
+    return;
+  }
+  if (payload.stage === "gateway_request_ready") {
+    renderChatWaitingState(bodyWrap, "Hermes 请求已发出，等待模型触发教学路由");
+  }
+  if (payload.stage === "route_tool_completed") {
+    renderChatWaitingState(bodyWrap, "教学路由已完成，等待 Hermes 开始流式回复");
+  }
+}
+
+function renderChatWaitingState(bodyWrap, text) {
+  if (!bodyWrap) {
+    return;
+  }
+  bodyWrap.innerHTML = `
+    <div class="chat-waiting">
+      <span class="chat-waiting-dot" aria-hidden="true"></span>
+      <p>${escapeHtml(text)}</p>
+    </div>
+  `;
+}
+
+function formatMetricSeconds(value) {
+  const ms = Number(value || 0);
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return "-";
+  }
+  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 function renderHermesTeachingState(payload) {

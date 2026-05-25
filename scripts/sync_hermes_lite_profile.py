@@ -50,6 +50,14 @@ BASE_CONFIG: dict[str, Any] = {
     "platform_toolsets": {"feishu": [PLUGIN_NAME], "api_server": [PLUGIN_NAME]},
     "plugins": {"enabled": [PLUGIN_NAME]},
     "platforms": {
+        "api_server": {
+            "enabled": True,
+            "extra": {
+                "host": "127.0.0.1",
+                "port": 8642,
+                "model_name": "course2knowledge-lite",
+            },
+        },
         "feishu": {
             "enabled": True,
             "extra": {

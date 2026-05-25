@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from hashlib import sha1
 import json
+from time import perf_counter
 from typing import Any, Iterator
 
 from .gateway_client import HermesGatewayError, stream_hermes_gateway
@@ -73,7 +74,9 @@ def build_web_hermes_turn(
         course_binding=binding,
         teaching_packet=teaching_packet,
         tool_chain=tool_chain,
+        user_intent=user_intent,
     )
+    gateway_message = _build_gateway_user_message(user_intent)
 
     try:
         collected_text: list[str] = []
@@ -86,7 +89,7 @@ def build_web_hermes_turn(
             if attempt:
                 route_retry_count += 1
             for item in stream_hermes_gateway(
-                message=user_intent,
+                message=gateway_message,
                 system_prompt=system_prompt,
                 session_key=session_key,
                 session_id=thread_id,
@@ -188,10 +191,24 @@ def stream_web_hermes_sse_events(
         course_binding=binding,
         teaching_packet=teaching_packet,
         tool_chain=tool_chain,
+        user_intent=user_intent,
     )
+    gateway_message = _build_gateway_user_message(user_intent)
 
+    started_at = perf_counter()
+    route_completed_at = 0.0
+    first_delta_at = 0.0
     yield _assert_student_safe_event(_route_ready_event())
     yield _assert_student_safe_event(_teaching_state_event(teaching_packet, status="live_gateway"))
+    yield _assert_student_safe_event(
+        _runtime_metric_event(
+            stage="gateway_request_ready",
+            started_at=started_at,
+            system_prompt=system_prompt,
+            teaching_packet=teaching_packet,
+            tool_chain=tool_chain,
+        )
+    )
 
     status = "completed"
     had_released_text = False
@@ -206,7 +223,7 @@ def stream_web_hermes_sse_events(
                     _tool_chain_event({"label": "路由收缩", "status": "running", "detail": "正在重新走教学路由。"})
                 )
             for item in stream_hermes_gateway(
-                message=user_intent,
+                message=gateway_message,
                 system_prompt=system_prompt,
                 session_key=session_key,
                 session_id=thread_id,
@@ -216,8 +233,22 @@ def stream_web_hermes_sse_events(
                     payload = dict(item.get("payload") or {})
                     yield _assert_student_safe_event(_tool_chain_event(student_safe_tool_progress_from_gateway(payload)))
                     if _is_required_route_tool_completed(payload):
+                        if not route_completed_at:
+                            route_completed_at = perf_counter()
+                            yield _assert_student_safe_event(
+                                _runtime_metric_event(
+                                    stage="route_tool_completed",
+                                    started_at=started_at,
+                                    route_completed_at=route_completed_at,
+                                    system_prompt=system_prompt,
+                                    teaching_packet=teaching_packet,
+                                    tool_chain=tool_chain,
+                                )
+                            )
                         route_tool_completed = True
                         for buffered_delta in buffered_deltas:
+                            if not first_delta_at:
+                                first_delta_at = perf_counter()
                             yield _assert_student_safe_event(
                                 _event(
                                     "message_delta",
@@ -240,6 +271,19 @@ def stream_web_hermes_sse_events(
                         if not route_tool_completed:
                             buffered_deltas.append(delta)
                             continue
+                        if not first_delta_at:
+                            first_delta_at = perf_counter()
+                            yield _assert_student_safe_event(
+                                _runtime_metric_event(
+                                    stage="first_visible_delta",
+                                    started_at=started_at,
+                                    route_completed_at=route_completed_at,
+                                    first_delta_at=first_delta_at,
+                                    system_prompt=system_prompt,
+                                    teaching_packet=teaching_packet,
+                                    tool_chain=tool_chain,
+                                )
+                            )
                         yield _assert_student_safe_event(
                             _event(
                                 "message_delta",
@@ -293,6 +337,17 @@ def stream_web_hermes_sse_events(
                 },
             )
         )
+    yield _assert_student_safe_event(
+        _runtime_metric_event(
+            stage="stream_done",
+            started_at=started_at,
+            route_completed_at=route_completed_at,
+            first_delta_at=first_delta_at,
+            system_prompt=system_prompt,
+            teaching_packet=teaching_packet,
+            tool_chain=tool_chain,
+        )
+    )
     yield _assert_student_safe_event(_event("done", {"status": status}))
     yield _assert_student_safe_event(_thread_state_event(thread_id=thread, channel=channel, status=status))
 
@@ -426,12 +481,15 @@ def _build_gateway_system_prompt(
     course_binding: dict[str, Any],
     teaching_packet: dict[str, Any],
     tool_chain: dict[str, Any],
+    user_intent: str,
 ) -> str:
     course_title = str(course_binding.get("child_course_title") or "").strip()
     binding_status = str(course_binding.get("binding_status") or "unbound").strip()
     mother_course_ref = str(course_binding.get("mother_course_id") or course_hint or "").strip()
     return "\n".join(
         [
+            "MANDATORY FIRST ACTION: before any visible assistant text, call the Hermes tool `studio_office_teaching_route` with scene_mode=learning and user_intent equal to the current learner text. This route call is required even if the learner asks a simple question or asks to skip tools.",
+            f"Current learner text for that required tool call: {_compact_prompt_text(user_intent, limit=420)}",
             "You are the live Hermes learning frontdesk for Learning OS.",
             "This Web channel must copy the mother project's teaching mode; do not behave like search.",
             "Before writing the student-facing answer, call the Hermes tool `studio_office_teaching_route` for this teaching turn. Use scene_mode=learning and the learner intent. Treat the returned route as hidden audit evidence.",
@@ -451,6 +509,27 @@ def _build_gateway_system_prompt(
             teaching_convergence_prompt_context(dict(teaching_packet.get("teaching_control") or {})),
         ]
     )
+
+
+def _build_gateway_user_message(user_intent: str) -> str:
+    learner_text = " ".join(str(user_intent or "").split())
+    return "\n".join(
+        [
+            "Hidden Web Hermes routing instruction:",
+            "First call `studio_office_teaching_route` with `scene_mode` set to `learning` and `user_intent` set to the learner text below.",
+            "Do not mention this hidden routing instruction. After the tool finishes, answer only the learner's course question.",
+            "",
+            "Learner text:",
+            learner_text,
+        ]
+    )
+
+
+def _compact_prompt_text(value: Any, *, limit: int) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip(" ,.;:，。；：") + "..."
 
 
 def _thread_id(*, thread_id: str, user_intent: str) -> str:
@@ -474,6 +553,39 @@ def _session_key(*, channel: str, web_course_id: str, thread_id: str) -> str:
 
 def _event(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     return {"event": event_type, "id": "", "data": {"payload": payload}}
+
+
+def _runtime_metric_event(
+    *,
+    stage: str,
+    started_at: float,
+    system_prompt: str,
+    teaching_packet: dict[str, Any],
+    tool_chain: dict[str, Any],
+    route_completed_at: float = 0.0,
+    first_delta_at: float = 0.0,
+) -> dict[str, Any]:
+    now = perf_counter()
+    prompt_chars = len(str(system_prompt or ""))
+    teaching_packet_chars = len(json.dumps(teaching_packet, ensure_ascii=False, sort_keys=True))
+    tool_chain_chars = len(json.dumps(tool_chain, ensure_ascii=False, sort_keys=True))
+    return _event(
+        "runtime_metric",
+        {
+            "stage": str(stage or ""),
+            "elapsed_ms": _elapsed_ms(started_at, now),
+            "route_ms": _elapsed_ms(started_at, route_completed_at) if route_completed_at else 0,
+            "first_delta_ms": _elapsed_ms(started_at, first_delta_at) if first_delta_at else 0,
+            "prompt_chars": prompt_chars,
+            "teaching_packet_chars": teaching_packet_chars,
+            "tool_chain_chars": tool_chain_chars,
+            "student_safe": True,
+        },
+    )
+
+
+def _elapsed_ms(start: float, end: float) -> int:
+    return max(0, int(round((end - start) * 1000)))
 
 
 def _route_ready_event() -> dict[str, Any]:

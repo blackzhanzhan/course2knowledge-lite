@@ -13,6 +13,12 @@ plugins:
     - course2knowledge-lite
 
 platforms:
+  api_server:
+    enabled: true
+    extra:
+      host: 127.0.0.1
+      port: 8642
+      model_name: course2knowledge-lite
   feishu:
     enabled: true
     extra:

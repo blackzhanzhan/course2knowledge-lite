@@ -433,6 +433,39 @@ textarea {
   background: #f7f9ff;
 }
 
+.chat-event.is-runtime_metric {
+  border-color: #d8c6a2;
+  color: #6f5a26;
+  background: #fffaf0;
+}
+
+.chat-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.chat-waiting p {
+  margin: 0;
+}
+
+.chat-waiting-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 0 0 rgba(42, 139, 125, 0.2);
+  animation: chat-waiting-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes chat-waiting-pulse {
+  50% {
+    box-shadow: 0 0 0 7px rgba(42, 139, 125, 0);
+    opacity: 0.55;
+  }
+}
+
 .stream-caret {
   display: inline-block;
   width: 7px;

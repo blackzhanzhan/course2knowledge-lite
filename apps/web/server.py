@@ -29,6 +29,11 @@ DEFAULT_IMPORT_DOSSIER_CHUNK_WORKERS = 8
 DEFAULT_IMPORT_DOSSIER_REQUEST_CONCURRENCY = 80
 DEFAULT_CHAT_CONCURRENCY = 4
 DEFAULT_PUBLIC_DEMO_CHAT_TTL_SECONDS = 60 * 60 * 6
+CHAT_CONTEXT_LECTURE_WINDOW = 2
+CHAT_CONTEXT_READER_SEGMENT_LIMIT = 12
+CHAT_CONTEXT_KNOWLEDGE_CARD_LIMIT = 8
+CHAT_CONTEXT_HISTORY_MESSAGE_LIMIT = 10
+CHAT_CONTEXT_HISTORY_EVENT_LIMIT = 20
 PUBLIC_DEMO_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO"
 CHAT_CONCURRENCY_ENV = "COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY"
 PUBLIC_DEMO_CHAT_TTL_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_CHAT_TTL_SECONDS"
@@ -419,8 +424,12 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                         lecture_id=lecture_id,
                         lecture_sequence=lecture_sequence,
                     )
-                    history_messages = store.list_chat_messages(str(thread.get("thread_id") or ""))
-                    history_events = store.list_chat_events(str(thread.get("thread_id") or ""))
+                    history_messages = _compact_chat_messages_for_hermes(
+                        store.list_chat_messages(str(thread.get("thread_id") or ""))
+                    )
+                    history_events = _compact_chat_events_for_hermes(
+                        store.list_chat_events(str(thread.get("thread_id") or ""))
+                    )
                     chat_messages_for_control = [
                         *history_messages,
                         {"role": "user", "content": message},
@@ -2004,12 +2013,149 @@ def _build_web_course_context(
     cards = store.list_knowledge_cards(course_id=course_id, lecture_id=selected_lecture_id)
     if not cards:
         cards = store.list_knowledge_cards(course_id=course_id)
+    compact_lectures = _lecture_context_window(lectures, selected_lecture)
     return {
-        "course": dict(course),
-        "lectures": lectures,
+        "course": _compact_course_for_hermes(course, total_lectures=len(lectures)),
+        "lectures": compact_lectures,
         "lecture": dict(selected_lecture or {}),
-        "reader": reader,
-        "knowledge_cards": cards,
+        "reader": _compact_reader_for_hermes(reader),
+        "knowledge_cards": [_compact_card_for_hermes(card) for card in cards[:CHAT_CONTEXT_KNOWLEDGE_CARD_LIMIT]],
+        "context_window": {
+            "lecture_window": CHAT_CONTEXT_LECTURE_WINDOW,
+            "total_lectures": len(lectures),
+            "selected_sequence": str((selected_lecture or {}).get("sequence") or ""),
+            "reader_segment_limit": CHAT_CONTEXT_READER_SEGMENT_LIMIT,
+            "knowledge_card_limit": CHAT_CONTEXT_KNOWLEDGE_CARD_LIMIT,
+        },
+    }
+
+
+def _compact_course_for_hermes(course: dict[str, Any], *, total_lectures: int) -> dict[str, Any]:
+    return {
+        "course_id": str(course.get("course_id") or ""),
+        "title": str(course.get("title") or ""),
+        "source_platform": str(course.get("source_platform") or ""),
+        "source_url": str(course.get("source_url") or ""),
+        "lecture_count": int(course.get("lecture_count") or total_lectures or 0),
+        "import_status": str(course.get("import_status") or ""),
+    }
+
+
+def _lecture_context_window(
+    lectures: list[dict[str, Any]],
+    selected_lecture: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if not lectures:
+        return []
+    selected_id = str((selected_lecture or {}).get("lecture_id") or "")
+    selected_sequence = str((selected_lecture or {}).get("sequence") or "")
+    selected_index = 0
+    for index, lecture in enumerate(lectures):
+        if selected_id and str(lecture.get("lecture_id") or "") == selected_id:
+            selected_index = index
+            break
+        if selected_sequence and str(lecture.get("sequence") or "") == selected_sequence:
+            selected_index = index
+            break
+    start = max(0, selected_index - CHAT_CONTEXT_LECTURE_WINDOW)
+    end = min(len(lectures), selected_index + CHAT_CONTEXT_LECTURE_WINDOW + 1)
+    return [_compact_lecture_for_hermes(lecture) for lecture in lectures[start:end]]
+
+
+def _compact_lecture_for_hermes(lecture: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "lecture_id": str(lecture.get("lecture_id") or ""),
+        "sequence": lecture.get("sequence"),
+        "title": str(lecture.get("title") or ""),
+        "source_url": str(lecture.get("source_url") or ""),
+        "duration_seconds": lecture.get("duration_seconds"),
+    }
+
+
+def _compact_reader_for_hermes(reader: dict[str, Any]) -> dict[str, Any]:
+    compact = {
+        "course": dict(reader.get("course") or {}),
+        "lecture": dict(reader.get("lecture") or {}),
+        "segment_count": len(reader.get("segments") or []),
+        "segments": [],
+    }
+    for segment in (reader.get("segments") or [])[:CHAT_CONTEXT_READER_SEGMENT_LIMIT]:
+        if not isinstance(segment, dict):
+            continue
+        compact["segments"].append(
+            {
+                "segment_id": str(segment.get("segment_id") or ""),
+                "start_seconds": segment.get("start_seconds"),
+                "end_seconds": segment.get("end_seconds"),
+                "text": str(segment.get("text") or ""),
+            }
+        )
+    return compact
+
+
+def _compact_card_for_hermes(card: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "card_id": str(card.get("card_id") or ""),
+        "lecture_id": str(card.get("lecture_id") or ""),
+        "title": str(card.get("title") or ""),
+        "summary": str(card.get("summary") or ""),
+        "body": str(card.get("body") or ""),
+        "atom_type": str(card.get("atom_type") or ""),
+        "review_questions": list(card.get("review_questions") or [])[:2]
+        if isinstance(card.get("review_questions"), list)
+        else [],
+        "confidence": str(card.get("confidence") or ""),
+    }
+
+
+def _compact_chat_messages_for_hermes(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    compact = []
+    for message in messages[-CHAT_CONTEXT_HISTORY_MESSAGE_LIMIT:]:
+        if not isinstance(message, dict):
+            continue
+        compact.append(
+            {
+                "role": str(message.get("role") or ""),
+                "content": str(message.get("content") or ""),
+                "created_at": str(message.get("created_at") or ""),
+            }
+        )
+    return compact
+
+
+def _compact_chat_events_for_hermes(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    kept_types = {"teaching_control", "tool_result", "done", "error"}
+    compact = []
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        if str(event.get("event_type") or "") not in kept_types:
+            continue
+        compact.append(
+            {
+                "event_type": str(event.get("event_type") or ""),
+                "tool_name": str(event.get("tool_name") or ""),
+                "payload": _compact_chat_event_payload_for_hermes(dict(event.get("payload") or {})),
+                "created_at": str(event.get("created_at") or ""),
+            }
+        )
+    return compact[-CHAT_CONTEXT_HISTORY_EVENT_LIMIT:]
+
+
+def _compact_chat_event_payload_for_hermes(payload: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(payload.get("current_atom_index"), int) or "mastery_signals" in payload:
+        return {
+            "current_atom_index": payload.get("current_atom_index"),
+            "completed_atom_count": payload.get("completed_atom_count"),
+            "total_atom_count": payload.get("total_atom_count"),
+            "next_action": str(payload.get("next_action") or ""),
+            "mastery_signals": dict(payload.get("mastery_signals") or {}),
+            "student_visible": dict(payload.get("student_visible") or {}),
+        }
+    nested_payload = payload.get("payload") if isinstance(payload.get("payload"), dict) else {}
+    return {
+        "sse_event": str(payload.get("sse_event") or nested_payload.get("sse_event") or ""),
+        "status": str(payload.get("status") or nested_payload.get("status") or ""),
     }
 
 
