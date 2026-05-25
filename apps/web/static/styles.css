@@ -441,7 +441,7 @@ textarea {
 
 .chat-waiting {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   color: var(--muted);
 }
@@ -450,9 +450,18 @@ textarea {
   margin: 0;
 }
 
+.chat-waiting-detail {
+  margin-top: 3px !important;
+  color: color-mix(in srgb, var(--muted) 82%, #fff);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .chat-waiting-dot {
+  flex: 0 0 auto;
   width: 7px;
   height: 7px;
+  margin-top: 8px;
   border-radius: 50%;
   background: var(--teal);
   box-shadow: 0 0 0 0 rgba(42, 139, 125, 0.2);

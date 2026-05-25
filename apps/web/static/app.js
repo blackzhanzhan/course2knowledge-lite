@@ -1908,8 +1908,12 @@ async function runChat() {
   const assistantBubble = appendChatBubble("assistant", "");
   const eventsWrap = assistantBubble.querySelector(".chat-events");
   const bodyWrap = assistantBubble.querySelector(".chat-body");
-  bodyWrap.innerHTML = '<p class="muted">正在连接 Hermes...</p>';
-  renderChatWaitingState(bodyWrap, "正在连接 Hermes 教学前台");
+  const waiting = createChatWaitingController(bodyWrap);
+  waiting.show(
+    "正在判断目前知识点状态",
+    "Hermes 已收到问题，会先读取本节课知识原子，再决定从哪一口开始。",
+    "routing",
+  );
   setStatus("Chat is running");
   try {
     const events = [];
@@ -1931,6 +1935,7 @@ async function runChat() {
         const delta = event.data?.payload?.delta || "";
         if (event.event === "message_delta" && delta) {
           assistantText += delta;
+          waiting.stop();
           streamText.push(delta);
           markAtomsFromText(delta);
           els.chatLog.scrollTop = els.chatLog.scrollHeight;
@@ -1938,22 +1943,27 @@ async function runChat() {
         }
         if (event.event === "tool_chain" && event.data?.payload) {
           appendToolChainEvent(eventsWrap, event.data.payload);
-          updateChatWaitingFromTool(bodyWrap, event.data.payload, assistantText);
+          updateChatWaitingFromTool(bodyWrap, event.data.payload, assistantText, waiting);
           return;
         }
         if (event.event === "teaching_state" && event.data?.payload) {
           renderHermesTeachingState(event.data.payload);
           if (!assistantText) {
-            renderChatWaitingState(bodyWrap, "Hermes 已拿到课程状态，正在执行真实教学路由");
+            waiting.show(
+              "正在判断目前知识点状态",
+              "已读取课程状态，正在确认你现在卡在哪个知识原子。",
+              "routing",
+            );
           }
           return;
         }
         if (event.event === "runtime_metric" && event.data?.payload) {
           appendRuntimeMetricEvent(eventsWrap, event.data.payload);
-          updateChatWaitingFromRuntimeMetric(bodyWrap, event.data.payload, assistantText);
+          updateChatWaitingFromRuntimeMetric(bodyWrap, event.data.payload, assistantText, waiting);
           return;
         }
         if (event.event === "error" && event.data?.payload?.message && !assistantText) {
+          waiting.stop();
           bodyWrap.innerHTML = `<p class="blocked">${escapeHtml(event.data.payload.message)}</p>`;
         }
       },
@@ -1965,9 +1975,11 @@ async function runChat() {
     await refreshAfterChatTurn(turnId);
     setStatus("Chat ready");
   } catch (error) {
+    waiting.stop();
     bodyWrap.innerHTML = `<p class="blocked">${escapeHtml(error.message)}</p>`;
     setStatus("Chat failed");
   } finally {
+    waiting.stop();
     state.chatBusy = false;
     els.chatSendButton.disabled = false;
     els.chatLog.scrollTop = els.chatLog.scrollHeight;
@@ -2100,15 +2112,7 @@ async function postSseStream(url, payload, onEvent) {
   });
   if (!response.ok) {
     const rawError = await response.text();
-    try {
-      const payload = JSON.parse(rawError || "{}");
-      throw new Error(payload.error || `Request failed: ${response.status}`);
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error(rawError || `Request failed: ${response.status}`);
-      }
-      throw error;
-    }
+    throw new Error(normalizeChatStreamError(response.status, rawError));
   }
   if (!response.body) {
     for (const event of parseSse(await response.text())) {
@@ -2138,6 +2142,21 @@ async function postSseStream(url, payload, onEvent) {
   const event = parseSseBlock(buffer);
   if (event) {
     onEvent(event);
+  }
+}
+
+function normalizeChatStreamError(status, rawError) {
+  try {
+    const payload = JSON.parse(rawError || "{}");
+    if (status === 429) {
+      return payload.error || "当前访客较多，请稍后再试。为了保证每个人的体验，演示环境限制了并发。";
+    }
+    return payload.error || `Request failed: ${status}`;
+  } catch (_error) {
+    if (status === 429) {
+      return "当前访客较多，请稍后再试。为了保证每个人的体验，演示环境限制了并发。";
+    }
+    return rawError || `Request failed: ${status}`;
   }
 }
 
@@ -2321,39 +2340,123 @@ function appendRuntimeMetricEvent(eventsWrap, payload) {
   eventsWrap.appendChild(item);
 }
 
-function updateChatWaitingFromTool(bodyWrap, payload, assistantText) {
+function updateChatWaitingFromTool(bodyWrap, payload, assistantText, waiting = null) {
   if (assistantText) {
     return;
   }
-  const label = payload.label || "Hermes 工具链";
   const status = String(payload.status || "");
-  if (status.includes("完成")) {
-    renderChatWaitingState(bodyWrap, `${label}已完成，正在等待 Hermes 组织第一句话`);
+  if (status.includes("完成") || status.toLowerCase().includes("completed")) {
+    setChatWaiting(
+      bodyWrap,
+      waiting,
+      "知识点状态已判断完成，正在组织第一句话",
+      "教学路由已经返回，接下来会开始流式输出。",
+      "answering",
+    );
     return;
   }
-  renderChatWaitingState(bodyWrap, `${label}运行中，Hermes 正在真实调用教学路由`);
+  setChatWaiting(
+    bodyWrap,
+    waiting,
+    "正在判断目前知识点状态",
+    "Hermes 正在真实调用 studio_office_teaching_route，不会跳过教学路由。",
+    "routing",
+  );
 }
 
-function updateChatWaitingFromRuntimeMetric(bodyWrap, payload, assistantText) {
+function updateChatWaitingFromRuntimeMetric(bodyWrap, payload, assistantText, waiting = null) {
   if (assistantText || !payload) {
     return;
   }
   if (payload.stage === "gateway_request_ready") {
-    renderChatWaitingState(bodyWrap, "Hermes 请求已发出，等待模型触发教学路由");
+    setChatWaiting(
+      bodyWrap,
+      waiting,
+      "正在判断目前知识点状态",
+      "请求已进入 Hermes，正在等待模型触发真实教学路由。",
+      "routing",
+    );
   }
   if (payload.stage === "route_tool_completed") {
-    renderChatWaitingState(bodyWrap, "教学路由已完成，等待 Hermes 开始流式回复");
+    setChatWaiting(
+      bodyWrap,
+      waiting,
+      "知识点状态已判断完成，正在组织第一句话",
+      "Hermes 已拿到本轮教学位置，马上开始流式回复。",
+      "answering",
+    );
   }
 }
 
-function renderChatWaitingState(bodyWrap, text) {
+function createChatWaitingController(bodyWrap) {
+  let active = true;
+  let phase = "routing";
+  const timers = [
+    setTimeout(() => {
+      if (!active) {
+        return;
+      }
+      if (phase === "answering") {
+        renderChatWaitingState(
+          bodyWrap,
+          "Hermes 正在组织第一句话",
+          "教学路由已完成，首字可能还需要几秒，不需要重复发送。",
+        );
+        return;
+      }
+      renderChatWaitingState(
+        bodyWrap,
+        "还在判断目前知识点状态",
+        "通常需要 3-6 秒；系统会先确认教学位置，再把回复放出来。",
+      );
+    }, 6000),
+    setTimeout(() => {
+      if (!active) {
+        return;
+      }
+      renderChatWaitingState(
+        bodyWrap,
+        "Hermes 还在处理，请再等一下",
+        "这次请求仍在同一条链路里，无需重复发送你的问题。",
+      );
+    }, 12000),
+  ];
+  return {
+    show(text, detail = "", nextPhase = phase) {
+      if (!active) {
+        return;
+      }
+      phase = nextPhase || phase;
+      renderChatWaitingState(bodyWrap, text, detail);
+    },
+    stop() {
+      active = false;
+      for (const timer of timers) {
+        clearTimeout(timer);
+      }
+    },
+  };
+}
+
+function setChatWaiting(bodyWrap, waiting, text, detail = "", phase = "routing") {
+  if (waiting) {
+    waiting.show(text, detail, phase);
+    return;
+  }
+  renderChatWaitingState(bodyWrap, text, detail);
+}
+
+function renderChatWaitingState(bodyWrap, text, detail = "") {
   if (!bodyWrap) {
     return;
   }
   bodyWrap.innerHTML = `
     <div class="chat-waiting">
       <span class="chat-waiting-dot" aria-hidden="true"></span>
-      <p>${escapeHtml(text)}</p>
+      <div>
+        <p>${escapeHtml(text)}</p>
+        ${detail ? `<p class="chat-waiting-detail">${escapeHtml(detail)}</p>` : ""}
+      </div>
     </div>
   `;
 }
