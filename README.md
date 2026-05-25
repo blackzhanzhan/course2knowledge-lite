@@ -1,12 +1,36 @@
 # Course2Knowledge Lite
 
-把在线视频课程编译成本地 SQLite 课程知识运行时。
+把 B 站课程编译成一个可对话、可复习、可推进的本地 AI 学习运行时。
 
 Course2Knowledge Lite 不是 LMS、普通 RAG demo、笔记软件、视频下载器，也不是通用 Agent 框架。它把一门 B 站视频课当作证据源，经过字幕、视觉证据、中文讲义、知识原子和学习关口的编译，落到本地 SQLite 课程运行时，再由 Web Lite 课堂和可选 Hermes Lite 工具前台读取。
 
 [技术档案](https://blackzhanzhan.github.io/course2knowledge-lite/) · [技术白皮书](docs/TECHNICAL_WHITEPAPER.md) · [部署说明](docs/DEPLOYMENT.md) · [部署 FAQ](docs/DEPLOYMENT_FAQ.md) · [测试说明](docs/TESTING.md)
 
+## 30 秒理解这个项目
+
+如果只看三件事：
+
+1. 它把在线视频课编译成 SQLite 课程运行时，而不是只生成摘要或向量切片。
+2. 它用知识原子和学习关口描述学习进度，而不是只做一次性问答。
+3. Web Lite 和 Hermes Lite 读取同一份 runtime，课程证据、聊天状态和学习推进不会分裂成两套系统。
+
+## 和常见方案的区别
+
+| 方案 | 通常解决什么 | Course2Knowledge Lite 的边界 |
+| --- | --- | --- |
+| 普通 RAG 知识库 | 把资料切片、召回、生成答案 | 也支持检索和问答，但核心产物是课程运行时：证据、讲义、原子、关口和状态 |
+| 笔记 / 摘要工具 | 把视频转成文字、摘要或 Markdown | 讲义只是下游表达，仍要回到课程证据、学习关口和 SQLite 状态 |
+| LMS / 网校系统 | 管理班级、作业、成绩和教务流程 | 不做教务；关注单人学习过程中的课程编译、带学和状态推进 |
+| Agent 框架 | 定义工具调用、任务编排和对话流程 | Hermes 只是工具前台；业务权威在本地 SQLite runtime |
+
 ![Course2Knowledge Lite 总体架构](docs/assets/readme/technical-dossier-architecture.png)
+
+## 核心设计
+
+- `课程运行时`：课程不只是视频列表，而是 course、lecture、字幕片段、讲义、知识原子、关口、视觉证据、聊天线程和阅读状态的组合。
+- `Staging + Promotion`：导入先写临时 SQLite store，通过 readiness gate 后才合并到正式 store，避免半成品污染课程库。
+- `学习关口`：AI 对话不是无限陪聊，而是围绕知识原子判断当前是否理解、是否需要追问、是否可以推进。
+- `双前台同源`：Web Lite 和 Hermes Lite 不维护两套数据；它们读取或调用同一个本地课程 runtime。
 
 ## 它解决什么问题
 
@@ -93,6 +117,9 @@ course2knowledge-lite web --store-root tmp/release-web-store
 ## 服务化部署
 
 如果要验证它不是只能本地跑的玩具，可以把 Web Lite、SQLite 课程 store 和 Hermes gateway 组成一个可复现的服务化运行形态。更完整的 systemd、验收和排障细节见 [部署说明](docs/DEPLOYMENT.md)，真实踩坑记录见 [部署 FAQ](docs/DEPLOYMENT_FAQ.md)。
+
+<details>
+<summary>展开查看最小服务化部署步骤</summary>
 
 前置条件：
 
@@ -203,6 +230,8 @@ curl -N http://127.0.0.1:3014/api/chat/stream \
 ```text
 https://space.bilibili.com/1112988584/lists/7726472?type=season
 ```
+
+</details>
 
 ## B 站登录态
 
