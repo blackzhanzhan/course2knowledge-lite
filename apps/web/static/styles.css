@@ -261,6 +261,35 @@ textarea {
   min-width: 180px;
 }
 
+.experience-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin: 0 0 12px;
+  border: 1px solid #b9d2f8;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 12px;
+}
+
+.experience-guide-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.experience-guide-copy strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.experience-guide-copy span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
 .view {
   display: none;
 }
@@ -1238,6 +1267,7 @@ textarea {
 }
 
 @media (max-width: 1080px) {
+  .experience-guide,
   .interaction-layout,
   .course-management-layout,
   .notes-layout,

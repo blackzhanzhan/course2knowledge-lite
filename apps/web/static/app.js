@@ -33,6 +33,7 @@ const els = {
   viewEyebrow: document.querySelector("#view-eyebrow"),
   navItems: document.querySelectorAll(".nav-item"),
   viewPanels: document.querySelectorAll("[data-view-panel]"),
+  experienceGuide: document.querySelector("#experience-guide"),
   courseSelect: document.querySelector("#course-select"),
   notesCourseSelect: document.querySelector("#notes-course-select"),
   lectureSelect: document.querySelector("#lecture-select"),
@@ -253,6 +254,28 @@ function publicDemoNotice() {
   return "当前模式只开放课程浏览、课堂笔记和学习对话；导入、删除、Cookie、笔记、书签和进度写入已关闭。";
 }
 
+function renderExperienceGuide() {
+  if (!els.experienceGuide) {
+    return;
+  }
+  if (!isPublicDemo()) {
+    els.experienceGuide.hidden = true;
+    els.experienceGuide.innerHTML = "";
+    return;
+  }
+  els.experienceGuide.hidden = false;
+  els.experienceGuide.innerHTML = `
+    <div class="experience-guide-copy">
+      <strong>体验说明</strong>
+      <span>云端演示可以体验：示例课程浏览、课堂笔记阅读、知识节点状态、Hermes 学习对话和“结束体验”清空本次会话。</span>
+    </div>
+    <div class="experience-guide-copy">
+      <strong>本地部署后可体验</strong>
+      <span>B 站课程导入、扫码 / Cookie 登录态、课程删除、笔记写入、书签和阅读进度写入。</span>
+    </div>
+  `;
+}
+
 function renderPublicDemoReadonlyCard() {
   return `
     <section class="readonly-demo-card" aria-label="只读体验边界">
@@ -284,6 +307,7 @@ async function loadRuntimeMode() {
 
 function applyRuntimeMode() {
   document.body.classList.toggle("is-public-demo", isPublicDemo());
+  renderExperienceGuide();
   const disabled = isPublicDemo();
   const mutableControls = [
     els.importButton,
