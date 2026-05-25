@@ -133,6 +133,7 @@ const progressCopy = {
 };
 
 const publicDemoPreferredLectureKeywords = ["cache", "高速缓冲存储器"];
+const publicDemoLoadingCopy = "正在准备示例课程，约 3-8 秒";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -231,8 +232,21 @@ function setStatus(text) {
   els.status.textContent = statusCopy[text] || text;
 }
 
+function setCourseLoadingStatus() {
+  setStatus(shouldUsePublicDemoLoadingCopy() ? publicDemoLoadingCopy : "Reading local course store");
+}
+
 function isPublicDemo() {
   return Boolean(state.publicDemo);
+}
+
+function isLikelyPublicDemoHost() {
+  const hostname = String(window.location.hostname || "").toLowerCase();
+  return Boolean(hostname && !["localhost", "127.0.0.1", "::1"].includes(hostname));
+}
+
+function shouldUsePublicDemoLoadingCopy() {
+  return isPublicDemo() || (state.courseStoreLoading && isLikelyPublicDemoHost());
 }
 
 function publicDemoNotice() {
@@ -306,11 +320,15 @@ function applyRuntimeMode() {
 
 function renderCourseLoadingState() {
   state.courseStoreLoading = true;
-  els.courseSelect.innerHTML = '<option value="">正在读取课程...</option>';
-  els.notesCourseSelect.innerHTML = '<option value="">正在读取课程...</option>';
-  els.lectureSelect.innerHTML = '<option value="">正在读取课时...</option>';
-  els.notesLectureSelect.innerHTML = '<option value="">正在读取课时...</option>';
-  els.courseList.innerHTML = '<div class="empty">正在打开本地课程库...</div>';
+  const useDemoCopy = shouldUsePublicDemoLoadingCopy();
+  const courseLoadingText = useDemoCopy ? publicDemoLoadingCopy : "正在读取课程...";
+  const lectureLoadingText = useDemoCopy ? "正在打开 cache 示例课时..." : "正在读取课时...";
+  const storeLoadingText = useDemoCopy ? publicDemoLoadingCopy : "正在打开本地课程库...";
+  els.courseSelect.innerHTML = `<option value="">${escapeHtml(courseLoadingText)}</option>`;
+  els.notesCourseSelect.innerHTML = `<option value="">${escapeHtml(courseLoadingText)}</option>`;
+  els.lectureSelect.innerHTML = `<option value="">${escapeHtml(lectureLoadingText)}</option>`;
+  els.notesLectureSelect.innerHTML = `<option value="">${escapeHtml(lectureLoadingText)}</option>`;
+  els.courseList.innerHTML = `<div class="empty">${escapeHtml(storeLoadingText)}</div>`;
   els.coveragePanel.innerHTML = '<div class="empty">正在检查转写覆盖...</div>';
   els.selectedCourseSummary.innerHTML = '<div class="empty">正在读取课程结构和导入状态...</div>';
   els.lectureAdminList.innerHTML = '<div class="empty">正在展开课时目录...</div>';
@@ -318,8 +336,8 @@ function renderCourseLoadingState() {
   els.segments.innerHTML = '<div class="empty">正在打开当前课时证据...</div>';
   els.notesList.innerHTML = '<div class="empty">正在读取课程笔记...</div>';
   els.bookmarksList.innerHTML = "";
-  els.courseMeta.textContent = "正在打开课程库";
-  els.lectureTitle.textContent = isPublicDemo() ? "正在加载示例课程" : "正在加载课程";
+  els.courseMeta.textContent = useDemoCopy ? publicDemoLoadingCopy : "正在打开课程库";
+  els.lectureTitle.textContent = useDemoCopy ? publicDemoLoadingCopy : "正在加载课程";
   renderMarkdownUnavailable();
   renderAtomStates();
   renderChatEmptyState();
@@ -397,7 +415,7 @@ function clearCourseSurface() {
 
 async function loadCourses() {
   renderCourseLoadingState();
-  setStatus("Reading local course store");
+  setCourseLoadingStatus();
   let payload;
   try {
     payload = await getJson("/api/courses");
@@ -2572,10 +2590,22 @@ function renderChatEmptyState() {
     return;
   }
   if (state.courseStoreLoading) {
+    const useDemoCopy = shouldUsePublicDemoLoadingCopy();
     els.chatLog.innerHTML = `
       <div class="empty">
-        <p>正在连接本地课程库，课程和课时准备好后可以直接开始学习。</p>
-        <p class="citation">稍后可直接输入：开始学习当前课程。</p>
+        <p>${escapeHtml(useDemoCopy ? publicDemoLoadingCopy : "正在连接本地课程库，课程和课时准备好后可以直接开始学习。")}</p>
+        <p class="citation">${escapeHtml(
+          useDemoCopy ? "示例课程准备好后，可以直接向学习助手提问。" : "稍后可直接输入：开始学习当前课程。",
+        )}</p>
+      </div>
+    `;
+    return;
+  }
+  if (isPublicDemo()) {
+    els.chatLog.innerHTML = `
+      <div class="empty">
+        <p>示例课程已准备好，可以直接和学习助手对话。</p>
+        <p class="citation">试试：我想理解 cache 的局部性，能带我开始吗？</p>
       </div>
     `;
     return;
@@ -2651,6 +2681,7 @@ window.addEventListener("pagehide", sendEndSessionBeacon);
 ensureVisitorSessionId();
 setView("interaction");
 renderCourseLoadingState();
+setCourseLoadingStatus();
 
 loadRuntimeMode()
   .then(async () => {
