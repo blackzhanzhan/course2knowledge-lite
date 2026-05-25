@@ -88,6 +88,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--model", default="")
     parser.add_argument("--base-url", default="")
     parser.add_argument("--key-env", default="OPENAI_API_KEY")
+    parser.add_argument(
+        "--wire-api",
+        default="chat_completions",
+        choices=["chat_completions", "responses", "codex_responses"],
+        help=(
+            "Provider wire API for explicit --provider/--model config. "
+            "Use chat_completions for OpenAI-compatible /v1 endpoints such as DeepSeek."
+        ),
+    )
     parser.add_argument("--output", default="")
     return parser.parse_args(argv)
 
@@ -148,7 +157,7 @@ def _transport_for_wire_api(wire_api: str) -> str:
     cleaned = str(wire_api or "").strip()
     if cleaned == "responses":
         return "codex_responses"
-    return cleaned or "codex_responses"
+    return cleaned or "chat_completions"
 
 
 def _explicit_model_config(
@@ -157,7 +166,7 @@ def _explicit_model_config(
     model: str,
     base_url: str,
     key_env: str,
-    wire_api: str = "responses",
+    wire_api: str = "chat_completions",
 ) -> dict[str, Any]:
     provider = provider.strip()
     model = model.strip()
@@ -238,6 +247,7 @@ def build_config(
     model: str = "",
     base_url: str = "",
     key_env: str = "OPENAI_API_KEY",
+    wire_api: str = "chat_completions",
 ) -> dict[str, Any]:
     if use_codex_config:
         model_config = _codex_model_config(key_env=key_env)
@@ -247,6 +257,7 @@ def build_config(
             model=model,
             base_url=base_url,
             key_env=key_env,
+            wire_api=wire_api,
         )
     return _merge_dict(dict(BASE_CONFIG), model_config)
 
@@ -262,6 +273,7 @@ def sync_profile(
     model: str = "",
     base_url: str = "",
     key_env: str = "OPENAI_API_KEY",
+    wire_api: str = "chat_completions",
 ) -> dict[str, Any]:
     target_root = _profile_root(profile, profile_root)
     config = build_config(
@@ -270,6 +282,7 @@ def sync_profile(
         model=model,
         base_url=base_url,
         key_env=key_env,
+        wire_api=wire_api,
     )
     report: dict[str, Any] = {
         "profile": profile,
@@ -324,6 +337,7 @@ def main(argv: list[str] | None = None) -> int:
         model=str(args.model),
         base_url=str(args.base_url),
         key_env=str(args.key_env),
+        wire_api=str(args.wire_api),
     )
     if str(args.output or "").strip():
         output_path = Path(str(args.output)).expanduser().resolve()

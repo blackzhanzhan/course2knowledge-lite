@@ -34,6 +34,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--model", default="")
     sync.add_argument("--base-url", default="")
     sync.add_argument("--key-env", default="OPENAI_API_KEY")
+    sync.add_argument("--wire-api", default="chat_completions", choices=["chat_completions", "responses", "codex_responses"])
     sync.add_argument("--output", default="")
 
     smoke = subparsers.add_parser("smoke-profile", help="Smoke-test a synced Hermes Lite profile")
@@ -75,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
             model=str(args.model),
             base_url=str(args.base_url),
             key_env=str(args.key_env),
+            wire_api=str(args.wire_api),
         )
         if str(args.output or "").strip():
             Path(args.output).expanduser().resolve().write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

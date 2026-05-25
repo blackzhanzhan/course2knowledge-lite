@@ -95,8 +95,24 @@ class HermesLiteProfileTests(unittest.TestCase):
             self.assertIn("port: 8642", config_text)
             self.assertIn('model_name: "course2knowledge-lite"', config_text)
             self.assertIn("COURSE2KNOWLEDGE_TEST_KEY", config_text)
+            self.assertIn("api_mode: chat_completions", config_text)
+            self.assertIn("transport: chat_completions", config_text)
             self.assertFalse((target / ".env").exists())
             self.assertIn("knowledge_cards_generate", report["enabled_tools"])
+
+    def test_sync_profile_can_explicitly_write_responses_wire_api(self) -> None:
+        sync_module = load_sync_module()
+        config = sync_module.build_config(
+            provider="responses-provider",
+            model="responses-model",
+            base_url="https://example.invalid/v1",
+            key_env="RESPONSES_TEST_KEY",
+            wire_api="responses",
+        )
+
+        provider_config = config["providers"]["responses-provider"]
+        self.assertEqual(provider_config["api_mode"], "codex_responses")
+        self.assertEqual(provider_config["transport"], "codex_responses")
 
     def test_synced_profile_plugin_registers_tools_from_profile_copy(self) -> None:
         sync_module = load_sync_module()
