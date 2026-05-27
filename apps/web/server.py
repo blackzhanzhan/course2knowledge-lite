@@ -29,6 +29,7 @@ DEFAULT_IMPORT_DOSSIER_CHUNK_WORKERS = 8
 DEFAULT_IMPORT_DOSSIER_REQUEST_CONCURRENCY = 80
 DEFAULT_CHAT_CONCURRENCY = 4
 DEFAULT_PUBLIC_DEMO_CHAT_TTL_SECONDS = 60 * 60 * 6
+DEFAULT_PUBLIC_DEMO_IMPORT_MAX_LECTURES = 5
 CHAT_CONTEXT_LECTURE_WINDOW = 2
 CHAT_CONTEXT_READER_SEGMENT_LIMIT = 12
 CHAT_CONTEXT_KNOWLEDGE_CARD_LIMIT = 8
@@ -37,6 +38,7 @@ CHAT_CONTEXT_HISTORY_EVENT_LIMIT = 20
 PUBLIC_DEMO_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO"
 CHAT_CONCURRENCY_ENV = "COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY"
 PUBLIC_DEMO_CHAT_TTL_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_CHAT_TTL_SECONDS"
+PUBLIC_DEMO_IMPORT_MAX_LECTURES_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_IMPORT_MAX_LECTURES"
 PUBLIC_DEMO_VISITOR_CHANNEL_PREFIX = "web:visitor:"
 BILIBILI_AUTH_FILE = REPO_ROOT / ".codex" / "auth" / "bilibili.json"
 BILIBILI_QR_GENERATE_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate"
@@ -454,21 +456,30 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                 finally:
                     _release_chat_slot()
             elif parsed.path == "/api/import":
-                _require_mutable_endpoint("importing courses")
                 source_url = _required_body(payload, "source_url")
-                bilibili_cookie = str(payload.get("bilibili_cookie", "") or "").strip()
-                qr_login_id = str(payload.get("bilibili_qr_login_id", "") or "").strip()
-                qr_cookie = _consume_bilibili_qr_cookie(qr_login_id) if qr_login_id and not bilibili_cookie else ""
-                stored_cookie = _load_persisted_bilibili_cookie() if not bilibili_cookie and not qr_cookie else ""
-                effective_bilibili_cookie = bilibili_cookie or qr_cookie or stored_cookie
-                remember_cookie = _bool_body(payload.get("remember_bilibili_cookie"), default=False)
-                if remember_cookie and (bilibili_cookie or qr_cookie):
-                    _save_persisted_bilibili_cookie(bilibili_cookie or qr_cookie)
-                auth_source = (
-                    "manual_cookie"
-                    if bilibili_cookie
-                    else ("qr_login" if qr_cookie else ("stored_cookie" if stored_cookie else "none"))
-                )
+                public_demo_import = _is_public_demo()
+                bilibili_cookie = ""
+                qr_cookie = ""
+                stored_cookie = ""
+                if public_demo_import:
+                    effective_bilibili_cookie, auth_source = _public_demo_bilibili_cookie()
+                    remember_cookie = False
+                    max_lectures = _public_demo_import_max_lectures()
+                else:
+                    bilibili_cookie = str(payload.get("bilibili_cookie", "") or "").strip()
+                    qr_login_id = str(payload.get("bilibili_qr_login_id", "") or "").strip()
+                    qr_cookie = _consume_bilibili_qr_cookie(qr_login_id) if qr_login_id and not bilibili_cookie else ""
+                    stored_cookie = _load_persisted_bilibili_cookie() if not bilibili_cookie and not qr_cookie else ""
+                    effective_bilibili_cookie = bilibili_cookie or qr_cookie or stored_cookie
+                    remember_cookie = _bool_body(payload.get("remember_bilibili_cookie"), default=False)
+                    if remember_cookie and (bilibili_cookie or qr_cookie):
+                        _save_persisted_bilibili_cookie(bilibili_cookie or qr_cookie)
+                    auth_source = (
+                        "manual_cookie"
+                        if bilibili_cookie
+                        else ("qr_login" if qr_cookie else ("stored_cookie" if stored_cookie else "none"))
+                    )
+                    max_lectures = _optional_positive_int_body(payload.get("max_lectures"))
                 run = store.create_import_run(
                     course_id="",
                     source_url=source_url,
@@ -493,6 +504,8 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                         "remember_cookie": bool(remember_cookie and (bilibili_cookie or qr_cookie)),
                         "stored_cookie_available": bool(stored_cookie),
                         "promotion_policy": "backup_then_merge_new_or_replace_same_course_if_readiness_not_worse",
+                        "public_demo_import": public_demo_import,
+                        "max_lectures": max_lectures,
                     },
                 )
                 _start_import_worker(
@@ -501,7 +514,8 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
                     store_root=self.store_root,
                     fetch_transcripts=_bool_body(payload.get("fetch_transcripts"), default=True),
                     bilibili_cookie=effective_bilibili_cookie,
-                    max_lectures=_optional_positive_int_body(payload.get("max_lectures")),
+                    max_lectures=max_lectures,
+                    allow_limited_promotion=public_demo_import,
                     compile_mode=str(payload.get("compile_mode", "model") or "model").strip(),
                     compile_provider=str(payload.get("compile_provider", "deepseek") or "").strip() or None,
                     model=str(payload.get("model", "") or "").strip() or None,
@@ -724,6 +738,22 @@ def _chat_concurrency_limit() -> int:
 
 def _public_demo_chat_ttl_seconds() -> int:
     return _positive_int_env(PUBLIC_DEMO_CHAT_TTL_ENV, default=DEFAULT_PUBLIC_DEMO_CHAT_TTL_SECONDS)
+
+
+def _public_demo_import_max_lectures() -> int:
+    return _positive_int_env(PUBLIC_DEMO_IMPORT_MAX_LECTURES_ENV, default=DEFAULT_PUBLIC_DEMO_IMPORT_MAX_LECTURES)
+
+
+def _public_demo_bilibili_cookie() -> tuple[str, str]:
+    env_cookie = str(os.environ.get("BILIBILI_COOKIE", "") or "").strip()
+    if env_cookie:
+        return env_cookie, "server_env_cookie"
+    stored_cookie = _load_persisted_bilibili_cookie()
+    if stored_cookie:
+        return stored_cookie, "server_stored_cookie"
+    raise PermissionError(
+        "public demo import needs a server-side Bilibili login cookie; set BILIBILI_COOKIE on the server first"
+    )
 
 
 def _chat_semaphore() -> threading.BoundedSemaphore:
@@ -1028,6 +1058,7 @@ def _start_import_worker(
     fetch_transcripts: bool,
     bilibili_cookie: str = "",
     max_lectures: int | None = None,
+    allow_limited_promotion: bool = False,
     compile_mode: str = "model",
     compile_provider: str | None = "deepseek",
     model: str | None = None,
@@ -1049,6 +1080,7 @@ def _start_import_worker(
                 fetch_transcripts=fetch_transcripts,
                 bilibili_cookie=bilibili_cookie,
                 max_lectures=max_lectures,
+                allow_limited_promotion=allow_limited_promotion,
                 compile_mode=compile_mode,
                 compile_provider=compile_provider,
                 model=model,
@@ -1087,6 +1119,7 @@ def _run_guarded_reimport(
     fetch_transcripts: bool,
     bilibili_cookie: str = "",
     max_lectures: int | None = None,
+    allow_limited_promotion: bool = False,
     compile_mode: str = "model",
     compile_provider: str | None = "deepseek",
     model: str | None = None,
@@ -1113,6 +1146,8 @@ def _run_guarded_reimport(
             "compile_mode": compile_mode,
             "compile_provider": compile_provider or "",
             "model": model or "",
+            "max_lectures": max_lectures,
+            "allow_limited_promotion": bool(allow_limited_promotion),
             "parallelism": {
                 "lecture_workers": int(lecture_workers or 1),
                 "dossier_chunk_workers": int(max_chunk_workers or 1),
@@ -1163,6 +1198,7 @@ def _run_guarded_reimport(
             temp_readiness,
             source_url=source_url,
             max_lectures=max_lectures,
+            allow_limited_promotion=allow_limited_promotion,
         )
         promotion_payload = {
             "decision": decision["decision"],
@@ -1532,6 +1568,7 @@ def _promotion_decision(
     *,
     source_url: str = "",
     max_lectures: int | None = None,
+    allow_limited_promotion: bool = False,
 ) -> dict[str, Any]:
     candidate = _compact_readiness(candidate_readiness)
     previous_course = _matching_readiness(previous_snapshot, candidate, source_url=source_url)
@@ -1540,7 +1577,7 @@ def _promotion_decision(
         return {"promote": False, "decision": "blocked", "reason": "未入库：候选导入没有课程课时。", "course_match": "invalid"}
     if int(candidate.get("transcript_ready_count") or 0) <= 0:
         return {"promote": False, "decision": "blocked", "reason": "未入库：候选导入没有任何字幕转写。", "course_match": "invalid"}
-    if max_lectures is not None:
+    if max_lectures is not None and not allow_limited_promotion:
         return {
             "promote": False,
             "decision": "blocked_probe_subset",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -368,7 +369,7 @@ class WebLiteTests(unittest.TestCase):
         self.assertEqual(len(courses["courses"]), 1)
         self.assertEqual(courses["courses"][0]["lecture_count"], 2)
 
-    def test_public_demo_runtime_is_readonly_but_browsing_still_works(self) -> None:
+    def test_public_demo_runtime_keeps_destructive_writes_readonly_but_browsing_still_works(self) -> None:
         web_server = load_web_server_module()
 
         previous_public_demo = web_server.Course2KnowledgeWebHandler.public_demo
@@ -384,14 +385,6 @@ class WebLiteTests(unittest.TestCase):
                 try:
                     runtime = _request_json(host, port, "GET", "/api/runtime")
                     courses = _request_json(host, port, "GET", "/api/courses")
-                    blocked_import = _request_json(
-                        host,
-                        port,
-                        "POST",
-                        "/api/import",
-                        {"source_url": "https://space.bilibili.com/1112988584/lists/7726472?type=season"},
-                        expected_status=400,
-                    )
                     blocked_delete = _request_json(
                         host,
                         port,
@@ -409,10 +402,110 @@ class WebLiteTests(unittest.TestCase):
         self.assertTrue(runtime["runtime"]["public_demo"])
         self.assertFalse(runtime["runtime"]["mutable_course_store"])
         self.assertEqual(len(courses["courses"]), 1)
-        self.assertEqual(blocked_import["status"], "failed")
         self.assertEqual(blocked_delete["status"], "failed")
-        self.assertIn("public demo mode is read-only", blocked_import["error"])
         self.assertIn("public demo mode is read-only", blocked_delete["error"])
+
+    def test_public_demo_import_uses_server_cookie_and_first_five_only_without_leakage(self) -> None:
+        web_server = load_web_server_module()
+
+        previous_public_demo = web_server.Course2KnowledgeWebHandler.public_demo
+        previous_auth_file = web_server.BILIBILI_AUTH_FILE
+        previous_worker = web_server._start_import_worker
+        previous_cookie = os.environ.get("BILIBILI_COOKIE")
+        captured_workers: list[dict[str, object]] = []
+        web_server._start_import_worker = lambda **kwargs: captured_workers.append(kwargs)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                web_server.Course2KnowledgeWebHandler.public_demo = True
+                web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir) / "store"
+                web_server.BILIBILI_AUTH_FILE = Path(temp_dir) / ".codex" / "auth" / "bilibili.json"
+                os.environ["BILIBILI_COOKIE"] = "SESSDATA=server-secret; bili_jct=server-csrf"
+                server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                host, port = server.server_address
+                try:
+                    imported = _request_json(
+                        host,
+                        port,
+                        "POST",
+                        "/api/import",
+                        {
+                            "source_url": "https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                            "bilibili_cookie": "SESSDATA=visitor-secret; bili_jct=visitor-csrf",
+                            "remember_bilibili_cookie": True,
+                            "max_lectures": 99,
+                        },
+                        expected_status=201,
+                    )
+                    store = web_server.SQLiteCourseStore(web_server.Course2KnowledgeWebHandler.store_root)
+                    events = store.list_import_events(str(imported["run_id"]))
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=5)
+        finally:
+            web_server.Course2KnowledgeWebHandler.public_demo = previous_public_demo
+            web_server.BILIBILI_AUTH_FILE = previous_auth_file
+            web_server._start_import_worker = previous_worker
+            if previous_cookie is None:
+                os.environ.pop("BILIBILI_COOKIE", None)
+            else:
+                os.environ["BILIBILI_COOKIE"] = previous_cookie
+
+        serialized = json.dumps({"imported": imported, "events": events}, ensure_ascii=False)
+        self.assertEqual(imported["status"], "accepted")
+        self.assertEqual(captured_workers[0]["bilibili_cookie"], "SESSDATA=server-secret; bili_jct=server-csrf")
+        self.assertEqual(captured_workers[0]["max_lectures"], 5)
+        self.assertTrue(captured_workers[0]["allow_limited_promotion"])
+        self.assertEqual(events[0]["payload"]["auth_source"], "server_env_cookie")
+        self.assertTrue(events[0]["payload"]["public_demo_import"])
+        self.assertEqual(events[0]["payload"]["max_lectures"], 5)
+        self.assertFalse(events[0]["payload"]["remember_cookie"])
+        self.assertNotIn("visitor-secret", serialized)
+        self.assertNotIn("server-secret", serialized)
+        self.assertNotIn("SESSDATA=", serialized)
+
+    def test_public_demo_import_requires_server_cookie(self) -> None:
+        web_server = load_web_server_module()
+
+        previous_public_demo = web_server.Course2KnowledgeWebHandler.public_demo
+        previous_auth_file = web_server.BILIBILI_AUTH_FILE
+        previous_cookie = os.environ.get("BILIBILI_COOKIE")
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                web_server.Course2KnowledgeWebHandler.public_demo = True
+                web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir) / "store"
+                web_server.BILIBILI_AUTH_FILE = Path(temp_dir) / ".codex" / "auth" / "bilibili.json"
+                os.environ.pop("BILIBILI_COOKIE", None)
+                server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                host, port = server.server_address
+                try:
+                    blocked_import = _request_json(
+                        host,
+                        port,
+                        "POST",
+                        "/api/import",
+                        {"source_url": "https://space.bilibili.com/1112988584/lists/7726472?type=season"},
+                        expected_status=400,
+                    )
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=5)
+        finally:
+            web_server.Course2KnowledgeWebHandler.public_demo = previous_public_demo
+            web_server.BILIBILI_AUTH_FILE = previous_auth_file
+            if previous_cookie is None:
+                os.environ.pop("BILIBILI_COOKIE", None)
+            else:
+                os.environ["BILIBILI_COOKIE"] = previous_cookie
+
+        self.assertEqual(blocked_import["status"], "failed")
+        self.assertEqual(blocked_import["error_type"], "PermissionError")
+        self.assertIn("server-side Bilibili login cookie", blocked_import["error"])
 
     def test_web_static_text_assets_include_utf8_charset(self) -> None:
         web_server = load_web_server_module()
@@ -2011,6 +2104,7 @@ class WebLiteTests(unittest.TestCase):
         self.assertIn("is-public-demo", app_js)
         self.assertIn("renderPublicDemoReadonlyCard", app_js)
         self.assertIn("Public demo is read-only", app_js)
+        self.assertIn("云端体验限制删除、Cookie 和本地写入", app_js)
         self.assertIn("readonly-demo-card", app_js)
         self.assertIn("readonly-pill", app_js)
         self.assertIn(".readonly-demo-card", styles)
@@ -2065,10 +2159,11 @@ class WebLiteTests(unittest.TestCase):
         self.assertIn("示例课程准备好后，可以直接向学习助手提问", app_js)
         self.assertIn("示例课程已准备好，可以直接和学习助手对话", app_js)
         self.assertIn('id="experience-guide"', index_html)
-        self.assertIn("云端演示可以体验", app_js)
-        self.assertIn("示例课程浏览、课堂笔记阅读、知识节点状态、Hermes 学习对话", app_js)
+        self.assertIn("受控导入任意 B 站课程前 5P", app_js)
+        self.assertIn("云端演示使用服务器侧 B 站登录态", app_js)
+        self.assertIn("访客不需要也不能提交 Cookie", app_js)
         self.assertIn("本地部署后可体验", app_js)
-        self.assertIn("B 站课程导入、扫码 / Cookie 登录态", app_js)
+        self.assertIn("完整课程导入、访客自带扫码 / Cookie 登录态", app_js)
         self.assertIn("experience-guide", styles)
         self.assertIn("正在判断目前知识点状态", app_js)
         self.assertIn("Hermes 正在真实调用 studio_office_teaching_route", app_js)

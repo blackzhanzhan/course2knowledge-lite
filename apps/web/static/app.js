@@ -118,7 +118,7 @@ const statusCopy = {
   "Note saved": "笔记已保存",
   "Bookmark saved": "书签已保存",
   "Load failed": "加载失败",
-  "Public demo is read-only": "只读体验已关闭导入、删除和本地写入",
+  "Public demo is read-only": "云端体验限制删除、Cookie 和本地写入",
 };
 
 const atomStateCopy = {
@@ -251,7 +251,7 @@ function shouldUsePublicDemoLoadingCopy() {
 }
 
 function publicDemoNotice() {
-  return "当前模式只开放课程浏览、课堂笔记和学习对话；导入、删除、Cookie、笔记、书签和进度写入已关闭。";
+  return "云端演示开放课程浏览、课堂笔记、知识节点状态、Hermes 学习对话，以及受控课程导入；导入只处理前 5P，并使用服务器侧 B 站登录态。";
 }
 
 function renderExperienceGuide() {
@@ -267,11 +267,11 @@ function renderExperienceGuide() {
   els.experienceGuide.innerHTML = `
     <div class="experience-guide-copy">
       <strong>体验说明</strong>
-      <span>云端演示可以体验：示例课程浏览、课堂笔记阅读、知识节点状态、Hermes 学习对话和“结束体验”清空本次会话。</span>
+      <span>可以体验：示例课程浏览、课堂笔记阅读、知识节点状态、Hermes 学习对话、受控导入任意 B 站课程前 5P，以及“结束体验”清空本次会话。</span>
     </div>
     <div class="experience-guide-copy">
       <strong>本地部署后可体验</strong>
-      <span>B 站课程导入、扫码 / Cookie 登录态、课程删除、笔记写入、书签和阅读进度写入。</span>
+      <span>完整课程导入、访客自带扫码 / Cookie 登录态、课程删除、笔记写入、书签和阅读进度写入。</span>
     </div>
   `;
 }
@@ -279,7 +279,7 @@ function renderExperienceGuide() {
 function renderPublicDemoReadonlyCard() {
   return `
     <section class="readonly-demo-card" aria-label="只读体验边界">
-      <strong>只读体验</strong>
+      <strong>云端体验边界</strong>
       <p>${publicDemoNotice()}</p>
     </section>
   `;
@@ -310,8 +310,6 @@ function applyRuntimeMode() {
   renderExperienceGuide();
   const disabled = isPublicDemo();
   const mutableControls = [
-    els.importButton,
-    els.importUrl,
     els.bilibiliCookie,
     els.rememberBilibiliCookie,
     els.pasteCookieButton,
@@ -328,8 +326,16 @@ function applyRuntimeMode() {
     control.disabled = disabled;
     control.setAttribute("aria-disabled", String(disabled));
   }
+  if (els.importButton) {
+    els.importButton.disabled = false;
+    els.importButton.setAttribute("aria-disabled", "false");
+  }
+  if (els.importUrl) {
+    els.importUrl.disabled = false;
+    els.importUrl.setAttribute("aria-disabled", "false");
+  }
   if (els.bilibiliCookieStatus && disabled) {
-    els.bilibiliCookieStatus.textContent = "当前模式已关闭 B 站登录态读取与写入。";
+    els.bilibiliCookieStatus.textContent = "云端演示使用服务器侧 B 站登录态；访客不需要也不能提交 Cookie。导入会被限制为前 5P。";
   }
   if (els.importReceipt && disabled && !els.importReceipt.innerHTML.trim()) {
     els.importReceipt.innerHTML = renderPublicDemoReadonlyCard();
@@ -605,15 +611,13 @@ function chatThreadLabel(thread, fallbackIndex) {
 }
 
 async function importCollection() {
-  if (guardPublicDemoWrite("当前模式不支持导入课程；页面使用已准备好的课程数据。")) {
-    return;
-  }
   const sourceUrl = els.importUrl.value.trim();
   if (!sourceUrl) {
     els.importReceipt.textContent = "粘贴一个 Bilibili 合集链接。";
     setStatus("Import needs a URL");
     return;
   }
+  const publicDemoImport = isPublicDemo();
   els.importButton.disabled = true;
   els.importReceipt.innerHTML = renderImportStatusCard({
     run: { status: "queued", stage: "queued", total_lectures: 0, completed_lectures: 0, failed_lectures: 0 },
@@ -622,14 +626,18 @@ async function importCollection() {
     promotion: {},
     progress: {},
     runId: "",
-    authText: "正在把导入任务交给本机后端。",
+    authText: publicDemoImport
+      ? "正在提交云端受控导入：使用服务器侧 B 站登录态，只处理课程前 5P。"
+      : "正在把导入任务交给本机后端。",
   });
   setStatus("Importing Bilibili collection");
   try {
-    const bilibiliCookie = els.bilibiliCookie ? els.bilibiliCookie.value.trim() : "";
+    const bilibiliCookie = publicDemoImport ? "" : els.bilibiliCookie ? els.bilibiliCookie.value.trim() : "";
     const importPayload = { source_url: sourceUrl };
-    const rememberCookie = Boolean(els.rememberBilibiliCookie?.checked);
-    if (bilibiliCookie) {
+    const rememberCookie = !publicDemoImport && Boolean(els.rememberBilibiliCookie?.checked);
+    if (publicDemoImport) {
+      importPayload.max_lectures = 5;
+    } else if (bilibiliCookie) {
       importPayload.bilibili_cookie = bilibiliCookie;
     } else if (state.qrLoginId && state.qrLoginStatus === "succeeded") {
       importPayload.bilibili_qr_login_id = state.qrLoginId;
@@ -641,13 +649,15 @@ async function importCollection() {
     if (els.bilibiliCookie) {
       els.bilibiliCookie.value = "";
     }
-    const usedQrLogin = Boolean(importPayload.bilibili_qr_login_id);
+    const usedQrLogin = !publicDemoImport && Boolean(importPayload.bilibili_qr_login_id);
     if (usedQrLogin) {
       clearQrLoginState({ silent: true });
     }
     const run = payload.run || {};
     const authText =
-        bilibiliCookie
+        publicDemoImport
+          ? "云端导入已接收：服务器侧登录态会拉取课程信息，前台没有接触 Cookie；本次最多导入前 5P。"
+          : bilibiliCookie
           ? rememberCookie
             ? "Cookie 已发送并保存到本机登录态，前台输入框已清空。"
             : "Cookie 已临时发送，前台已清空。"
@@ -666,7 +676,9 @@ async function importCollection() {
       authText,
     });
     pollImportStatus(payload.run_id || run.run_id || "");
-    loadBilibiliCookieStatus().catch(() => {});
+    if (!publicDemoImport) {
+      loadBilibiliCookieStatus().catch(() => {});
+    }
     setStatus("Import accepted");
   } catch (error) {
     els.importReceipt.innerHTML = renderImportErrorCard(error.message, {});
