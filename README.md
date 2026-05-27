@@ -1,4 +1,4 @@
-# Course2Knowledge Lite
+﻿# Course2Knowledge Lite
 
 把 B 站课程编译成一个可对话、可复习、可推进的本地 AI 学习运行时。
 
@@ -11,7 +11,7 @@ Course2Knowledge Lite 不是 LMS、普通 RAG demo、笔记软件、视频下载
 - 演示视频：<https://www.bilibili.com/video/BV1Q8Gd6VEiu/>
 - GitHub Pages 技术档案：<https://blackzhanzhan.github.io/course2knowledge-lite/>
 - 测试验收：当前发布线曾在干净发布目录中通过 `python -m unittest discover -s tests`（**124 tests OK**）和 `python -m unittest tests.test_deployment`（**3 deployment tests OK**），并完成 wheel build、Web JS / docs JS syntax check 与发布树敏感信息排除检查。
-- 部署形态：支持本地 editable install、fresh venv 发布验证、Web Lite 课堂、Hermes Lite profile sync / smoke，以及 public-demo 只读体验模式部署；服务化运行通过 SQLite 课程 store、Hermes gateway 与 systemd 长驻服务组合完成。
+- 部署形态：支持本地 editable install、fresh venv 发布验证、Web Lite 课堂、Hermes Lite profile sync / smoke，以及 public-demo 受控体验模式部署（支持受控导入前 5P）；服务化运行通过 SQLite 课程 store、Hermes gateway 与 systemd 长驻服务组合完成。
 
 ## 30 秒理解这个项目
 

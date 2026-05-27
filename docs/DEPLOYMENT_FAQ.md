@@ -1,4 +1,4 @@
-# Deployment FAQ
+﻿# Deployment FAQ
 
 这份 FAQ 记录 Course2Knowledge Lite 服务化部署中真实遇到过的问题。它不包含个人部署地址、密码、API key、cookie 或任何私有课程聊天内容。
 
@@ -110,7 +110,7 @@ COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY=4
 
 ## 6. 为什么不同访客的聊天不会串在一起？
 
-只读体验模式下，前台会给每个浏览器会话分配 `visitor_session_id`，聊天线程、消息和事件写入独立访客通道：
+受控体验模式下，前台会给每个浏览器会话分配 `visitor_session_id`，聊天线程、消息和事件写入独立访客通道：
 
 ```text
 web:visitor:<visitor_session_id>

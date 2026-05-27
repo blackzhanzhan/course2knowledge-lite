@@ -1,4 +1,4 @@
-# Deployment
+﻿# Deployment
 
 Course2Knowledge Lite is designed to be deployed in the simplest possible way:
 install the package, run the Web workspace, and sync the public Hermes profile.
@@ -88,10 +88,20 @@ course2knowledge-lite web \
 ```
 
 Public demo mode keeps the useful interactive surface online while disabling
-course import, course deletion, Bilibili QR/cookie actions, note writes,
-bookmark writes, progress writes, and knowledge-card regeneration. Visitors can
-still select a course, read generated notes, inspect transcript evidence, and
-chat through the configured Hermes gateway.
+course deletion, visitor-submitted Bilibili cookies, note writes, bookmark
+writes, progress writes, and knowledge-card regeneration. Visitors can still
+select a course, read generated notes, inspect transcript evidence, chat through
+the configured Hermes gateway, and **import any Bilibili course using the
+server-side login state** (capped to the first 5 lectures per import).
+
+To enable server-side Bilibili login for imports:
+
+```bash
+export BILIBILI_COOKIE="SESSDATA=...; bili_jct=..."
+```
+
+If this environment variable is not set, import requests will return a clear
+error instead of silently failing.
 
 Each public-demo browser session gets a temporary visitor chat channel. This
 prevents one resume reviewer or student from seeing another visitor's chat
