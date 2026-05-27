@@ -6,6 +6,14 @@ Course2Knowledge Lite 不是 LMS、普通 RAG demo、笔记软件、视频下载
 
 [技术档案](https://blackzhanzhan.github.io/course2knowledge-lite/) · [技术白皮书](docs/TECHNICAL_WHITEPAPER.md) · [部署说明](docs/DEPLOYMENT.md) · [部署 FAQ](docs/DEPLOYMENT_FAQ.md) · [测试说明](docs/TESTING.md)
 
+## 工程证据
+
+- 公网体验：<http://47.237.191.43:3014/>
+- 演示视频：<https://www.bilibili.com/video/BV1Q8Gd6VEiu/>
+- GitHub Pages 技术档案：<https://blackzhanzhan.github.io/course2knowledge-lite/>
+- 测试验收：当前发布线曾在干净发布目录中通过 `python -m unittest discover -s tests`（**124 tests OK**）和 `python -m unittest tests.test_deployment`（**3 deployment tests OK**），并完成 wheel build、Web JS / docs JS syntax check 与发布树敏感信息排除检查。
+- 部署形态：支持本地 editable install、fresh venv 发布验证、Web Lite 课堂、Hermes Lite profile sync / smoke，以及 public-demo 只读公网体验部署；公开部署通过 SQLite 课程 store、Hermes gateway 与 systemd 长驻服务组合运行。
+
 ## 30 秒理解这个项目
 
 如果只看三件事：
