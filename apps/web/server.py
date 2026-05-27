@@ -1577,6 +1577,13 @@ def _promotion_decision(
         return {"promote": False, "decision": "blocked", "reason": "未入库：候选导入没有课程课时。", "course_match": "invalid"}
     if int(candidate.get("transcript_ready_count") or 0) <= 0:
         return {"promote": False, "decision": "blocked", "reason": "未入库：候选导入没有任何字幕转写。", "course_match": "invalid"}
+    if int(candidate.get("ready_lecture_count") or 0) <= 0:
+        return {
+            "promote": False,
+            "decision": "blocked",
+            "reason": "未入库：候选导入没有任何完整课时，至少需要字幕、讲义、知识原子和关口都生成后才允许合并。",
+            "course_match": "invalid",
+        }
     if max_lectures is not None and not allow_limited_promotion:
         return {
             "promote": False,

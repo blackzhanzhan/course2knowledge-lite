@@ -804,6 +804,81 @@ class WebLiteTests(unittest.TestCase):
         serialized = json.dumps(events, ensure_ascii=False)
         self.assertNotIn("should-not-leak", serialized)
 
+    def test_guarded_reimport_blocks_new_course_with_transcripts_but_no_ready_lectures(self) -> None:
+        web_server = load_web_server_module()
+
+        def fake_transcript_only_import(source_url: str, *, store_root: str | Path, **_: object) -> dict[str, object]:
+            skeleton = build_course_skeleton(
+                title="Transcript only candidate",
+                source_url=source_url,
+                video_refs=[
+                    {
+                        "sequence": 1,
+                        "bvid": "BVTRANSCRIPT1",
+                        "title": "Transcript only lecture",
+                        "source_url": "https://www.bilibili.com/video/BVTRANSCRIPT1",
+                    }
+                ],
+                course_id="course_transcript_only",
+                now="2026-05-27T00:00:00Z",
+            )
+            store = SQLiteCourseStore(store_root)
+            store.write_skeleton(skeleton)
+            lecture = skeleton.lectures[0]
+            store.write_transcript_segments(
+                skeleton.course.course_id,
+                lecture.lecture_id,
+                [
+                    TranscriptSegmentRecord(
+                        segment_id=f"{lecture.lecture_id}::seg::1",
+                        lecture_id=lecture.lecture_id,
+                        start_seconds=0,
+                        end_seconds=8,
+                        text="Transcript exists but dossier compilation failed.",
+                    )
+                ],
+            )
+            return {
+                "status": "partial",
+                "course": skeleton.course.to_dict(),
+                "readiness": store.summarize_import_readiness(skeleton.course.course_id),
+            }
+
+        previous_import = web_server.import_collection_pipeline_to_store
+        web_server.import_collection_pipeline_to_store = fake_transcript_only_import
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                store = SQLiteCourseStore(temp_dir)
+                run = store.create_import_run(
+                    course_id="",
+                    source_url="https://space.bilibili.com/1112988584/lists/7726472?type=season",
+                    status="queued",
+                    stage="queued",
+                )
+
+                result = web_server._run_guarded_reimport(
+                    run_id=str(run["run_id"]),
+                    source_url=str(run["source_url"]),
+                    store_root=Path(temp_dir),
+                    fetch_transcripts=True,
+                    bilibili_cookie="SESSDATA=should-not-leak",
+                    max_lectures=5,
+                    allow_limited_promotion=True,
+                )
+                persisted_store = SQLiteCourseStore(temp_dir)
+                status = persisted_store.read_import_run(str(run["run_id"]))
+                events = persisted_store.list_import_events(str(run["run_id"]))
+                courses = persisted_store.list_courses()
+        finally:
+            web_server.import_collection_pipeline_to_store = previous_import
+
+        self.assertEqual(result["promotion"]["decision"], "blocked")
+        self.assertEqual(status["stage"], "promotion_blocked")
+        self.assertEqual(courses, [])
+        self.assertIn("完整课时", result["promotion"]["reason"])
+        self.assertIn("promotion_blocked", [event["event_type"] for event in events])
+        self.assertNotIn("should-not-leak", json.dumps(events, ensure_ascii=False))
+
     def test_guarded_reimport_merges_new_course_even_when_existing_global_best_is_larger(self) -> None:
         web_server = load_web_server_module()
 
