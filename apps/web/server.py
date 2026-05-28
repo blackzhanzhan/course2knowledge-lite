@@ -873,10 +873,15 @@ def _is_public_demo_import_run(store: SQLiteCourseStore, run: dict[str, Any]) ->
     except Exception:
         return False
     for event in events:
-        if str(event.get("event_type") or "") != "import_requested":
-            continue
         payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
-        return bool(payload.get("public_demo_import"))
+        if bool(payload.get("public_demo_import")):
+            return True
+        if (
+            str(event.get("event_type") or "") in {"temp_import_started", "promotion_completed", "promotion_blocked"}
+            and bool(payload.get("allow_limited_promotion"))
+            and int(payload.get("max_lectures") or 0) == DEFAULT_PUBLIC_DEMO_IMPORT_MAX_LECTURES
+        ):
+            return True
     return False
 
 
@@ -1280,6 +1285,8 @@ def _run_guarded_reimport(
             "reason": decision["reason"],
             "course_match": decision.get("course_match", "unknown"),
             "action": decision.get("action", ""),
+            "public_demo_import": bool(allow_limited_promotion),
+            "max_lectures": max_lectures,
             "previous": _compact_readiness_snapshot(production_snapshot),
             "previous_course": _compact_readiness(decision.get("previous_course") or {}),
             "candidate": _compact_readiness(temp_readiness),

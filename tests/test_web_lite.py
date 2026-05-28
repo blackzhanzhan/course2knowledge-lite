@@ -584,6 +584,44 @@ class WebLiteTests(unittest.TestCase):
         self.assertIn(recent_course_id, remaining_ids)
         self.assertIn(normal_course_id, remaining_ids)
 
+    def test_public_demo_cleanup_recognizes_guarded_limited_import_runs(self) -> None:
+        web_server = load_web_server_module()
+
+        previous_public_demo = web_server.Course2KnowledgeWebHandler.public_demo
+        previous_ttl = os.environ.get(web_server.PUBLIC_DEMO_IMPORT_TTL_ENV)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                store = SQLiteCourseStore(temp_dir)
+                course_id = _write_demo_course_with_limited_guarded_import_run(
+                    store,
+                    title="Historical guarded visitor course",
+                    source_url="https://www.bilibili.com/video/BVHIST001",
+                    now="2026-05-01T00:00:00Z",
+                    run_id="lite_import_historical_public",
+                )
+                web_server.Course2KnowledgeWebHandler.public_demo = True
+                web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+                os.environ[web_server.PUBLIC_DEMO_IMPORT_TTL_ENV] = "60"
+                server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                host, port = server.server_address
+                try:
+                    courses = _request_json(host, port, "GET", "/api/courses")
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=5)
+        finally:
+            web_server.Course2KnowledgeWebHandler.public_demo = previous_public_demo
+            if previous_ttl is None:
+                os.environ.pop(web_server.PUBLIC_DEMO_IMPORT_TTL_ENV, None)
+            else:
+                os.environ[web_server.PUBLIC_DEMO_IMPORT_TTL_ENV] = previous_ttl
+
+        remaining_ids = {str(course["course_id"]) for course in courses["courses"]}
+        self.assertNotIn(course_id, remaining_ids)
+
     def test_web_static_text_assets_include_utf8_charset(self) -> None:
         web_server = load_web_server_module()
 
@@ -2537,6 +2575,69 @@ def _write_demo_course_with_public_import_run(
         stage="merged_new_course",
         total_lectures=1,
         completed_lectures=1,
+        failed_lectures=0,
+        now=now,
+    )
+    return skeleton.course.course_id
+
+
+def _write_demo_course_with_limited_guarded_import_run(
+    store: SQLiteCourseStore,
+    *,
+    title: str,
+    source_url: str,
+    now: str,
+    run_id: str,
+) -> str:
+    skeleton = build_course_skeleton(
+        title=title,
+        source_url=source_url,
+        video_refs=[
+            {
+                "sequence": 1,
+                "bvid": f"BV{run_id[-8:]}",
+                "title": title,
+                "source_url": source_url,
+            }
+        ],
+        now=now,
+    )
+    store.write_skeleton(skeleton)
+    run = store.create_import_run(
+        course_id=skeleton.course.course_id,
+        source_url=source_url,
+        source_platform="bilibili",
+        status="completed",
+        stage="merged_new_course",
+        run_id=run_id,
+        total_lectures=5,
+        completed_lectures=5,
+        failed_lectures=0,
+        now=now,
+    )
+    store.append_import_event(
+        str(run["run_id"]),
+        stage="temp_import",
+        status="running",
+        event_type="temp_import_started",
+        payload={"allow_limited_promotion": True, "max_lectures": 5},
+        now=now,
+    )
+    store.append_import_event(
+        str(run["run_id"]),
+        stage="merged_new_course",
+        status="completed",
+        event_type="promotion_completed",
+        payload={"decision": "merged_new_course"},
+        now=now,
+    )
+    store.update_import_run(
+        str(run["run_id"]),
+        course_id=skeleton.course.course_id,
+        status="completed",
+        stage="merged_new_course",
+        total_lectures=5,
+        completed_lectures=5,
         failed_lectures=0,
         now=now,
     )
