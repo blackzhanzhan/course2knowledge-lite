@@ -507,6 +507,83 @@ class WebLiteTests(unittest.TestCase):
         self.assertEqual(blocked_import["error_type"], "PermissionError")
         self.assertIn("server-side Bilibili login cookie", blocked_import["error"])
 
+    def test_public_demo_cleanup_removes_only_expired_unprotected_imported_courses(self) -> None:
+        web_server = load_web_server_module()
+
+        previous_public_demo = web_server.Course2KnowledgeWebHandler.public_demo
+        previous_ttl = os.environ.get(web_server.PUBLIC_DEMO_IMPORT_TTL_ENV)
+        previous_protected = os.environ.get(web_server.PUBLIC_DEMO_PROTECTED_COURSE_IDS_ENV)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                store = SQLiteCourseStore(temp_dir)
+                old_imported_course_id = _write_demo_course_with_public_import_run(
+                    store,
+                    title="Old visitor course",
+                    source_url="https://www.bilibili.com/video/BVOLD00001",
+                    now="2026-05-01T00:00:00Z",
+                    run_id="lite_import_old_public",
+                )
+                protected_course_id = _write_demo_course_with_public_import_run(
+                    store,
+                    title="Protected seed course",
+                    source_url="https://www.bilibili.com/video/BVSEED0001",
+                    now="2026-05-01T00:00:00Z",
+                    run_id="lite_import_protected_public",
+                )
+                recent_course_id = _write_demo_course_with_public_import_run(
+                    store,
+                    title="Recent visitor course",
+                    source_url="https://www.bilibili.com/video/BVNEW00001",
+                    now=datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+                    run_id="lite_import_recent_public",
+                )
+                normal_course = build_course_skeleton(
+                    title="Local non-public course",
+                    source_url="https://www.bilibili.com/video/BVLOCAL001",
+                    video_refs=[
+                        {
+                            "sequence": 1,
+                            "bvid": "BVLOCAL001",
+                            "title": "Local lecture",
+                            "source_url": "https://www.bilibili.com/video/BVLOCAL001",
+                        }
+                    ],
+                    now="2026-05-01T00:00:00Z",
+                )
+                normal_course_id = normal_course.course.course_id
+                store.write_skeleton(normal_course)
+
+                web_server.Course2KnowledgeWebHandler.public_demo = True
+                web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+                os.environ[web_server.PUBLIC_DEMO_IMPORT_TTL_ENV] = "60"
+                os.environ[web_server.PUBLIC_DEMO_PROTECTED_COURSE_IDS_ENV] = protected_course_id
+                server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                host, port = server.server_address
+                try:
+                    courses = _request_json(host, port, "GET", "/api/courses")
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=5)
+        finally:
+            web_server.Course2KnowledgeWebHandler.public_demo = previous_public_demo
+            if previous_ttl is None:
+                os.environ.pop(web_server.PUBLIC_DEMO_IMPORT_TTL_ENV, None)
+            else:
+                os.environ[web_server.PUBLIC_DEMO_IMPORT_TTL_ENV] = previous_ttl
+            if previous_protected is None:
+                os.environ.pop(web_server.PUBLIC_DEMO_PROTECTED_COURSE_IDS_ENV, None)
+            else:
+                os.environ[web_server.PUBLIC_DEMO_PROTECTED_COURSE_IDS_ENV] = previous_protected
+
+        remaining_ids = {str(course["course_id"]) for course in courses["courses"]}
+        self.assertNotIn(old_imported_course_id, remaining_ids)
+        self.assertIn(protected_course_id, remaining_ids)
+        self.assertIn(recent_course_id, remaining_ids)
+        self.assertIn(normal_course_id, remaining_ids)
+
     def test_web_static_text_assets_include_utf8_charset(self) -> None:
         web_server = load_web_server_module()
 
@@ -2412,6 +2489,58 @@ def _store_with_transcript(temp_dir: str) -> tuple[SQLiteCourseStore, str]:
         ],
     )
     return store, skeleton.course.course_id
+
+
+def _write_demo_course_with_public_import_run(
+    store: SQLiteCourseStore,
+    *,
+    title: str,
+    source_url: str,
+    now: str,
+    run_id: str,
+) -> str:
+    skeleton = build_course_skeleton(
+        title=title,
+        source_url=source_url,
+        video_refs=[
+            {
+                "sequence": 1,
+                "bvid": f"BV{run_id[-8:]}",
+                "title": title,
+                "source_url": source_url,
+            }
+        ],
+        now=now,
+    )
+    store.write_skeleton(skeleton)
+    run = store.create_import_run(
+        course_id="",
+        source_url=source_url,
+        source_platform="bilibili",
+        status="queued",
+        stage="queued",
+        run_id=run_id,
+        now=now,
+    )
+    store.append_import_event(
+        str(run["run_id"]),
+        stage="queued",
+        status="queued",
+        event_type="import_requested",
+        payload={"public_demo_import": True},
+        now=now,
+    )
+    store.update_import_run(
+        str(run["run_id"]),
+        course_id=skeleton.course.course_id,
+        status="completed",
+        stage="merged_new_course",
+        total_lectures=1,
+        completed_lectures=1,
+        failed_lectures=0,
+        now=now,
+    )
+    return skeleton.course.course_id
 
 
 class _FakeHttpResponse:

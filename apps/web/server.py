@@ -29,6 +29,7 @@ DEFAULT_IMPORT_DOSSIER_CHUNK_WORKERS = 8
 DEFAULT_IMPORT_DOSSIER_REQUEST_CONCURRENCY = 80
 DEFAULT_CHAT_CONCURRENCY = 4
 DEFAULT_PUBLIC_DEMO_CHAT_TTL_SECONDS = 60 * 60 * 6
+DEFAULT_PUBLIC_DEMO_IMPORT_TTL_SECONDS = 60 * 60 * 6
 DEFAULT_PUBLIC_DEMO_IMPORT_MAX_LECTURES = 5
 CHAT_CONTEXT_LECTURE_WINDOW = 2
 CHAT_CONTEXT_READER_SEGMENT_LIMIT = 12
@@ -38,7 +39,9 @@ CHAT_CONTEXT_HISTORY_EVENT_LIMIT = 20
 PUBLIC_DEMO_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO"
 CHAT_CONCURRENCY_ENV = "COURSE2KNOWLEDGE_LITE_CHAT_CONCURRENCY"
 PUBLIC_DEMO_CHAT_TTL_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_CHAT_TTL_SECONDS"
+PUBLIC_DEMO_IMPORT_TTL_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_IMPORT_TTL_SECONDS"
 PUBLIC_DEMO_IMPORT_MAX_LECTURES_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_IMPORT_MAX_LECTURES"
+PUBLIC_DEMO_PROTECTED_COURSE_IDS_ENV = "COURSE2KNOWLEDGE_LITE_PUBLIC_DEMO_PROTECTED_COURSE_IDS"
 PUBLIC_DEMO_VISITOR_CHANNEL_PREFIX = "web:visitor:"
 BILIBILI_AUTH_FILE = REPO_ROOT / ".codex" / "auth" / "bilibili.json"
 BILIBILI_QR_GENERATE_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate"
@@ -117,8 +120,9 @@ class Course2KnowledgeWebHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         try:
+            if parsed.path in {"/", "/api/courses", "/api/runtime", "/api/import/status"}:
+                _cleanup_public_demo_store(SQLiteCourseStore(self.store_root))
             if parsed.path == "/":
-                _cleanup_expired_public_demo_chat_sessions(SQLiteCourseStore(self.store_root))
                 self._send_static("index.html")
             elif parsed.path.startswith("/static/"):
                 self._send_static(parsed.path.removeprefix("/static/"))
@@ -740,8 +744,17 @@ def _public_demo_chat_ttl_seconds() -> int:
     return _positive_int_env(PUBLIC_DEMO_CHAT_TTL_ENV, default=DEFAULT_PUBLIC_DEMO_CHAT_TTL_SECONDS)
 
 
+def _public_demo_import_ttl_seconds() -> int:
+    return _positive_int_env(PUBLIC_DEMO_IMPORT_TTL_ENV, default=DEFAULT_PUBLIC_DEMO_IMPORT_TTL_SECONDS)
+
+
 def _public_demo_import_max_lectures() -> int:
     return _positive_int_env(PUBLIC_DEMO_IMPORT_MAX_LECTURES_ENV, default=DEFAULT_PUBLIC_DEMO_IMPORT_MAX_LECTURES)
+
+
+def _public_demo_protected_course_ids() -> set[str]:
+    raw_value = str(os.environ.get(PUBLIC_DEMO_PROTECTED_COURSE_IDS_ENV, "") or "")
+    return {item.strip() for item in re.split(r"[,;\s]+", raw_value) if item.strip()}
 
 
 def _public_demo_bilibili_cookie() -> tuple[str, str]:
@@ -816,6 +829,68 @@ def _cleanup_expired_public_demo_chat_sessions(store: SQLiteCourseStore) -> dict
         channel_prefix=PUBLIC_DEMO_VISITOR_CHANNEL_PREFIX,
         updated_before=cutoff,
     )
+
+
+def _cleanup_public_demo_store(store: SQLiteCourseStore) -> dict[str, Any]:
+    if not _is_public_demo():
+        return {
+            "chat": {"deleted_thread_count": 0, "deleted_thread_ids": []},
+            "imports": {"deleted_course_count": 0, "deleted_course_ids": []},
+        }
+    return {
+        "chat": _cleanup_expired_public_demo_chat_sessions(store),
+        "imports": _cleanup_expired_public_demo_imported_courses(store),
+    }
+
+
+def _cleanup_expired_public_demo_imported_courses(store: SQLiteCourseStore) -> dict[str, Any]:
+    if not _is_public_demo():
+        return {"deleted_course_count": 0, "deleted_course_ids": []}
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=_public_demo_import_ttl_seconds())
+    protected_course_ids = _public_demo_protected_course_ids()
+    deleted_course_ids: list[str] = []
+    for run in store.list_import_runs(limit=0):
+        course_id = str(run.get("course_id") or "").strip()
+        if not course_id or course_id in protected_course_ids or course_id in deleted_course_ids:
+            continue
+        if not _is_public_demo_import_run(store, run):
+            continue
+        run_updated_at = _parse_utc_datetime(str(run.get("updated_at") or run.get("created_at") or ""))
+        if run_updated_at is None or run_updated_at >= cutoff:
+            continue
+        result = store.delete_course(course_id)
+        if result.get("deleted"):
+            deleted_course_ids.append(course_id)
+    return {
+        "deleted_course_count": len(deleted_course_ids),
+        "deleted_course_ids": deleted_course_ids,
+    }
+
+
+def _is_public_demo_import_run(store: SQLiteCourseStore, run: dict[str, Any]) -> bool:
+    try:
+        events = store.list_import_events(str(run.get("run_id") or ""))
+    except Exception:
+        return False
+    for event in events:
+        if str(event.get("event_type") or "") != "import_requested":
+            continue
+        payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        return bool(payload.get("public_demo_import"))
+    return False
+
+
+def _parse_utc_datetime(raw_value: str) -> datetime | None:
+    cleaned = str(raw_value or "").strip()
+    if not cleaned:
+        return None
+    try:
+        parsed = datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _content_type_for_path(path: Path) -> str:

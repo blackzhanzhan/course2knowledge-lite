@@ -251,7 +251,7 @@ function shouldUsePublicDemoLoadingCopy() {
 }
 
 function publicDemoNotice() {
-  return "云端演示开放课程浏览、课堂笔记、知识节点状态、Hermes 学习对话，以及受控课程导入；导入只处理前 5P，并使用服务器侧 B 站登录态。";
+  return "云端演示开放课程浏览、课堂笔记、知识节点状态、Hermes 学习对话，以及受控课程导入；导入只处理前 5P，并使用服务器侧 B 站登录态。体验课会定时清理，避免不同访客互相干扰。";
 }
 
 function renderExperienceGuide() {
@@ -267,7 +267,7 @@ function renderExperienceGuide() {
   els.experienceGuide.innerHTML = `
     <div class="experience-guide-copy">
       <strong>体验说明</strong>
-      <span>可以体验：示例课程浏览、课堂笔记阅读、知识节点状态、Hermes 学习对话、受控导入任意 B 站课程前 5P，以及“结束体验”清空本次会话。</span>
+      <span>可以体验：示例课程浏览、课堂笔记阅读、知识节点状态、Hermes 学习对话、受控导入任意 B 站课程前 5P，以及“结束体验”清空本次会话；体验课过期后会自动移除。</span>
     </div>
     <div class="experience-guide-copy">
       <strong>本地部署后可体验</strong>
