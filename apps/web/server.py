@@ -882,7 +882,20 @@ def _is_public_demo_import_run(store: SQLiteCourseStore, run: dict[str, Any]) ->
             and int(payload.get("max_lectures") or 0) == DEFAULT_PUBLIC_DEMO_IMPORT_MAX_LECTURES
         ):
             return True
-    return False
+    return _is_historical_limited_public_demo_import_run(run)
+
+
+def _is_historical_limited_public_demo_import_run(run: dict[str, Any]) -> bool:
+    stage = str(run.get("stage") or "").strip()
+    status = str(run.get("status") or "").strip()
+    platform = str(run.get("source_platform") or "").strip()
+    total_lectures = int(run.get("total_lectures") or 0)
+    return (
+        platform == "bilibili"
+        and status in {"completed", "partial"}
+        and stage in {"merged_new_course", "replaced_same_course", "promoted"}
+        and 0 < total_lectures <= _public_demo_import_max_lectures()
+    )
 
 
 def _parse_utc_datetime(raw_value: str) -> datetime | None:
