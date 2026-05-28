@@ -660,6 +660,45 @@ class WebLiteTests(unittest.TestCase):
         remaining_ids = {str(course["course_id"]) for course in courses["courses"]}
         self.assertNotIn(course_id, remaining_ids)
 
+    def test_public_demo_cleanup_keeps_historical_large_seed_course(self) -> None:
+        web_server = load_web_server_module()
+
+        previous_public_demo = web_server.Course2KnowledgeWebHandler.public_demo
+        previous_ttl = os.environ.get(web_server.PUBLIC_DEMO_IMPORT_TTL_ENV)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                store = SQLiteCourseStore(temp_dir)
+                course_id = _write_demo_course_with_historical_large_import_run(
+                    store,
+                    title="Computer Organization seed course",
+                    source_url="https://www.bilibili.com/video/BVSEED154",
+                    now="2026-05-01T00:00:00Z",
+                    run_id="lite_import_historical_large_seed",
+                    lecture_count=154,
+                )
+                web_server.Course2KnowledgeWebHandler.public_demo = True
+                web_server.Course2KnowledgeWebHandler.store_root = Path(temp_dir)
+                os.environ[web_server.PUBLIC_DEMO_IMPORT_TTL_ENV] = "60"
+                server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.Course2KnowledgeWebHandler)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                host, port = server.server_address
+                try:
+                    courses = _request_json(host, port, "GET", "/api/courses")
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=5)
+        finally:
+            web_server.Course2KnowledgeWebHandler.public_demo = previous_public_demo
+            if previous_ttl is None:
+                os.environ.pop(web_server.PUBLIC_DEMO_IMPORT_TTL_ENV, None)
+            else:
+                os.environ[web_server.PUBLIC_DEMO_IMPORT_TTL_ENV] = previous_ttl
+
+        remaining_ids = {str(course["course_id"]) for course in courses["courses"]}
+        self.assertIn(course_id, remaining_ids)
+
     def test_web_static_text_assets_include_utf8_charset(self) -> None:
         web_server = load_web_server_module()
 
@@ -2715,6 +2754,45 @@ def _write_demo_course_with_historical_limited_import_run(
         total_lectures=5,
         completed_lectures=5,
         failed_lectures=0,
+        now=now,
+    )
+    return skeleton.course.course_id
+
+
+def _write_demo_course_with_historical_large_import_run(
+    store: SQLiteCourseStore,
+    *,
+    title: str,
+    source_url: str,
+    now: str,
+    run_id: str,
+    lecture_count: int,
+) -> str:
+    skeleton = build_course_skeleton(
+        title=title,
+        source_url=source_url,
+        video_refs=[
+            {
+                "sequence": index,
+                "bvid": f"BVSEED{index:03d}",
+                "title": f"{title} {index}",
+                "source_url": f"{source_url}?p={index}",
+            }
+            for index in range(1, lecture_count + 1)
+        ],
+        now=now,
+    )
+    store.write_skeleton(skeleton)
+    store.create_import_run(
+        course_id=skeleton.course.course_id,
+        source_url=source_url,
+        source_platform="bilibili",
+        status="partial",
+        stage="merged_new_course",
+        run_id=run_id,
+        total_lectures=lecture_count,
+        completed_lectures=lecture_count - 1,
+        failed_lectures=1,
         now=now,
     )
     return skeleton.course.course_id
